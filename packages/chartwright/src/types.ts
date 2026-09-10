@@ -1,0 +1,234 @@
+/**
+ * Public types for chartwright.
+ *
+ * Two vocabularies live here, deliberately kept apart:
+ *
+ *   1. the **neutral chart spec** — what to draw, never how a library draws it.
+ *      This is the auditable, replayable artifact.
+ *   2. the **LLM transport** — messages, tools, and client. chartwright never
+ *      owns credentials; the caller injects a client.
+ */
+
+/** A row is opaque to chartwright: no schema is assumed, no field is required. */
+export type Row = Record<string, unknown>;
+
+export type ColumnType = 'string' | 'number' | 'date' | 'boolean';
+
+export type Column = {
+  name: string;
+  type: ColumnType;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transform DSL
+//
+// The six operators are a closed set on purpose: a closed verb list is what
+// keeps an LLM's output checkable (see the "controlled verb set" idea in the
+// project notes, borrowed from glyph via the ChartBrain research). Adding an
+// operator is a deliberate act, not something a model can improvise.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type FilterOperator = 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'in' | 'contains';
+
+export type FilterStep = {
+  op: 'filter';
+  field: string;
+  operator: FilterOperator;
+  value?: unknown;
+  values?: unknown[];
+};
+
+export type AggregationFn = 'sum' | 'avg' | 'count' | 'countDistinct' | 'min' | 'max';
+
+export type Measure = {
+  /** Omit for `count`, which counts rows. */
+  field?: string;
+  agg: AggregationFn;
+  /** Name of the produced column. */
+  as: string;
+};
+
+export type AggregateStep = {
+  op: 'aggregate';
+  group_by: string[];
+  measures: Measure[];
+};
+
+export type SortStep = { op: 'sort'; by: string; order?: 'asc' | 'desc' };
+
+export type LimitStep = { op: 'limit'; n: number };
+
+export type Operand = { field: string } | { value: number };
+
+export type DeriveStep = {
+  op: 'derive';
+  as: string;
+  left: Operand;
+  operator: 'add' | 'subtract' | 'multiply' | 'divide';
+  right: Operand;
+};
+
+export type BinTimeStep = {
+  op: 'binTime';
+  field: string;
+  granularity: 'month' | 'quarter' | 'year';
+  as: string;
+};
+
+export type TransformStep = FilterStep | AggregateStep | SortStep | LimitStep | DeriveStep | BinTimeStep;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Neutral chart spec
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ValueType = 'categorical' | 'numeric' | 'temporal';
+
+export type Encoding = {
+  field: string;
+  value_type?: ValueType;
+};
+
+export type ChartSpec = {
+  schema_version?: 1;
+  chart: {
+    /** A neutral name such as 'bar' | 'line' | 'pie' | 'groupedBar' | ... */
+    type: string;
+    title?: string;
+  };
+  /** Omit to chart the raw rows. */
+  transform_plan?: { steps: TransformStep[] };
+  encodings: {
+    x?: Encoding;
+    y?: Encoding;
+    /** Optional channel that splits the data into multiple series. */
+    series?: Encoding;
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LLM transport
+//
+// chartwright does not ship a provider. The caller implements `LlmClient`
+// however it likes — typically by calling its own backend, which is where the
+// API key lives. That keeps provider policy (browser keys, CORS) and cost
+// control with the party that owns the key.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
+
+export type ChatMessage = {
+  role: ChatRole;
+  /** Assistant/user text. Absent on tool result messages. */
+  content?: string;
+  /** Present on assistant messages that request tools. */
+  toolCalls?: ToolCall[];
+  /** Present on tool result messages. */
+  toolCallId?: string;
+  /** Present on tool result messages: which tool produced this. */
+  name?: string;
+};
+
+export type ToolCall = {
+  id: string;
+  name: string;
+  args: unknown;
+};
+
+export type JsonSchema = Record<string, unknown>;
+
+export type ToolDef = {
+  name: string;
+  description: string;
+  parameters: JsonSchema;
+};
+
+export type LlmCompleteRequest = {
+  messages: ChatMessage[];
+  /** Absent when the caller only wants a final answer (no tool loop). */
+  tools?: ToolDef[];
+  /** Ask for a JSON object as the final answer. */
+  json?: boolean;
+  signal?: AbortSignal;
+};
+
+export type LlmCompleteResult = {
+  content?: string;
+  toolCalls?: ToolCall[];
+};
+
+export type LlmClient = {
+  complete(req: LlmCompleteRequest): Promise<LlmCompleteResult>;
+  /**
+   * Optional. When implemented, chartwright forwards assistant text deltas as
+   * they arrive. Progress at the *tool* level works without this — those events
+   * come from the loop itself.
+   */
+  completeStream?(req: LlmCompleteRequest, onDelta: (text: string) => void): Promise<LlmCompleteResult>;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress events
+//
+// Loop-level events do not depend on provider streaming, which is the point:
+// a non-streaming client still gives the UI something to show at every hop.
+// These double as the audit trail (`AskResult.trace`).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AgentEvent =
+  | { type: 'round_start'; round: number }
+  | { type: 'assistant_delta'; text: string }
+  | { type: 'assistant_text'; text: string }
+  | { type: 'tool_call'; id: string; name: string; args: unknown }
+  | { type: 'tool_result'; id: string; name: string; summary: unknown; ms: number }
+  | { type: 'warning'; message: string }
+  | { type: 'done'; result: AskResult }
+  | { type: 'error'; message: string };
+
+export type TraceEntry = {
+  round: number;
+  toolCallId?: string;
+  tool?: string;
+  args?: unknown;
+  result?: unknown;
+  ms?: number;
+};
+
+/**
+ * Optional guard rails. Every field is optional and **unset by default**: the
+ * library imposes no policy of its own. Callers that want limits set them here.
+ */
+export type Budget = {
+  maxRounds?: number;
+  maxToolCalls?: number;
+};
+
+export type AskRequest = {
+  query: string;
+  rows: Row[];
+  /** The caller's LLM client. chartwright never sees an API key. */
+  llm: LlmClient;
+  /** Target library. Only 'highcharts' is supported today. */
+  library?: 'highcharts';
+  /** Pass the previous result's messages back to continue the conversation. */
+  messages?: ChatMessage[];
+  /** Correlation id; opaque to chartwright. */
+  sessionId?: string;
+  budget?: Budget;
+  /** Progress callback. Optional — without it, `ask()` simply resolves once. */
+  onEvent?: (event: AgentEvent) => void;
+  signal?: AbortSignal;
+};
+
+export type AskResult = {
+  /** Chart-library options with the data already bound. */
+  options: Record<string, unknown>;
+  /** The auditable artifact. Replay it without the LLM. */
+  spec: ChartSpec;
+  /** The table that was actually plotted. The model never sees this. */
+  dataset: Row[];
+  sessionId: string;
+  /** Pass back verbatim on a follow-up request. */
+  messages: ChatMessage[];
+  warnings: string[];
+  trace: TraceEntry[];
+};

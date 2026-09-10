@@ -1,0 +1,22 @@
+{
+  "name": "chartwright",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Natural-language charts in your own process: an agentic loop inspects your data locally, a deterministic compiler emits chart-library options.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}
