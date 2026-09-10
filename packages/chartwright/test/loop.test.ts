@@ -211,6 +211,25 @@ test('budget.maxRounds stops a runaway loop', async () => {
   await assert.rejects(() => runAgentLoop({ ...loopOptions(llm), budget: { maxRounds: 3 } }), /maxRounds \(3\) exceeded/);
 });
 
+test('budget.maxToolCalls also stops a runaway loop', async () => {
+  // The model keeps asking for queries and never submits.
+  const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }]);
+  await assert.rejects(
+    () => runAgentLoop({ ...loopOptions(llm), budget: { maxToolCalls: 2 } }),
+    /maxToolCalls \(2\) exceeded/,
+  );
+});
+
+test('maxToolCalls counts submissions too, so a model cannot loop on validation errors forever', async () => {
+  const llm = scriptedLlm([
+    { toolCalls: [{ id: 'b1', name: 'submit_spec', args: { chart: { type: 'nope' }, encodings: { x: { field: 'a' }, y: { field: 'b' } } } }] },
+  ]);
+  await assert.rejects(
+    () => runAgentLoop({ ...loopOptions(llm), budget: { maxToolCalls: 3 } }),
+    /maxToolCalls \(3\) exceeded/,
+  );
+});
+
 test('progress events describe every hop', async () => {
   const events: AgentEvent[] = [];
   const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }, { content: 'done', toolCalls: [SUBMIT] }]);

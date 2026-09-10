@@ -223,6 +223,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const warnings: string[] = [];
 
   let round = 0;
+  let toolCallsUsed = 0;
   // A follow-up may already contain the plan from an earlier turn.
   let lastRunQuerySteps: TransformStep[] | undefined = recoverPlanFrom(messages);
   let textOnlyRounds = 0;
@@ -287,6 +288,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     });
 
     for (const call of toolCalls) {
+      toolCallsUsed += 1;
+      if (budget?.maxToolCalls !== undefined && toolCallsUsed > budget.maxToolCalls) {
+        throw new Error(`agent loop stopped: maxToolCalls (${budget.maxToolCalls}) exceeded`);
+      }
+
       onEvent?.({ type: 'tool_call', id: call.id, name: call.name, args: call.args });
 
       const started = Date.now();
