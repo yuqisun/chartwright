@@ -1,0 +1,16 @@
+{
+  "name": "chartwright-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Natural-language charts in your own process: an agentic loop inspects your data locally, a deterministic compiler emits chart-library options.",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace examples/react-highcharts",
+    "build": "npm run build --workspace examples/react-highcharts",
+    "gen:data": "node examples/react-highcharts/scripts/generate-data.mjs"
+  },
+  "license": "MIT"
+}
