@@ -245,6 +245,40 @@ export const TOOL_DEFS: ToolDef[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'submit_spec',
+    description:
+      'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
+      'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
+      'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category or date ' +
+      'column, encodings.y the measure column, and the optional encodings.series splits the data into series.',
+    parameters: {
+      type: 'object',
+      required: ['chart', 'encodings'],
+      properties: {
+        chart: {
+          type: 'object',
+          required: ['type'],
+          properties: {
+            type: { type: 'string', enum: ['bar', 'line', 'pie'] },
+            title: { type: 'string' },
+          },
+          additionalProperties: false,
+        },
+        encodings: {
+          type: 'object',
+          required: ['x', 'y'],
+          properties: {
+            x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+            y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+            series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+          },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 export type ToolContext = {

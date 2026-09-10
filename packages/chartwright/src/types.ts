@@ -94,6 +94,14 @@ export type ChartSpec = {
     /** A neutral name such as 'bar' | 'line' | 'pie' | 'groupedBar' | ... */
     type: string;
     title?: string;
+    /**
+     * For bar charts. A neutral way to say "which way do the bars point",
+     * instead of naming a library's `column` vs `bar` types.
+     *
+     * Default is 'vertical'. 'horizontal' is the right choice when category
+     * labels are long or numerous (a top-N-by-name chart, for instance).
+     */
+    orientation?: 'vertical' | 'horizontal';
   };
   /** Omit to chart the raw rows. */
   transform_plan?: { steps: TransformStep[] };
@@ -205,8 +213,11 @@ export type Budget = {
 export type AskRequest = {
   query: string;
   rows: Row[];
-  /** The caller's LLM client. chartwright never sees an API key. */
-  llm: LlmClient;
+  /**
+   * The caller's LLM client. chartwright never sees an API key.
+   * Optional when the client was already supplied to `createChartwright()`.
+   */
+  llm?: LlmClient;
   /** Target library. Only 'highcharts' is supported today. */
   library?: 'highcharts';
   /** Pass the previous result's messages back to continue the conversation. */

@@ -11,6 +11,14 @@
  */
 export { applyTransform, binDate } from './transform.ts';
 export { createToolHandlers, describeTable, inferColumns, runQuery, TOOL_DEFS } from './tools.ts';
+export { compileToHighcharts, isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './compile/simple.ts';
+export { AgentGaveUpError, runAgentLoop } from './loop.ts';
+export { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
+export { createChartwright } from './ask.ts';
+
+export type { ChartOptions, CompiledChart, SupportedChartType } from './compile/simple.ts';
+export type { AgentLoopOptions, AgentLoopOutcome } from './loop.ts';
+export type { Chartwright, ChartwrightOptions } from './ask.ts';
 
 export type {
   ColumnProfile,
