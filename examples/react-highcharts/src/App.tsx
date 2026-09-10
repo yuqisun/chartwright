@@ -22,6 +22,7 @@ const PRESETS = [
   'How has monthly traded notional developed, split by asset class?',
   'Which venues have the most failed settlements?',
   'What share of total notional does each asset class represent?',
+  'Show the top counterparties and fade the rest so the big three stand out',
 ];
 
 /** One line of human-readable progress per agent event. */

@@ -98,3 +98,47 @@ test('end to end: 800 real rows → tool calls → spec → Highcharts options',
       `  chart data points=${values.length}  top=${Math.round(values[0] as number)}`,
   );
 });
+
+test('end to end: "highlight the biggest" without the model knowing any values', async () => {
+  // The model declares the condition; the compiler finds the maximum in all 800
+  // rows. Nothing about this depends on what the model saw in a preview.
+  const submitWithEmphasis: ToolCall = {
+    id: 's2',
+    name: 'submit_spec',
+    args: {
+      chart: { type: 'bar', title: 'Top counterparty', orientation: 'horizontal' },
+      encodings: { x: { field: 'counterparty' }, y: { field: 'notional_usd' } },
+      emphasis: [
+        // "Fade the rest": every row satisfies the threshold, then the next rule
+        // overrides the top three. (A top_k rule here would mute only the largest.)
+        { when: { op: 'gte', field: 'notional_usd', value: 0 }, style: { tone: 'muted' } },
+        { when: { op: 'top_k', k: 3, field: 'notional_usd' }, style: { tone: 'highlight', label: true } },
+      ],
+    },
+  };
+
+  const script: LlmCompleteResult[] = [{ toolCalls: [TOP_COUNTERPARTIES] }, { toolCalls: [submitWithEmphasis] }];
+  let index = 0;
+  const chartwright = createChartwright({
+    llm: {
+      async complete() {
+        const reply = script[Math.min(index, script.length - 1)];
+        index += 1;
+        return reply ?? {};
+      },
+    },
+  });
+
+  const result = await chartwright.ask({ query: 'Highlight the three biggest counterparties', rows });
+
+  const categories = (result.options.xAxis as { categories: string[] }).categories;
+  const data = (result.options.series as Array<{ data: Array<number | { y: number; color?: string }> }>)[0]?.data ?? [];
+  const styled = categories.map((category, i) => ({ category, datum: data[i] }));
+  const highlighted = styled.filter((s) => typeof s.datum === 'object' && s.datum.color === '#e8590c').map((s) => s.category);
+  const muted = styled.filter((s) => typeof s.datum === 'object' && s.datum.color === '#c9ced6').length;
+
+  assert.equal(highlighted.length, 3, 'the top three carry the highlight tone');
+  assert.deepEqual(highlighted, categories.slice(0, 3), 'and they are the first three of the descending table');
+  assert.equal(muted, 7, 'the remaining seven bars are muted');
+  assert.deepEqual(result.warnings, []);
+});

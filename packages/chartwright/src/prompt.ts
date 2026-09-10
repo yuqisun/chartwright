@@ -28,6 +28,10 @@ export function buildSystemPrompt(): string {
     '- `encodings.x` and `encodings.y` must name columns that exist in the table produced by your last run_query.',
     '- For `bar`, set `chart.orientation` to "horizontal" when category labels are long or there are many categories',
     '  (a top-N by name, for instance); otherwise leave it vertical.',
+    '- If the user asks to highlight, emphasise, mark or grey out specific items (the largest, the worst, the top 3),',
+    '  express it with `emphasis` and DECLARE THE CONDITION — `{ "when": { "op": "top_k", "k": 1, "field": "<measure>" },',
+    '  "style": { "tone": "highlight" } }`. The compiler finds the matching rows in the full data, so never look a value',
+    '  up and never hard-code a category you happened to see in a preview. Use tone "muted" to fade everything else.',
     '- If the request genuinely cannot be answered with the available columns, say so in one short sentence and stop',
     '  without calling submit_spec. Do not guess or invent columns.',
   ].join('\n');

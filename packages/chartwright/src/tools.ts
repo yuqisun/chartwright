@@ -268,6 +268,7 @@ export const TOOL_DEFS: ToolDef[] = [
           properties: {
             type: { type: 'string', enum: ['bar', 'line', 'pie'] },
             title: { type: 'string' },
+            orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
           },
           additionalProperties: false,
         },
@@ -280,6 +281,46 @@ export const TOOL_DEFS: ToolDef[] = [
             series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
           },
           additionalProperties: false,
+        },
+        emphasis: {
+          type: 'array',
+          description:
+            'Optional. Condition-based emphasis, applied in order (later rules win). Declare the CONDITION, ' +
+            'never a data value you looked up: for "highlight the largest" use top_k with k=1 and the measure ' +
+            'field, and the compiler finds it in the full data.',
+          items: {
+            type: 'object',
+            required: ['when', 'style'],
+            properties: {
+              when: {
+                type: 'object',
+                required: ['op', 'field'],
+                properties: {
+                  op: { type: 'string', enum: ['top_k', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between'] },
+                  field: { type: 'string' },
+                  k: { type: 'integer', minimum: 1 },
+                  direction: { type: 'string', enum: ['max', 'min'] },
+                  value: {},
+                  values: { type: 'array' },
+                },
+                additionalProperties: false,
+              },
+              style: {
+                type: 'object',
+                required: ['tone'],
+                properties: {
+                  tone: {
+                    type: 'string',
+                    enum: ['highlight', 'muted'],
+                    description: 'Semantic: "highlight" stands out, "muted" recedes. Not a colour.',
+                  },
+                  label: { type: 'boolean', description: 'Also show a data label on the emphasised marks.' },
+                },
+                additionalProperties: false,
+              },
+            },
+            additionalProperties: false,
+          },
         },
       },
       additionalProperties: false,

@@ -111,6 +111,38 @@ export type ChartSpec = {
     /** Optional channel that splits the data into multiple series. */
     series?: Encoding;
   };
+  /**
+   * Condition-based emphasis: "highlight the largest bar", "grey out everything
+   * except the best".
+   *
+   * The *condition* is declared, not evaluated by the model. `top_k` is the
+   * important case: the model says "the top 1 by this measure" and the compiler
+   * finds it in the real data. That keeps the result correct when the data
+   * changes, and keeps the model away from data values entirely.
+   */
+  emphasis?: EmphasisRule[];
+};
+
+/** Which rows an emphasis rule applies to. */
+export type EmphasisWhen =
+  | { op: 'top_k'; field: string; k: number; direction?: 'max' | 'min' }
+  | { op: 'eq' | 'neq'; field: string; value: number | string }
+  | { op: 'gt' | 'gte' | 'lt' | 'lte'; field: string; value: number }
+  | { op: 'between'; field: string; values: [number, number] };
+
+export type EmphasisStyle = {
+  /**
+   * Semantic, not a colour. The compilers of each backend decide what
+   * "highlight" looks like, so the spec stays library-independent.
+   */
+  tone: 'highlight' | 'muted';
+  /** Also show a data label on the emphasised marks. */
+  label?: boolean;
+};
+
+export type EmphasisRule = {
+  when: EmphasisWhen;
+  style: EmphasisStyle;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

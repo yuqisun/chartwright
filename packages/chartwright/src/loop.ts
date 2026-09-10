@@ -17,13 +17,14 @@
  *      complete table to us and a small summary to the model; the loop strips
  *      the table before the tool result is serialised.
  */
-import { isSupportedChartType } from './compile/simple.ts';
+import { isSupportedChartType } from './compile/index.ts';
 import type {
   AgentEvent,
   AskResult,
   Budget,
   ChartSpec,
   ChatMessage,
+  EmphasisRule,
   LlmClient,
   ToolCall,
   ToolDef,
@@ -81,6 +82,68 @@ function parseSpecCandidate(text: string): unknown {
   }
 }
 
+/**
+ * Validates emphasis rules at submit time.
+ *
+ * Only shape is checked here — whether a rule *matches* anything depends on the
+ * table the plan produces, so that is resolved at compile time and reported as a
+ * warning. A rule that silently matches nothing would be a lie the user cannot
+ * see, which is why it warns rather than passing quietly.
+ */
+const EMPHASIS_OPS = ['top_k', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between'] as const;
+
+function validateEmphasis(raw: unknown): { rules: EmphasisRule[]; errors: string[] } {
+  if (raw === undefined) return { rules: [], errors: [] };
+  if (!Array.isArray(raw)) return { rules: [], errors: ['emphasis must be an array'] };
+
+  const rules: EmphasisRule[] = [];
+  const errors: string[] = [];
+
+  raw.forEach((entry, index) => {
+    const where = `emphasis[${index}]`;
+    const before = errors.length;
+
+    if (typeof entry !== 'object' || entry === null) {
+      errors.push(`${where} must be an object`);
+      return;
+    }
+    const { when, style } = entry as { when?: Record<string, unknown>; style?: Record<string, unknown> };
+
+    if (!when || typeof when !== 'object') errors.push(`${where}.when is required`);
+    else {
+      if (typeof when.op !== 'string' || !EMPHASIS_OPS.includes(when.op as (typeof EMPHASIS_OPS)[number])) {
+        errors.push(`${where}.when.op must be one of ${EMPHASIS_OPS.join(', ')}`);
+      }
+      if (typeof when.field !== 'string' || when.field === '') {
+        errors.push(`${where}.when.field must name a column of the charted table`);
+      }
+      if (when.op === 'top_k' && (typeof when.k !== 'number' || !Number.isInteger(when.k) || when.k < 1)) {
+        errors.push(`${where}.when.k must be an integer >= 1`);
+      }
+      if (['gt', 'gte', 'lt', 'lte'].includes(String(when.op)) && typeof when.value !== 'number') {
+        errors.push(`${where}.when.value must be a number for '${String(when.op)}'`);
+      }
+      if (when.op === 'between' && (!Array.isArray(when.values) || when.values.length !== 2)) {
+        errors.push(`${where}.when.values must be a [low, high] pair`);
+      }
+    }
+
+    if (!style || typeof style !== 'object') errors.push(`${where}.style is required`);
+    else if (style.tone !== 'highlight' && style.tone !== 'muted') {
+      errors.push(`${where}.style.tone must be "highlight" or "muted"`);
+    }
+
+    if (errors.length === before && when && style) {
+      rules.push({
+        when: when as unknown as EmphasisRule['when'],
+        style: { tone: style.tone as 'highlight' | 'muted', ...(style.label === true ? { label: true } : {}) },
+      });
+    }
+  });
+
+  return { rules, errors };
+}
+
 /** Validates a submitted spec and attaches the adopted plan. */
 function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec; errors: string[] } {
   const errors: string[] = [];
@@ -97,6 +160,9 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
   const y = candidate.encodings?.y?.field;
   if (typeof x !== 'string' || x === '') errors.push('encodings.x.field is required');
   if (typeof y !== 'string' || y === '') errors.push('encodings.y.field is required');
+
+  const { rules: emphasis, errors: emphasisErrors } = validateEmphasis(candidate.emphasis);
+  errors.push(...emphasisErrors);
 
   if (errors.length > 0) return { errors };
 
@@ -115,6 +181,7 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
         y: candidate.encodings?.y as ChartSpec['encodings']['y'],
         ...(candidate.encodings?.series ? { series: candidate.encodings.series } : {}),
       },
+      ...(emphasis.length > 0 ? { emphasis } : {}),
     },
     errors: [],
   };

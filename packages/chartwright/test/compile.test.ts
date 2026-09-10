@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { compileToHighcharts } from '../src/compile/simple.ts';
+import { compileToHighcharts } from '../src/compile/index.ts';
 import type { ChartSpec, Row } from '../src/types.ts';
 
 const rows: Row[] = [

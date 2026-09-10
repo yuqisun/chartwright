@@ -131,6 +131,57 @@ test('a failing tool becomes a tool result, not a crash', async () => {
   assert.equal(outcome.spec.chart.type, 'bar');
 });
 
+test('a malformed emphasis rule is rejected at submit time so the model can fix it', async () => {
+  const llm = scriptedLlm([
+    {
+      toolCalls: [
+        {
+          id: 'c1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar' },
+            encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
+            emphasis: [{ when: { op: 'top_k', field: 'revenue' }, style: { tone: 'gold' } }],
+          },
+        },
+      ],
+    },
+    { toolCalls: [SUBMIT] },
+  ]);
+
+  const outcome = await runAgentLoop(loopOptions(llm));
+
+  const first = JSON.parse(outcome.messages.find((m) => m.role === 'tool')?.content ?? '{}') as { errors?: string[] };
+  assert.deepEqual(first.errors, [
+    'emphasis[0].when.k must be an integer >= 1',
+    'emphasis[0].style.tone must be "highlight" or "muted"',
+  ]);
+  assert.equal(outcome.spec.chart.type, 'bar', 'the repaired submission is accepted');
+});
+
+test('valid emphasis survives into the compiled spec', async () => {
+  const llm = scriptedLlm([
+    { toolCalls: [RUN_QUERY] },
+    {
+      toolCalls: [
+        {
+          id: 'c2',
+          name: 'submit_spec',
+          args: {
+            ...SUBMIT.args,
+            emphasis: [{ when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } }],
+          },
+        },
+      ],
+    },
+  ]);
+
+  const outcome = await runAgentLoop(loopOptions(llm));
+  assert.deepEqual(outcome.spec.emphasis, [
+    { when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } },
+  ]);
+});
+
 test('a model that only talks is nudged once, then gives up with its own words', async () => {
   const llm = scriptedLlm([{ content: 'I cannot do that.' }, { content: 'I really cannot.' }]);
 

@@ -7,7 +7,7 @@
  * nothing is retained between calls and there is no server-side session to leak
  * (the isolation rule the ChartBrain notes call out for agent loops).
  */
-import { compileToHighcharts } from './compile/simple.ts';
+import { compileToHighcharts } from './compile/index.ts';
 import { runAgentLoop } from './loop.ts';
 import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
 import { createToolHandlers, inferColumns, TOOL_DEFS } from './tools.ts';
@@ -76,7 +76,7 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       });
 
       // Deterministic half: the compiler binds the data, not the model.
-      const { options: chartOptions, dataset } = compileToHighcharts(outcome.spec, request.rows);
+      const { options: chartOptions, dataset, warnings: compileWarnings } = compileToHighcharts(outcome.spec, request.rows);
 
       const result: AskResult = {
         options: chartOptions,
@@ -84,7 +84,9 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
         dataset,
         sessionId,
         messages: outcome.messages,
-        warnings: outcome.warnings,
+        // Warnings from the loop (failed tools, rejected submissions) and from
+        // the compiler (an emphasis rule that matched nothing) both matter.
+        warnings: [...outcome.warnings, ...compileWarnings],
         trace: outcome.trace,
       };
 
