@@ -4,6 +4,12 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // chartwright is consumed as linked TypeScript source in this monorepo, and
+    // its internal imports carry .ts extensions (so Node can run the tests with
+    // type stripping). The compiler options of the including project apply to
+    // everything it pulls in, hence this flag here. It disappears once the
+    // library publishes a build and its exports point at dist.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
