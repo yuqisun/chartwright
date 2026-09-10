@@ -16,6 +16,7 @@
  * framing in this project comes from. No flint code is used here yet.
  */
 import { applyTransform } from '../transform.ts';
+import { validateChartPlan } from '../plans.ts';
 import type { ChartSpec, Row } from '../types.ts';
 
 /** Plain options object; the caller renders it. Intentionally not typed against Highcharts. */
@@ -36,7 +37,11 @@ export function isSupportedChartType(type: string): type is SupportedChartType {
 
 /** Executes the spec's plan over the full rows. Replayable without any model. */
 export function materialize(spec: ChartSpec, rows: Row[]): Row[] {
-  return applyTransform(rows, spec.transform_plan?.steps ?? []);
+  const steps = spec.transform_plan?.steps ?? [];
+  // Validated here as well as in the query tool, so a spec from any source is
+  // held to the same standard rather than only the ones a model produced.
+  validateChartPlan(steps);
+  return applyTransform(rows, steps);
 }
 
 function distinctInOrder(values: unknown[]): string[] {
@@ -145,7 +150,15 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[]): CompiledChart
       byCategory.set(name, values);
     }
     options.xAxis = { categories, title: { text: x.field } };
-    options.yAxis = { title: { text: y.field } };
+    options.yAxis = {
+      title: { text: y.field },
+      // Highcharts draws a horizontal bar chart from the bottom up, so the first
+      // row of the table would land at the bottom and a descending sort would
+      // read as ascending. Reversing the category axis puts row 0 on top, which
+      // is what "top 10" means to a reader. (Vertical columns keep array order
+      // left-to-right, so they need nothing.)
+      ...(spec.chart.orientation === 'horizontal' ? { reversed: true } : {}),
+    };
     options.series = [...byCategory.entries()].map(([name, values]) => ({
       name,
       data: categories.map((c) => (values.has(c) ? values.get(c) : null)),
@@ -154,8 +167,10 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[]): CompiledChart
 
   // Highcharts distinguishes 'column' (vertical) from 'bar' (horizontal). The
   // spec says which way the bars point; the compiler knows the library's words.
-  const horizontal = spec.chart.orientation === 'horizontal';
-  options.chart = { type: type === 'bar' ? (horizontal ? 'bar' : 'column') : type, backgroundColor: 'transparent' };
+  options.chart = {
+    type: type === 'bar' && spec.chart.orientation === 'horizontal' ? 'bar' : type === 'bar' ? 'column' : type,
+    backgroundColor: 'transparent',
+  };
   options.legend = { enabled: groups.size > 1 };
 
   return { options, dataset };

@@ -65,6 +65,24 @@ test('orientation horizontal switches to the library horizontal type', () => {
     rows,
   );
   assert.equal((options.chart as { type: string }).type, 'bar');
+  // Highcharts draws horizontal bars bottom-up; reversing the category axis is
+  // what puts the first row of the table at the top, so a descending sort reads
+  // as a ranking downwards.
+  assert.equal((options.yAxis as { reversed?: boolean }).reversed, true);
+});
+
+test('vertical bars leave the category axis unreversed', () => {
+  const { options } = compileToHighcharts(
+    spec({
+      chart: { type: 'bar' },
+      transform_plan: {
+        steps: [{ op: 'aggregate', group_by: ['region'], measures: [{ field: 'revenue', agg: 'sum', as: 'revenue' }] }],
+      },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
+    }),
+    rows,
+  );
+  assert.equal((options.yAxis as { reversed?: boolean }).reversed, undefined);
 });
 
 test('a series encoding produces one series per group, aligned to the shared categories', () => {

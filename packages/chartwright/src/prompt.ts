@@ -17,6 +17,8 @@ export function buildSystemPrompt(): string {
     '1. You are given the column names and types. Call describe_table when you need the full profile — null rates,',
     '   distinct-value counts, numeric ranges, time spans, and a few sample values per column.',
     '2. Use run_query to shape the data into exactly the table the chart needs (aggregate, filter, sort, limit, derive, binTime).',
+    '   For anything about the largest, smallest, best or worst items, put a sort BEFORE the limit: a limit that',
+    '   follows an aggregate without a sort keeps an arbitrary subset, and such a plan is rejected.',
     '3. Call submit_spec once, when the table is right.',
     '',
     'Hard rules:',

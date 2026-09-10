@@ -120,6 +120,12 @@ function applyAggregate(rows: Row[], step: AggregateStep): Row[] {
 
 function applySort(rows: Row[], step: Extract<TransformStep, { op: 'sort' }>): Row[] {
   const direction = step.order === 'desc' ? -1 : 1;
+  // A sort on a field that is not there would compare `undefined` to `undefined`
+  // and leave the rows untouched — a silent no-op that looks like a working sort.
+  const first = rows[0];
+  if (first && !(step.by in first)) {
+    throw new Error(`sort field '${step.by}' is not in the table (available: ${Object.keys(first).join(', ')})`);
+  }
   return [...rows].sort((a, b) => direction * compare(a[step.by], b[step.by]));
 }
 

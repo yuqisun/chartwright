@@ -16,6 +16,7 @@
  *      arbitrary functions is harder to reason about than one with four verbs.
  */
 import { applyTransform, binDate } from './transform.ts';
+import { validateChartPlan } from './plans.ts';
 import type { Column, ColumnType, Row, ToolDef, TransformStep } from './types.ts';
 
 const DATE_LIKE = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/;
@@ -174,6 +175,9 @@ export type QueryOptions = {
 /** Executes a transform plan over every row and splits the result into two views. */
 export function runQuery(rows: Row[], steps: TransformStep[], options: QueryOptions = {}): QueryResult {
   const previewRowCount = options.previewRowCount ?? 3;
+  // Refuse plans that would quietly chart the wrong rows; the message goes back
+  // to the model as the tool result, which is how it repairs itself.
+  validateChartPlan(steps);
   const table = applyTransform(rows, steps);
   return {
     table,
@@ -237,7 +241,9 @@ export const TOOL_DEFS: ToolDef[] = [
       'and is NOT sent to you; you receive only a summary (row count, columns, and a few preview rows). ' +
       'The steps you pass here are adopted as the chart spec transform_plan, so do not write a plan yourself. ' +
       'Steps: filter | aggregate | sort | limit | derive | binTime. aggregate replaces the table with ' +
-      'group_by columns plus each measure\'s "as" column.',
+      'group_by columns plus each measure\'s "as" column. For "largest/smallest/best/worst N" requests you MUST ' +
+      'put a sort before the limit — a limit straight after an aggregate keeps an arbitrary subset and is ' +
+      'rejected.',
     parameters: {
       type: 'object',
       required: ['steps'],

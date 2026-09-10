@@ -92,6 +92,13 @@ test('sort defaults to ascending and supports descend', () => {
   assert.deepEqual(desc, [200, 150, 100, 80]);
 });
 
+test('sorting by a column that is not there is rejected rather than silently ignored', () => {
+  assert.throws(
+    () => applyTransform(rows, [{ op: 'sort', by: 'nope', order: 'desc' }]),
+    /sort field 'nope' is not in the table \(available: region, month, revenue, cost\)/,
+  );
+});
+
 test('limit slices and rejects nonsense', () => {
   assert.equal(applyTransform(rows, [{ op: 'limit', n: 2 }]).length, 2);
   assert.throws(() => applyTransform(rows, [{ op: 'limit', n: -1 }]), /non-negative integer/);
