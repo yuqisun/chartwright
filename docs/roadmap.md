@@ -47,7 +47,7 @@ carry. Free-form hex and arbitrary styling stay refused.
 ### 3. A request we cannot honour must make a sound
 
 The pattern behind gaps 1 and 2: the user asks for something the spec cannot
-express and the chart is drawn anyway. Two different cases, with different fixes:
+express and the chart is drawn anyway. Three cases, with three different fixes:
 
 - **The pipeline can detect it.** A rejected chart type, a plan refused for
   `limit` without `sort`, an emphasis rule that matches nothing — all already
@@ -59,6 +59,13 @@ express and the chart is drawn anyway. Two different cases, with different fixes
   model to state, in its final reply, anything it could not represent — and then
   to have the loop carry that text into `warnings` rather than into a chat
   message nobody renders.
+- **The pipeline can detect it and does not.** A *value* `sort` on a temporal
+  chart: the step runs, so `result.dataset` is genuinely reordered, and then
+  `compile/model.ts` sorts temporal points by time — the drawn points are
+  unchanged and no warning is emitted. The request is dropped in a way the caller
+  cannot see, even though both facts (the sort step, the temporal encoding) are in
+  hand before compilation. Reachable in `'ask'` mode only; discovered while
+  designing present mode, where `sort` does not exist at all.
 
 ### 4. Visual behaviour is asserted nowhere
 
@@ -101,14 +108,14 @@ The library contains exactly two hard-coded hex values. Every other colour is a
 Highcharts default, so an app cannot match its brand. This is also the first
 thing an integrating product will complain about.
 
-**Needed:** a palette/theme layer, and the decision in item 19 about where the
+**Needed:** a palette/theme layer, and the decision in item 20 about where the
 knowledge comes from.
 
 ### 8. Layout and geometry
 
 No canvas sizing, margins, label rotation or long-label handling. Charts with many
 categories will look cramped. flint solves this with `compute-layout`,
-`band-dodge` and axis-label measurement (see item 19).
+`band-dodge` and axis-label measurement (see item 20).
 
 ### 9. Prompt tuning against real runs
 
@@ -154,8 +161,8 @@ or whether re-deciding is acceptable.
 
 ### 13. Token budget
 
-`budget.maxRounds` and `budget.maxToolCalls` are enforced (item 28 in the change
-log). There is no token accounting: a pathological run inside the round limits
+`budget.maxRounds` and `budget.maxToolCalls` are enforced (see the change log).
+There is no token accounting: a pathological run inside the round limits
 can still be expensive.
 
 ### 14. Typed error codes
@@ -184,7 +191,36 @@ inside a restricted sandbox. Vitest would be conventional but adds the package's
 first dev dependency; the zero-dependency property is worth keeping until there is
 a concrete reason not to.
 
-### 18. MCP delivery
+### 18. Optional column semantics
+
+Deliberately **not** required: a decision made while designing present mode.
+
+The idea considered was to have the consumer declare what each column *means* —
+additive, a ratio, an average, a snapshot balance — so the library could refuse to
+`sum` an average, or refuse to aggregate a column that must not be added. That would
+make a class of wrong charts impossible rather than merely unlikely.
+
+**Rejected as a requirement**, because it asks the consumer to do real work at the
+call site: audit every column, decide its semantics, keep it correct as the schema
+changes — and everything then depends on that declaration being right, with the
+failure mode being a confidently wrong chart rather than a missing one. For a
+library whose first promise is that a consumer can point it at a table and get a
+chart, that is too much to demand.
+
+**Kept as a possible opt-in.** A consumer that wants enforcement can pass it;
+nothing else may depend on it. If it is ever added:
+
+- it is optional per column and per dataset, absent by default;
+- validation is advisory (a warning in `AskResult.warnings`) unless the consumer
+  explicitly asks for hard refusals;
+- it never changes the neutral spec, and a run without it behaves exactly as today.
+
+Free-text `description` on a dataset or column — the thing the consumer *can* pass
+today, see `docs/using-chartwright.md` — is the intended low-effort substitute. It
+reaches the prompt and nothing else: not validated, not stored in the spec, not
+needed to replay a run.
+
+### 19. MCP delivery
 
 Not started. The shape was designed earlier for the ChartBrain project and still
 applies: a small tool surface (`list_chart_types`, `validate_spec`, `ask_chart`),
@@ -195,7 +231,7 @@ validation results. chartwright's existing exports map onto that surface directl
 
 ## Deferred with triggers
 
-### 19. Vendor flint's compilation pipeline — or extract its conventions?
+### 20. Vendor flint's compilation pipeline — or extract its conventions?
 
 flint (MIT, Microsoft) already encodes the knowledge that item 4 and item 8 are
 missing, at scale:
@@ -229,7 +265,7 @@ types; theming/palette work starts; layout/geometry work starts.
 into the core, keeping the core dependency-free; and begin by reading flint and
 listing the specific modules to reuse rather than adopting the whole pipeline.
 
-### 20. Publishable build
+### 21. Publishable build
 
 `packages/chartwright/package.json` is `private: true`, `version: 0.0.0`, and
 `exports` points at `./src/index.ts`. Consumers therefore need two config tweaks
@@ -243,7 +279,7 @@ step 3 of `docs/using-chartwright.md` can be deleted.
 Also missing: a README **inside the package** (npm shows the repo root's, which
 describes the monorepo).
 
-### 21. Stability policy
+### 22. Stability policy
 
 At 0.0.0 nothing is frozen. Source consumers track a commit with no version
 anchor; at minimum, tag releases so they can pin. Worth writing down which parts
@@ -266,6 +302,8 @@ for a stated reason.
 | **Limits on by default** | The library imposes no policy; budgets are the consumer's to set. Only pathologies are bounded: one nudge before `AgentGaveUpError`, and a warning (not a stop) past 12 rounds. |
 | **Letting the model compute values** | "The largest" is computed by the compiler from the full table, so the answer survives the data changing and the model never touches values. |
 | **Row-level data tools for the model by default** | A model choosing which raw rows to read is the highest-risk privacy shape considered. If ever added, it must be opt-in per tool, with k-anonymity and a whole-run result budget. |
+| **chartwright advising that a table would be better than a chart** | Presentation judgement, and the consumer's to make — the library does not know what the surrounding screen is for, and a library that second-guesses the request trains callers to ignore it. It may say a *spec* is unsupported or ambiguous; it may not say the data does not deserve a chart. |
+| **Mandatory structured column semantics** | See item 18: too much to require of a consumer, and every declaration it gets wrong becomes a confidently wrong chart. Optional and advisory if ever added. |
 
 ---
 
