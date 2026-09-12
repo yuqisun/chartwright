@@ -14,6 +14,7 @@
  * looks at, so the library's actual surface is shown without a model in the loop, and the model
  * is shown separately where its behaviour is the subject.
  */
+import { useState } from 'react';
 import { AgentDemo } from './components/AgentDemo.tsx';
 import { BoundarySection } from './components/BoundarySection.tsx';
 import { ShowcaseCard } from './components/ShowcaseCard.tsx';
@@ -24,6 +25,15 @@ export function App() {
   const byType = Object.entries(showcase.counts.byType)
     .map(([type, count]) => `${type}×${count}`)
     .join(', ');
+
+  // Every card reports back whether its options actually drew. This is the page checking itself:
+  // a card that renders a heading but no chart is the failure this tally exists to make visible,
+  // and it is why the count is stated as a fact about *this* browser rather than a promise.
+  const [rendered, setRendered] = useState<Record<string, boolean | undefined>>({});
+  const report = (id: string, ok: boolean) =>
+    setRendered((prev) => (prev[id] === ok ? prev : { ...prev, [id]: ok }));
+  const drew = showcase.supported.filter((one) => rendered[one.id] === true).length;
+  const failed = showcase.supported.filter((one) => rendered[one.id] === false).map((one) => one.id);
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 1040, margin: '0 auto', padding: 24 }}>
@@ -47,11 +57,33 @@ export function App() {
           options are compiled into the page, and the badge on each card is the page checking the options against the
           corpus's own expectation.
         </SectionHeading>
+        <p
+          style={{
+            margin: '12px 0 0',
+            padding: '8px 12px',
+            borderRadius: 6,
+            fontSize: 14,
+            background: failed.length ? '#fff1f0' : '#f0f7f0',
+            border: `1px solid ${failed.length ? '#f0b7b3' : '#c3ddc3'}`,
+          }}
+        >
+          <strong>
+            {drew} of {showcase.supported.length} charts drawn in this browser.
+          </strong>{' '}
+          {failed.length ? (
+            <>Did not draw: {failed.join(', ')}.</>
+          ) : drew === showcase.supported.length ? (
+            <>Every card rendered.</>
+          ) : (
+            <>Still drawing…</>
+          )}{' '}
+          Each card reports this itself; if a module were missing, the card would say so instead of the page going blank.
+        </p>
       </div>
 
       <div style={{ marginTop: 20 }}>
         {showcase.supported.map((one) => (
-          <ShowcaseCard key={one.id} one={one} />
+          <ShowcaseCard key={one.id} one={one} onRendered={(ok) => report(one.id, ok)} />
         ))}
       </div>
 

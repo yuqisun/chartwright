@@ -15,7 +15,7 @@ import { caseMatchesCorpus } from '../showcase.ts';
 import type { ShowcaseCase } from '../showcase.ts';
 import { ChartView } from './ChartView.tsx';
 
-export function ShowcaseCard({ one }: { one: ShowcaseCase }) {
+export function ShowcaseCard({ one, onRendered }: { one: ShowcaseCase; onRendered?: (ok: boolean) => void }) {
   const matches = caseMatchesCorpus(one);
   const rows = one.data.rows.length;
 
@@ -52,7 +52,7 @@ export function ShowcaseCard({ one }: { one: ShowcaseCase }) {
       <Field label="What the data stresses">{one.data.why}</Field>
 
       <div style={{ marginTop: 12 }}>
-        <ChartView options={one.options as never} height={300} />
+        <ChartView options={one.options as never} height={300} onRendered={onRendered} />
       </div>
 
       <Disclosure summary={`The ${rows} ${rows === 1 ? 'row' : 'rows'} it ran on`}>

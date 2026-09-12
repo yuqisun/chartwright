@@ -4,8 +4,13 @@
  * The Highcharts modules the showcase needs, and the capability declaration the agent is given.
  * Both come from the chart-type declaration, so a type that needs a module imports it here
  * automatically, and the app never claims to draw something its bundle cannot render.
+ *
+ * The specifiers point at the **ESM** builds (see `scripts/highcharts-modules.ts`): this example is
+ * bundled by Vite, and the UMD module file cannot see the application's Highcharts instance — it
+ * throws 'Cannot read properties of undefined (reading Axis)' at import time. The core import in
+ * ChartView matches, or the two would be different instances and a heatmap would fail with error 17.
  */
-import 'highcharts/modules/heatmap';
-import 'highcharts/modules/coloraxis';
+import 'highcharts/esm/modules/heatmap.js';
+import 'highcharts/esm/modules/coloraxis.js';
 
 export const showcaseCapabilities: readonly string[] = ['bar', 'line', 'spline', 'area', 'areaspline', 'pie', 'heatmap'];

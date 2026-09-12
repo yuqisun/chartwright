@@ -308,19 +308,40 @@ docs is derived from it.
 
 ### The one type that needs a module
 
-`heatmap` is the exception to "there is nothing to load": Highcharts keeps it in a module, so
-a page that imports only `highcharts` cannot draw one — and the failure would happen at render
-time in **your** process (Highcharts error 17), not in ours. Load both:
+`heatmap` is the exception to "there is nothing to load": Highcharts keeps it in a module, so a
+page that imports only `highcharts` cannot draw one — and the failure happens at render time in
+**your** process, not in ours.
+
+**Under a bundler, import the ESM builds — both ends of the pair:**
 
 ```ts
-import Highcharts from 'highcharts';
-import 'highcharts/modules/heatmap';
-import 'highcharts/modules/coloraxis';   // what turns the measure into a colour scale
+import Highcharts from 'highcharts/esm/highcharts.js';
+import 'highcharts/esm/modules/heatmap.js';   // brings coloraxis in with it
+import 'highcharts/esm/modules/coloraxis.js'; // explicit, and harmless: ESM dedupes it
 ```
 
-Rather than take our word for which modules, ask the library — the answer is generated from
-the same declaration the compiler uses, and a test checks that every path it names exists in
-the installed package:
+**Why, because the obvious version is a trap.** Highcharts 12 ships two builds and its
+`package.json` has no `exports` or `module` field to steer a bundler to the right one, so both
+`highcharts` and `highcharts/modules/heatmap` resolve to the **UMD** files. Under Vite that cost us
+two bugs in a row, neither of them at build time:
+
+1. importing only `highcharts` and asking for a heatmap throws Highcharts error 17
+   (`missingModuleFor=heatmap`) *at render time* — inside a React effect, which unmounted the whole
+   showcase page rather than one card;
+2. importing `highcharts/modules/heatmap` on top of that did **not** fix it. The import threw
+   `Cannot read properties of undefined (reading 'Axis')` before any chart existed, because the
+   pre-bundled module and the app's core were two different Highcharts objects and the module
+   registered on the wrong one.
+
+The ESM pair is what works, because `highcharts/esm/modules/heatmap.js` imports the ESM core, so
+both ends are one instance — verified in a browser: the example draws 22 of 22 charts, heatmap
+included. If you inline the UMD scripts as `<script>` tags instead of bundling, none of this
+applies: classic scripts share one global, which is how this repository's own render matrix loads
+them.
+
+Rather than take our word for which modules, ask the library — the answer is generated from the
+same declaration the compiler uses, and a test checks that every path it names exists in the
+installed package:
 
 ```ts
 import { listChartTypes } from 'chartwright';

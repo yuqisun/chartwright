@@ -41,3 +41,39 @@ export function highchartsModuleFile(root: string, modulePath: string): string {
   if (!existsSync(file)) throw new Error(`no such Highcharts module: '${modulePath}' (looked for ${file})`);
   return file;
 }
+
+/**
+ * The same module, as a bundler should import it.
+ *
+ * Highcharts 12 ships two builds and its package.json has no `exports` or `module` field to steer a
+ * bundler to the right one, so `highcharts/modules/heatmap` resolves to the **UMD** file. Under
+ * Vite that is pre-bundled as CommonJS, and it then fails to see the application's Highcharts
+ * instance: `Cannot read properties of undefined (reading 'Axis')` at import time. The ESM build
+ * imports the ESM core, so both ends are one instance — verified in a browser, and the reason the
+ * generated imports for the example point at `esm/`.
+ *
+ * Inlining is different and needs none of this: classic `<script>` tags share a global, which is how
+ * the gallery and the render matrix load the UMD files and work.
+ */
+export function esmSpecifier(modulePath: string): string {
+  // 'highcharts/modules/heatmap' -> 'modules/heatmap', so everything after the package name.
+  const tail = modulePath.split('/').slice(1).join('/');
+  return `highcharts/esm/${tail}.js`;
+}
+
+/**
+ * The ESM file a module path names, checked the same way as the UMD one.
+ *
+ * Written after getting this wrong: the first version of `esmSpecifier` produced
+ * `highcharts/esm/modules.js` for both modules — a path that does not exist, in a generated file, in
+ * a recipe given to consumers. The check is what turns that from a plausible-looking instruction
+ * into a build failure.
+ */
+export function highchartsEsmFile(root: string, modulePath: string): string {
+  const file = join(root, 'node_modules', esmSpecifier(modulePath));
+  if (!existsSync(file)) throw new Error(`no ESM build for '${modulePath}' (looked for ${file})`);
+  return file;
+}
+
+/** The core as a bundler should import it, for the same reason. */
+export const ESM_CORE = 'highcharts/esm/highcharts.js';
