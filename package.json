@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "Natural-language charts in your own process: an agentic loop inspects your data locally, a deterministic compiler emits chart-library options.",
+  "type": "module",
   "workspaces": [
     "packages/*",
     "examples/*"
@@ -11,7 +12,11 @@
     "dev": "npm run dev --workspace examples/react-highcharts",
     "build": "npm run build --workspace examples/react-highcharts",
     "gen:data": "node examples/react-highcharts/scripts/generate-data.mjs",
-    "verify": "npm run typecheck --workspace chartwright && node scripts/verify-tests.mjs"
+    "verify": "npm run typecheck --workspace chartwright && node scripts/verify-tests.mjs",
+    "render": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/render-matrix.ts"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
 }

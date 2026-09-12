@@ -7,3 +7,7 @@ dist/
 !.env.example
 .DS_Store
 *.log
+
+# The render matrix writes screenshots and a summary here. They are CI artifacts to look
+# at, not source: uploading a new baseline should be a decision, not a side effect of a run.
+render-out/

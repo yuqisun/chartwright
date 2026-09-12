@@ -1,0 +1,54 @@
+## What runs, and why each part is here
+##
+## `verify` is the gate that had no runner: the mapper-exhaustiveness check and the
+## "every declared property survives into the spec" check both live in the test suite,
+## and typechecking is a separate command, so neither bites unless something runs both.
+## See docs/spec-extension-plan.md §5.1.
+##
+## `render` is the half the data-level tests cannot reach: it draws every corpus case in
+## a real browser and asserts Highcharts did not throw and that the rendered chart holds
+## the series and point counts the corpus expects. The screenshots are uploaded for a
+## human, deliberately not compared pixel by pixel (§5.4).
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16'
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+
+  render:
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16'
+          cache: npm
+      - run: npm ci
+      # The library has no runtime dependencies; this is the repository's first dev one,
+      # and it is here for one reason: a rendering assertion cannot be written without a
+      # renderer (roadmap item 17 asks for exactly that kind of reason).
+      - run: npx playwright install --with-deps chromium
+      - run: npm run render
+      - name: Keep the screenshots for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-matrix
+          path: render-out/
+          if-no-files-found: warn
+          retention-days: 14
