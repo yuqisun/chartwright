@@ -3,7 +3,7 @@
  * repo's compiler settings (`erasableSyntaxOnly`, `strict`)?
  *
  * `gate-ok.ts` compiles. `gate-missing.ts` differs by one key and must fail.
- * Run with the package's own tsc options 鈥?no test framework, no new file in src/.
+ * Run with the package's own tsc options — no test framework, no new file in src/.
  */
 
 type ChannelRole = 'category' | 'measure' | 'series' | 'low' | 'high' | 'size';
