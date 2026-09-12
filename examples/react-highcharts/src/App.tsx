@@ -123,8 +123,8 @@ const DEMOS: Demo[] = [
     label: 'Present gapped dates',
     blurb:
       'Five rows, one per month that had a cancellation — 2026-05 is missing because nothing was cancelled ' +
-      'then. `month` is a date column, and a date column currently gets a category axis: watch the labels, ' +
-      'which are evenly spaced even though 2026-04 and 2026-06 are two months apart.',
+      'then. `month` is a date column, and date columns are drawn as categories here (a decision, see roadmap ' +
+      'item 21): watch the labels, which are evenly spaced even though 2026-04 and 2026-06 are two months apart.',
     rows: cancellationsByMonth,
     presets: GAPPED_PRESETS,
     present: true,

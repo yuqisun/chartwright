@@ -10,10 +10,9 @@
  *                          "chart this" — under `present: true`.
  *   monthlyActivity      — the same idea, `GROUP BY month`: a time series.
  *   cancellationsByMonth — also `GROUP BY month`, but sparse: only the months in
- *                          which something was cancelled. A date column whose values
- *                          are not consecutive, which is the one case where "the order
- *                          you pass is the order shown" and "a date gets a time axis"
- *                          would visibly disagree (docs/roadmap.md item 21).
+ *                          which something was cancelled. `month` is a date column, and
+ *                          a date column is drawn as a category here, so the missing
+ *                          month is invisible in the chart (roadmap item 21).
  *
  * The present-mode tables are a consumer's *final numbers*. Being able to say that
  * nothing downstream may re-derive them — no aggregate, no filter, no sort — is exactly

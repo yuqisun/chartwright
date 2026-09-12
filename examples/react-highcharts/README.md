@@ -72,10 +72,10 @@ The page has **four demos**, and they differ in what they hand over:
   column that matters is an average: a second pass over it would be wrong by an amount
   too small to see, which is the whole argument for the mode;
 - **Present gapped dates** — five monthly rows, and one month is missing because nothing
-  was cancelled in it. There to be looked at rather than admired: the x axis is a
-  *category* axis, so five months that are 31, 28, 31 and **61** days apart are drawn as
-  five equal steps, and nothing on the chart says a month went by. See
-  `docs/roadmap.md` item 21.
+  was cancelled in it. There to be looked at rather than admired: a date column is drawn
+  as a *category* axis here — a decision, not an oversight — so five months that are 31,
+  28, 31 and **61** days apart are drawn as five equal steps, and nothing on the chart
+  says a month went by. See `docs/roadmap.md` item 21 for the decision and its cost.
 
 Both then show:
 

@@ -96,11 +96,16 @@ export type TransformStep = FilterStep | AggregateStep | SortStep | LimitStep | 
 // Neutral chart spec
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type ValueType = 'categorical' | 'numeric' | 'temporal';
-
+/**
+ * A column reference.
+ *
+ * One field, and deliberately no `value_type`. That field existed, was read by a
+ * datetime-axis branch in the compiler, and was set by nothing but two tests — so the
+ * branch never ran and the field only served to let a model that guessed the name get a
+ * different axis from everyone else. A date column is a category; see `docs/roadmap.md`.
+ */
 export type Encoding = {
   field: string;
-  value_type?: ValueType;
 };
 
 export type ChartSpec = {

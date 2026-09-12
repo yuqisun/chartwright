@@ -345,9 +345,12 @@ const SUBMIT_PROPERTIES = {
     type: 'object',
     required: ['x', 'y'],
     properties: {
-      x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
-      y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
-      series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+      // `additionalProperties: false` on the inner objects too: a column reference is
+      // one field, and a model that invents another one should be told rather than
+      // quietly given something different from every other caller.
+      x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
+      y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
+      series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
     },
     additionalProperties: false,
   },
@@ -398,8 +401,9 @@ const SUBMIT_ASK: ToolDef = {
   description:
     'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
     'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
-    'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category or date ' +
-    'column, encodings.y the measure column, and the optional encodings.series splits the data into series.',
+    'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category column (a date ' +
+    'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
+    'the data into series.',
   parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
 };
 
@@ -412,8 +416,8 @@ const SUBMIT_PRESENT: ToolDef = {
   description:
     'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
     'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (bar | line | pie); ' +
-    'encodings.x is the category or date column, encodings.y the measure column, and the optional ' +
-    'encodings.series splits the data into series.',
+    'encodings.x is the category column (a date column is treated as categories), encodings.y the measure ' +
+    'column, and the optional encodings.series splits the data into series.',
   parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
 };
 

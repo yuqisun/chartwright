@@ -184,7 +184,9 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
   const { rules: emphasis, errors: emphasisErrors } = validateEmphasis(candidate.emphasis);
   errors.push(...emphasisErrors);
 
-  if (errors.length > 0) return { errors };
+  // `errors` being empty already means both fields are non-empty strings; the explicit
+  // check is what lets the compiler see that when the spec is assembled below.
+  if (errors.length > 0 || typeof x !== 'string' || typeof y !== 'string') return { errors };
 
   return {
     spec: {
@@ -196,10 +198,15 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
       },
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
+      // Built from the one field an encoding has, not copied wholesale. A key the
+      // schema does not declare — an invented `value_type`, say — used to travel
+      // through into the spec and change the axis for that one caller.
       encodings: {
-        x: candidate.encodings?.x as ChartSpec['encodings']['x'],
-        y: candidate.encodings?.y as ChartSpec['encodings']['y'],
-        ...(candidate.encodings?.series ? { series: candidate.encodings.series } : {}),
+        x: { field: x },
+        y: { field: y },
+        ...(typeof candidate.encodings?.series?.field === 'string'
+          ? { series: { field: candidate.encodings.series.field } }
+          : {}),
       },
       ...(emphasis.length > 0 ? { emphasis } : {}),
     },

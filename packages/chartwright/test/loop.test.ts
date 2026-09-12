@@ -372,6 +372,30 @@ test('an undeclared call is traced as refused, not as having run', async () => {
   assert.equal(outcome.spec.chart.type, 'bar', 'and the run still finished');
 });
 
+test('an encoding key the schema does not declare never reaches the spec', async () => {
+  // The spec is assembled from the fields that are read, not copied from the submission.
+  // An invented `value_type` used to travel through and change the axis for that one
+  // caller — and the branch that read it was unreachable through any sanctioned path.
+  const llm = scriptedLlm([
+    {
+      toolCalls: [
+        {
+          id: 's1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar' },
+            encodings: { x: { field: 'region', value_type: 'temporal' }, y: { field: 'revenue' }, ghost: { field: 'x' } },
+          },
+        },
+      ],
+    },
+  ]);
+
+  const outcome = await runAgentLoop(loopOptions(llm));
+
+  assert.deepEqual(outcome.spec.encodings, { x: { field: 'region' }, y: { field: 'revenue' } });
+});
+
 test('a tool list without submit_spec is refused at the door, not left to spin', async () => {
   const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }]);
 

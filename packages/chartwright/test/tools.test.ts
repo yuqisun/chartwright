@@ -301,6 +301,22 @@ test('the preview returns the rows as they are, keys and values untouched', () =
   assert.equal(preview.rows[0] === rows[0], true, 'and not a copy that could drift');
 });
 
+test('a column reference declares exactly one field', () => {
+  // `encodings.x` used to accept extra keys, which is how a model that guessed
+  // `value_type` got a different axis from every other caller. One field, and the
+  // schema says so.
+  const submit = buildToolDefs('ask').find((definition) => definition.name === 'submit_spec');
+  const encodings = (submit?.parameters.properties as {
+    encodings: { properties: Record<string, { additionalProperties?: boolean; properties?: Record<string, unknown> }> };
+  }).encodings;
+
+  for (const channel of ['x', 'y', 'series']) {
+    const schema = encodings.properties[channel];
+    assert.equal(schema?.additionalProperties, false, `${channel} refuses keys it does not declare`);
+    assert.deepEqual(Object.keys(schema?.properties ?? {}), ['field'], `${channel} declares only 'field'`);
+  }
+});
+
 test('createToolHandlers exposes preview_rows alongside the rest', () => {
   const handlers = createToolHandlers({ rows: manyRows });
   const preview = handlers.preview_rows?.({ limit: 2 }) as { rows: Row[] };

@@ -5,16 +5,18 @@
  *   - `column` vs `bar` naming (and the fact that `bar` is an inverted column),
  *   - horizontal bars being drawn bottom-up, hence the reversed category axis,
  *   - the pie series data shape,
- *   - the datetime axis convention,
  *   - what a semantic emphasis tone looks like as a colour.
  *
  * Keeping it in one file is deliberate. Every one of those is a convention the
  * library chose, not a fact about charts; the bug that made "the largest 5" look
  * ascending was exactly this knowledge having nowhere to live.
  * Adding a second library means adding a sibling file, not touching the model.
+ *
+ * There is no datetime-axis branch: a date column is a category here, deliberately.
+ * See the note on `ChartModel` in `../model.ts`.
  */
 import type { EmphasisResolution, ResolvedTone } from '../emphasis.ts';
-import type { CategoricalModel, ChartModel, PartToWholeModel, TemporalModel } from '../model.ts';
+import type { CategoricalModel, ChartModel, PartToWholeModel } from '../model.ts';
 import { keyForCategory } from '../model.ts';
 
 /** Plain options object; the caller renders it. Intentionally not typed against Highcharts. */
@@ -82,24 +84,6 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
   };
 }
 
-function temporalOptions(model: TemporalModel, emphasis: EmphasisResolution): ChartOptions {
-  return {
-    ...baseOptions(model),
-    chart: { type: model.chartType, backgroundColor: 'transparent' },
-    xAxis: { type: 'datetime', title: { text: model.xField } },
-    yAxis: { title: { text: model.yField } },
-    series: model.series.map((series) => ({
-      name: series.name,
-      // A per-point colour on a line colours the marker; the connecting segment
-      // keeps the series colour. That is a Highcharts behaviour, not a choice.
-      data: series.points.map((point) => {
-        const style = emphasis.styles.get(point.key);
-        return style ? withTone({ x: point.x, y: point.y }, style) : [point.x, point.y];
-      }),
-    })),
-  };
-}
-
 function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolution): ChartOptions {
   return {
     ...baseOptions(model),
@@ -119,8 +103,6 @@ export function toHighchartsOptions(model: ChartModel, emphasis: EmphasisResolut
   switch (model.kind) {
     case 'part-to-whole':
       return partToWholeOptions(model, emphasis);
-    case 'temporal':
-      return temporalOptions(model, emphasis);
     case 'categorical':
       return categoricalOptions(model, emphasis);
   }

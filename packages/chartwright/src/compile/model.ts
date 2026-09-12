@@ -19,7 +19,6 @@ export function isSupportedChartType(type: string): type is SupportedChartType {
 }
 
 export type SeriesValues = { name: string; values: (number | null)[] };
-export type SeriesPoints = { name: string; points: Array<{ key: string; x: number; y: number }> };
 export type Slice = { key: string; name: string; value: number };
 
 type Base = {
@@ -39,17 +38,24 @@ export type CategoricalModel = Base & {
   series: SeriesValues[];
 };
 
-export type TemporalModel = Base & {
-  kind: 'temporal';
-  series: SeriesPoints[];
-};
-
 export type PartToWholeModel = Base & {
   kind: 'part-to-whole';
   slices: Slice[];
 };
 
-export type ChartModel = CategoricalModel | TemporalModel | PartToWholeModel;
+/**
+ * Deliberately two shapes, not three.
+ *
+ * There was a third, `TemporalModel`: a `datetime` axis with points sorted by time,
+ * chosen by `encodings.x.value_type === 'temporal'`. Nothing in the library ever set
+ * that field — only two tests did — so the branch was unreachable, and every chart
+ * including a monthly series went through the categorical path. Rather than wire it
+ * (which would have changed the axis of every date chart and put the compiler's time
+ * ordering in tension with present mode's "the order you pass is the order shown"), it
+ * was deleted; a date column is a category, and `docs/roadmap.md` records what that
+ * costs: a series with a gap is drawn as though the gap were not there.
+ */
+export type ChartModel = CategoricalModel | PartToWholeModel;
 
 /**
  * Identifies a datum: its category value, plus the series it belongs to when the
@@ -226,26 +232,6 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     }
   } else {
     groups.set(y.field, dataset);
-  }
-
-  if (x.value_type === 'temporal') {
-    return {
-      model: {
-        ...base,
-        kind: 'temporal',
-        series: [...groups.entries()].map(([name, groupRows]) => ({
-          name,
-          points: groupRows
-            .map((row) => ({
-              key: rowDatumKey(row, x.field, seriesField),
-              x: Date.parse(String(row[x.field])),
-              y: Number(row[y.field]),
-            }))
-            .sort((a, b) => a.x - b.x),
-        })),
-      },
-      warnings: [],
-    };
   }
 
   const categories = distinctInOrder(dataset.map((row) => row[x.field]));

@@ -3,7 +3,7 @@
 Everything that is known to be missing, planned, or deliberately refused. Written
 so that a decision made in a review does not have to be re-derived later.
 
-**Current size** — library: 13 source files / 2,554 lines, 9 test files / 117 tests,
+**Current size** — library: 13 source files / 2,537 lines, 9 test files / 119 tests,
 zero runtime dependencies. Example: 1,148 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
@@ -292,41 +292,24 @@ Related, and deliberately *not* part of that switch: ChartBrain had sample **mas
 ("sensitive values can be masked or substituted", `docs/INTEGRATION.md`), which is a
 different and larger feature than on/off. Nothing here does that.
 
-### 21. A date column never gets a time axis
+### 21. A date column is a category, so a gap in a series is invisible
 
-`compile/model.ts` has a temporal branch: a real `datetime` axis, `[timestamp, value]`
-pairs, points sorted by time. Two tests cover it. **It is unreachable.** It fires on
-`x.value_type === 'temporal'`, and nothing in the library ever sets `value_type` — not
-`inferColumns`, not `validateSpec`, not any tool. The only things that set it are those
-two tests, so the feature is built, tested, and not wired to anything.
+**Decided and implemented** — see the change log. The compiler had a datetime-axis branch,
+nothing in the library ever set the field that selected it, so it never ran; wiring it would
+have changed the axis of every date chart and put the compiler's time ordering in tension
+with present mode's "the order you pass is the order shown". It was deleted rather than
+wired. What follows is the cost of that decision, kept here because the decision could
+reasonably be revisited and the cost is what would justify it.
 
-The consequence: every chart, a monthly series included, takes the categorical branch —
-one category per distinct x value, in first-seen order. For contiguous months that looks
-identical. It stops looking identical the moment the series has a **gap**: a category
-axis spaces points evenly and a time axis does not, so a missing month is drawn as though
-it were not missing. Silently.
+A category axis spaces points evenly, so a series with a missing period is drawn as though
+the period were not missing. The example's "Present gapped dates" demo is the reproduction:
+five months whose real spacings are 31, 28, 31 and **61** days, drawn as four equal steps.
+Hand the same rows a datetime axis and the 61-day gap is a 61-day gap.
 
-**There is a reproduction to look at.** The example's "Present gapped dates" demo charts
-`data/cancellations-by-month.json`: five months in which something was cancelled, with
-2026-05 absent because nothing was. `month` infers as a date, the x axis comes out as
-categories, and the spacings that are really 31, 28, 31 and **61** days are drawn as four
-equal steps. Hand the same rows a datetime axis and the 61-day gap is a 61-day gap.
-
-Two decisions, and they are separate:
-
-- **Wire it or delete it.** Wiring means deriving `value_type` from the column's inferred
-  type, and it changes every existing date chart: a datetime axis, and points ordered by
-  time rather than by the caller's order — which is a real tension with present mode's
-  "your order, untouched" (they agree when the caller sorts by date, which is the normal
-  case, and disagree otherwise). Deleting means removing the branch, `ChartModel.kind:
-  'temporal'`, the backend's handling and the two tests, and documenting that a date
-  column is a category.
-- **Close the knob either way, and first.** `value_type` is not in the `submit_spec`
-  schema, but `encodings.x`, `.y` and `.series` are declared without
-  `additionalProperties: false` and `validateSpec` copies the encoding through, so a model
-  that *invents* `value_type: 'temporal'` gets the datetime axis. Measured by compiling
-  such a spec. One line per encoding plus a test — the same rule as tool arguments: what
-  the model may send is what the schema declares.
+**Trigger to revisit:** a consumer charting a series at irregular intervals where the
+interval itself carries meaning. The shape would be a real date axis, and it reopens two
+questions — does a date column get one by default, and does that override the caller's row
+order, which present mode promises it will not.
 
 ---
 
@@ -431,4 +414,6 @@ Kept here because the reasoning matters more than the code.
 | A tool's arguments are not the caller's policy | Every tool now rejects arguments it does not declare. Tool arguments used to be spread over the profiling options, so a model could set `sampleValues` itself, over the top of a caller's `profile: { sampleValues: 0 }`. |
 | Tool definitions are handed out as copies | `buildToolDefs` deep-clones its templates. `SUBMIT_ASK` and `SUBMIT_PRESENT` shared a single `parameters` object, so a caller editing the definition it received was editing both modes. |
 | A submission is accepted only if a chart comes out of it | The loop takes an optional `validateSubmit`, and `ask()` supplies one that runs the compiler over the submission while the model is still there. Everything the compiler refuses — two rows on one category, an encoding over a column the plan never produced — used to surface *after* the loop ended: the caller got an exception and the model was never told. Now it is a rejected submission the model can repair, in either mode, with the compiler's own message. |
+| A date column is a category, and the datetime branch is gone | The compiler had a temporal branch — a `datetime` axis, `[ms, value]` pairs, points sorted by time — selected by `encodings.x.value_type`, and **nothing in the library ever set that field**; only two tests did. So it never ran, and every chart including a monthly series already took the categorical path. Deleted rather than wired: wiring changes the axis of every date chart, and sorts points by time, which is in direct tension with present mode's "the order you pass is the order shown". `ValueType` and `Encoding.value_type` went with it. The cost — a gap in a series is drawn as though it were not there — is item 21, with the example's "Present gapped dates" demo as its reproduction. |
+| An encoding declares one field, and the spec is built from it | `encodings.x`, `.y` and `.series` gained `additionalProperties: false`, and `validateSpec` now assembles each encoding as `{ field }` rather than copying the submission through. A key the schema does not declare — an invented `value_type`, say — used to reach the compiler and change the axis for that one caller. |
 | The refusal that names the reason | A run with no data-changing tool answers a `run_query` call with why the rows are final, instead of a tool list. Derived from the tool list rather than a mode flag — the list *is* the mode — and it names only the tools actually present. |

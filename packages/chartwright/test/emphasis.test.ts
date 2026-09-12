@@ -174,8 +174,12 @@ test('emphasis works on a pie, keyed by slice name', () => {
   );
 });
 
-test('emphasis on a temporal line colours matching markers', () => {
-  const temporal: Row[] = [
+test('emphasis on a line chart colours the matching point, and only it', () => {
+  // This used to run over a temporal x, which no longer exists: a date column goes
+  // through the categorical path like everything else, so the points here are numbers
+  // against categories rather than [ms, value] pairs. The emphasis behaviour is the
+  // same either way, which is the point of the split between the model and the backend.
+  const line: Row[] = [
     { month: '2026-01-01', revenue: 10 },
     { month: '2026-02-01', revenue: 99 },
   ];
@@ -183,12 +187,14 @@ test('emphasis on a temporal line colours matching markers', () => {
     {
       schema_version: 1,
       chart: { type: 'line' },
-      encodings: { x: { field: 'month', value_type: 'temporal' }, y: { field: 'revenue' } },
+      encodings: { x: { field: 'month' }, y: { field: 'revenue' } },
       emphasis: [{ when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } }],
     },
-    temporal,
+    line,
   );
+
+  assert.deepEqual((options.xAxis as { categories: string[] }).categories, ['2026-01-01', '2026-02-01']);
   const data = (options.series as Array<{ data: unknown[] }>)[0]?.data ?? [];
-  assert.deepEqual(data[0], [Date.parse('2026-01-01'), 10], 'unstyled points stay pairs');
-  assert.deepEqual(data[1], { x: Date.parse('2026-02-01'), y: 99, color: '#e8590c' });
+  assert.equal(data[0], 10, 'the unstyled point stays a plain number');
+  assert.deepEqual(data[1], { y: 99, color: '#e8590c' });
 });

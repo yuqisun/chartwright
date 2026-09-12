@@ -104,20 +104,28 @@ test('a series encoding produces one series per group, aligned to the shared cat
   assert.deepEqual(options.legend, { enabled: true });
 });
 
-test('temporal x uses a datetime axis with sorted [ms, value] pairs', () => {
+test('a date column is a category, not a time axis', () => {
+  // Deliberate, and the reason is in the change log: the compiler had a datetime-axis
+  // branch chosen by `encodings.x.value_type`, and nothing in the library ever set that
+  // field — only two tests did — so it never ran. Wiring it would have changed the axis
+  // of every date chart, and put the compiler's time ordering in tension with present
+  // mode's "the order you pass is the order shown". It was deleted instead. The cost is
+  // recorded in the roadmap: a series with a gap is drawn as though the gap were not
+  // there, which the example has a demo for.
   const { options } = compileToHighcharts(
     spec({
       chart: { type: 'line' },
-      encodings: { x: { field: 'month', value_type: 'temporal' }, y: { field: 'revenue' } },
+      transform_plan: {
+        steps: [{ op: 'aggregate', group_by: ['month'], measures: [{ field: 'revenue', agg: 'sum', as: 'revenue' }] }],
+      },
+      encodings: { x: { field: 'month' }, y: { field: 'revenue' } },
     }),
     rows,
   );
 
-  assert.deepEqual(options.xAxis, { type: 'datetime', title: { text: 'month' } });
-  const data = (options.series as Array<{ data: Array<[number, number]> }>)[0]?.data ?? [];
-  assert.equal(data.length, 3);
-  assert.ok(data[0]![0] < data[1]![0], 'sorted ascending by time');
-  assert.deepEqual(data[0], [Date.parse('2026-01-05'), 100]);
+  const xAxis = options.xAxis as { type?: string; categories?: string[] };
+  assert.equal(xAxis.type, undefined, 'no datetime axis');
+  assert.deepEqual(xAxis.categories, ['2026-01-05', '2026-01-20', '2026-02-05'], 'categories, in the order given');
 });
 
 test('pie renders name/value pairs from the transformed table', () => {

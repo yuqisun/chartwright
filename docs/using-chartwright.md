@@ -297,7 +297,12 @@ Known expressiveness boundaries (they return a warning rather than a lie):
 - emphasis can select the **top/bottom k (contiguous)**, value thresholds and
   named categories — not arbitrary ranks like "the 1st and 3rd";
 - sorting is the plan's job: "the largest 5" **must** sort before limiting, and a
-  plan that does not is refused.
+  plan that does not is refused;
+- **a date column is a category.** There is no `datetime` axis: the x axis is spaced
+  evenly whatever the dates say. For a monthly series with every month present that
+  changes nothing; for one with a gap it draws the gap as though it were not there. That
+  is a decision rather than an omission, and `docs/roadmap.md` item 21 carries the cost
+  and what would justify revisiting it.
 
 ## 9. What the model sees
 

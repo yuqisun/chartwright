@@ -68,5 +68,4 @@ export type {
   ToolMode,
   TraceEntry,
   TransformStep,
-  ValueType,
 } from './types.ts';

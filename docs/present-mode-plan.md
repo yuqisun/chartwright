@@ -385,9 +385,10 @@ column throws. Same class as the temporal-sort silence already listed there.
 **Not in scope here — and the note that was here was wrong.** It recorded that a *value*
 `sort` on a temporal chart is silently overwritten by the compiler's time-sort. Checking
 that claim later: the branch exists but never runs, because nothing in the library sets
-`x.value_type`, and a value sort on a monthly series comes out in value order. The whole
-situation is now roadmap item 21, including the fact that a date column gets a category
-axis — which is what present mode's "your order, untouched" has been resting on.
+`x.value_type`, and a value sort on a monthly series comes out in value order. The branch
+has since been deleted, and the whole situation is roadmap item 21 — which is also where
+the cost of that deletion lives: a date column is a category, so a gap in a series is drawn
+as though it were not there, and the example has a demo for it.
 
 ---
 
