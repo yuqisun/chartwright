@@ -3,7 +3,7 @@ import { createChartwright } from 'chartwright';
 import { useRef, useState } from 'react';
 
 import { ChartView } from './components/ChartView';
-import { counterpartySummary, rows } from './data';
+import { counterpartySummary, monthlyActivity, rows } from './data';
 import { createBrowserClient } from './llm/browserClient';
 
 /**
@@ -32,15 +32,23 @@ const PRESENT_PRESETS = [
   'Keep the ranking, but fade everything except the top three',
 ];
 
+const MONTHLY_PRESETS = [
+  'How has traded notional developed over the six months?',
+  'Chart the average settlement lag by month',
+  'Which month had the most failed settlements?',
+];
+
 /**
- * The two demos differ in one prop.
+ * The three demos differ in what they hand over, and one of them differs in `present`.
  *
  * `ask` hands over 800 raw executions and lets the model shape them with queries.
- * `present` hands over a result the caller already produced — grouped, ranked, final —
- * and the model has no tool that can change it.
+ * The other two hand over a result the caller already produced — grouped, ranked,
+ * final — where the model has no tool that can change it.
  */
+type DemoId = 'ask' | 'present' | 'monthly';
+
 type Demo = {
-  id: 'ask' | 'present';
+  id: DemoId;
   label: string;
   blurb: string;
   rows: Row[];
@@ -81,6 +89,27 @@ const DEMOS: Demo[] = [
       { name: 'distinct_venues', description: 'How many different venues that counterparty used. NOT additive.' },
       { name: 'largest_trade_usd', description: 'The largest single trade. A maximum, not a sum.' },
       { name: 'settled_share_pct', description: 'Settled as a percentage of that counterparty’s trades.' },
+    ],
+  },
+  {
+    id: 'monthly',
+    label: 'Present a time series',
+    blurb:
+      'Six rows, one per month — a series rather than a set of categories. This is where "do not recompute my ' +
+      'columns" bites hardest: the settlement lag is an average, so a second pass over it would be wrong by an ' +
+      'amount too small to see.',
+    rows: monthlyActivity,
+    presets: MONTHLY_PRESETS,
+    present: true,
+    dataDescription: 'One row per month of 2026, already aggregated from the execution feed.',
+    columns: [
+      { name: 'notional_usd', description: 'Sum of traded notional in that month. Additive.' },
+      {
+        name: 'avg_settlement_lag_days',
+        description:
+          'Average settlement lag in days. NOT additive: averaging these six numbers is not the half-year average.',
+      },
+      { name: 'failed_settlements', description: 'How many settlements failed in that month.' },
     ],
   },
 ];

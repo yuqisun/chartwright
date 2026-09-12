@@ -3,8 +3,8 @@
 Everything that is known to be missing, planned, or deliberately refused. Written
 so that a decision made in a review does not have to be re-derived later.
 
-**Current size** — library: 13 source files / 2,545 lines, 9 test files / 117 tests,
-zero runtime dependencies. Example: 991 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
+**Current size** — library: 13 source files / 2,554 lines, 9 test files / 117 tests,
+zero runtime dependencies. Example: 1,148 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
 **These numbers rot**: they were wrong for three commits before anyone noticed. Treat
@@ -75,13 +75,14 @@ express and the chart is drawn anyway. Four cases, with four different fixes:
   model to state, in its final reply, anything it could not represent — and then
   to have the loop carry that text into `warnings` rather than into a chat
   message nobody renders.
-- **The pipeline can detect it and does not.** A *value* `sort` on a temporal
-  chart: the step runs, so `result.dataset` is genuinely reordered, and then
-  `compile/model.ts` sorts temporal points by time — the drawn points are
-  unchanged and no warning is emitted. The request is dropped in a way the caller
-  cannot see, even though both facts (the sort step, the temporal encoding) are in
-  hand before compilation. Reachable in `'ask'` mode only; discovered while
-  designing present mode, where `sort` does not exist at all.
+- **Withdrawn: this case does not exist.** It was listed here as "a *value* `sort` on a
+  temporal chart is silently overwritten by the compiler's time-sort, so the drawn points
+  do not change", on the strength of reading `compile/model.ts`, which does contain such a
+  sort. The branch is unreachable: it tests `x.value_type === 'temporal'`, and nothing in
+  the library ever sets `value_type`. Measured on a monthly series, a value sort comes out
+  in **value order**, categories and all — the request is honoured, not dropped. The real
+  situation is item 21, and the lesson is the one this section exists for: a rule read off
+  the code is not a rule that runs.
 - **…and two more of that shape**, found while making submissions fail early rather
   than after the model had gone. A `y` encoding over a text column draws
   `[null, null, null]` — a blank chart with `warnings: []`. A `filter` over a column
@@ -135,14 +136,14 @@ The library contains exactly two hard-coded hex values. Every other colour is a
 Highcharts default, so an app cannot match its brand. This is also the first
 thing an integrating product will complain about.
 
-**Needed:** a palette/theme layer, and the decision in item 21 about where the
+**Needed:** a palette/theme layer, and the decision in item 22 about where the
 knowledge comes from.
 
 ### 8. Layout and geometry
 
 No canvas sizing, margins, label rotation or long-label handling. Charts with many
 categories will look cramped. flint solves this with `compute-layout`,
-`band-dodge` and axis-label measurement (see item 21).
+`band-dodge` and axis-label measurement (see item 22).
 
 ### 9. Prompt tuning against real runs
 
@@ -291,11 +292,41 @@ Related, and deliberately *not* part of that switch: ChartBrain had sample **mas
 ("sensitive values can be masked or substituted", `docs/INTEGRATION.md`), which is a
 different and larger feature than on/off. Nothing here does that.
 
+### 21. A date column never gets a time axis
+
+`compile/model.ts` has a temporal branch: a real `datetime` axis, `[timestamp, value]`
+pairs, points sorted by time. Two tests cover it. **It is unreachable.** It fires on
+`x.value_type === 'temporal'`, and nothing in the library ever sets `value_type` — not
+`inferColumns`, not `validateSpec`, not any tool. The only things that set it are those
+two tests, so the feature is built, tested, and not wired to anything.
+
+The consequence: every chart, a monthly series included, takes the categorical branch —
+one category per distinct x value, in first-seen order. For contiguous months that looks
+identical. It stops looking identical the moment the series has a **gap**: a category
+axis spaces points evenly and a time axis does not, so a missing month is drawn as though
+it were not missing. Silently.
+
+Two decisions, and they are separate:
+
+- **Wire it or delete it.** Wiring means deriving `value_type` from the column's inferred
+  type, and it changes every existing date chart: a datetime axis, and points ordered by
+  time rather than by the caller's order — which is a real tension with present mode's
+  "your order, untouched" (they agree when the caller sorts by date, which is the normal
+  case, and disagree otherwise). Deleting means removing the branch, `ChartModel.kind:
+  'temporal'`, the backend's handling and the two tests, and documenting that a date
+  column is a category.
+- **Close the knob either way, and first.** `value_type` is not in the `submit_spec`
+  schema, but `encodings.x`, `.y` and `.series` are declared without
+  `additionalProperties: false` and `validateSpec` copies the encoding through, so a model
+  that *invents* `value_type: 'temporal'` gets the datetime axis. Measured by compiling
+  such a spec. One line per encoding plus a test — the same rule as tool arguments: what
+  the model may send is what the schema declares.
+
 ---
 
 ## Deferred with triggers
 
-### 21. Vendor flint's compilation pipeline — or extract its conventions?
+### 22. Vendor flint's compilation pipeline — or extract its conventions?
 
 flint (MIT, Microsoft) already encodes the knowledge that item 4 and item 8 are
 missing, at scale:
@@ -329,7 +360,7 @@ types; theming/palette work starts; layout/geometry work starts.
 into the core, keeping the core dependency-free; and begin by reading flint and
 listing the specific modules to reuse rather than adopting the whole pipeline.
 
-### 22. Publishable build
+### 23. Publishable build
 
 `packages/chartwright/package.json` is `private: true`, `version: 0.0.0`, and
 `exports` points at `./src/index.ts`. Consumers therefore need two config tweaks
@@ -343,7 +374,7 @@ step 3 of `docs/using-chartwright.md` can be deleted.
 Also missing: a README **inside the package** (npm shows the repo root's, which
 describes the monorepo).
 
-### 23. Stability policy
+### 24. Stability policy
 
 At 0.0.0 nothing is frozen. Source consumers track a commit with no version
 anchor; at minimum, tag releases so they can pin. Worth writing down which parts

@@ -61,13 +61,16 @@ re-aggregating would corrupt — an average, a distinct count, a maximum, a rati
 
 ## What the app shows after a request
 
-The page has **two demos**, and they differ by one prop:
+The page has **three demos**, and they differ in what they hand over:
 
 - **Ask the data** — 800 raw executions, the model investigates with tools and shapes the
   table with a query plan;
 - **Present a result** — a twelve-row table a query already produced: grouped, ranked,
   carrying an average and a distinct count. The model chooses how to draw it and has no
-  tool that could change it (`present: true`).
+  tool that could change it (`present: true`);
+- **Present a time series** — six monthly rows from the same kind of query, where the
+  column that matters is an average: a second pass over it would be wrong by an amount
+  too small to see, which is the whole argument for the mode.
 
 Both then show:
 
