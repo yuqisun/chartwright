@@ -71,6 +71,7 @@ test('a scripted run_query then submit_spec produces a spec with the adopted pla
   assert.deepEqual(outcome.spec.transform_plan?.steps, RUN_QUERY.args.steps);
   assert.deepEqual(outcome.spec.encodings.x, { field: 'region' });
   assert.equal(outcome.trace.length, 2);
+  assert.deepEqual(outcome.trace[1]?.result, { accepted: true }, 'the submission records its own outcome');
   assert.equal(outcome.rounds, 2);
 });
 
@@ -339,6 +340,9 @@ test('an undeclared call is traced as refused, not as having run', async () => {
     ['run_query', 'submit_spec'],
   );
   assert.match((outcome.trace[0]?.result as { error?: string }).error ?? '', /not available/);
+  // The accepted submission records its outcome as well, so a reader of the trace
+  // can tell the run finished rather than inferring it from a missing field.
+  assert.deepEqual(outcome.trace[1]?.result, { accepted: true });
   assert.equal(outcome.spec.chart.type, 'bar', 'and the run still finished');
 });
 

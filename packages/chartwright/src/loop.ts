@@ -315,7 +315,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           payload = { accepted: false, errors };
         } else {
           payload = { accepted: true };
-          trace.push({ round, toolCallId: call.id, tool: call.name, args: call.args });
+          // The acceptance is recorded too: a trace where refusals carry a result
+          // and the successful finish does not reads as if nothing happened.
+          trace.push({ round, toolCallId: call.id, tool: call.name, args: call.args, result: payload });
           onEvent?.({ type: 'tool_result', id: call.id, name: call.name, summary: payload, ms: Date.now() - started });
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(payload) });
           return { spec: spec as ChartSpec, steps: lastRunQuerySteps ?? [], messages, warnings, trace, rounds: round };
