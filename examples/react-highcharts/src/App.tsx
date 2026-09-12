@@ -3,7 +3,7 @@ import { createChartwright } from 'chartwright';
 import { useRef, useState } from 'react';
 
 import { ChartView } from './components/ChartView';
-import { counterpartySummary, monthlyActivity, rows } from './data';
+import { cancellationsByMonth, counterpartySummary, monthlyActivity, rows } from './data';
 import { createBrowserClient } from './llm/browserClient';
 
 /**
@@ -38,6 +38,12 @@ const MONTHLY_PRESETS = [
   'Which month had the most failed settlements?',
 ];
 
+const GAPPED_PRESETS = [
+  'How have cancellations developed month by month?',
+  'Chart the cancelled notional by month',
+  'Which month had the most cancellations?',
+];
+
 /**
  * The three demos differ in what they hand over, and one of them differs in `present`.
  *
@@ -45,7 +51,7 @@ const MONTHLY_PRESETS = [
  * The other two hand over a result the caller already produced — grouped, ranked,
  * final — where the model has no tool that can change it.
  */
-type DemoId = 'ask' | 'present' | 'monthly';
+type DemoId = 'ask' | 'present' | 'monthly' | 'gapped';
 
 type Demo = {
   id: DemoId;
@@ -110,6 +116,23 @@ const DEMOS: Demo[] = [
           'Average settlement lag in days. NOT additive: averaging these six numbers is not the half-year average.',
       },
       { name: 'failed_settlements', description: 'How many settlements failed in that month.' },
+    ],
+  },
+  {
+    id: 'gapped',
+    label: 'Present gapped dates',
+    blurb:
+      'Five rows, one per month that had a cancellation — 2026-05 is missing because nothing was cancelled ' +
+      'then. `month` is a date column, and a date column currently gets a category axis: watch the labels, ' +
+      'which are evenly spaced even though 2026-04 and 2026-06 are two months apart.',
+    rows: cancellationsByMonth,
+    presets: GAPPED_PRESETS,
+    present: true,
+    dataDescription: 'One row per month that had at least one cancellation. Months with none are absent, not zero.',
+    columns: [
+      { name: 'month', description: 'The month. Note that these are not consecutive.' },
+      { name: 'cancellations', description: 'How many trades were cancelled in that month. Additive.' },
+      { name: 'notional_usd', description: 'Sum of the cancelled notional in that month. Additive.' },
     ],
   },
 ];

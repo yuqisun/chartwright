@@ -61,7 +61,7 @@ re-aggregating would corrupt — an average, a distinct count, a maximum, a rati
 
 ## What the app shows after a request
 
-The page has **three demos**, and they differ in what they hand over:
+The page has **four demos**, and they differ in what they hand over:
 
 - **Ask the data** — 800 raw executions, the model investigates with tools and shapes the
   table with a query plan;
@@ -70,7 +70,12 @@ The page has **three demos**, and they differ in what they hand over:
   tool that could change it (`present: true`);
 - **Present a time series** — six monthly rows from the same kind of query, where the
   column that matters is an average: a second pass over it would be wrong by an amount
-  too small to see, which is the whole argument for the mode.
+  too small to see, which is the whole argument for the mode;
+- **Present gapped dates** — five monthly rows, and one month is missing because nothing
+  was cancelled in it. There to be looked at rather than admired: the x axis is a
+  *category* axis, so five months that are 31, 28, 31 and **61** days apart are drawn as
+  five equal steps, and nothing on the chart says a month went by. See
+  `docs/roadmap.md` item 21.
 
 Both then show:
 

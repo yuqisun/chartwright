@@ -1,5 +1,5 @@
 /**
- * Loads the example's three datasets.
+ * Loads the example's datasets.
  *
  * The difference between them is the point of the example:
  *
@@ -9,16 +9,22 @@
  *                          already ranked. What a consumer hands over and says
  *                          "chart this" — under `present: true`.
  *   monthlyActivity      — the same idea, `GROUP BY month`: a time series.
+ *   cancellationsByMonth — also `GROUP BY month`, but sparse: only the months in
+ *                          which something was cancelled. A date column whose values
+ *                          are not consecutive, which is the one case where "the order
+ *                          you pass is the order shown" and "a date gets a time axis"
+ *                          would visibly disagree (docs/roadmap.md item 21).
  *
- * The last two are a consumer's *final numbers*. Being able to say that nothing
- * downstream may re-derive them — no aggregate, no filter, no sort — is exactly
- * what present mode buys, and both carry columns that re-aggregating would
- * corrupt (see the notes printed by `scripts/generate-data.mjs`).
+ * The present-mode tables are a consumer's *final numbers*. Being able to say that
+ * nothing downstream may re-derive them — no aggregate, no filter, no sort — is exactly
+ * what present mode buys, and they carry columns that re-aggregating would corrupt (see
+ * the notes printed by `scripts/generate-data.mjs`).
  *
  * Everything else — column metadata, profiling, transformation — comes from
  * chartwright, so the example demonstrates the library's real surface instead of
  * a parallel implementation of it.
  */
+import cancellationsJson from '../data/cancellations-by-month.json';
 import counterpartySummaryJson from '../data/counterparty-summary.json';
 import monthlyActivityJson from '../data/monthly-activity.json';
 import postTrade from '../data/post-trade.json';
@@ -33,3 +39,6 @@ export const counterpartySummary = counterpartySummaryJson as Row[];
 
 /** `GROUP BY month`, ascending — pre-sorted for the same reason. */
 export const monthlyActivity = monthlyActivityJson as Row[];
+
+/** `GROUP BY month` again, but only the months that had a cancellation. */
+export const cancellationsByMonth = cancellationsJson as Row[];

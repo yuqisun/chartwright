@@ -37,6 +37,7 @@ const DATA_DIR = join(HERE, '..', 'data');
 const OUT = join(DATA_DIR, 'post-trade.json');
 const COUNTERPARTY_OUT = join(DATA_DIR, 'counterparty-summary.json');
 const MONTHLY_OUT = join(DATA_DIR, 'monthly-activity.json');
+const CANCELLATIONS_OUT = join(DATA_DIR, 'cancellations-by-month.json');
 
 const ROW_COUNT = 800;
 const SEED = 20260910;
@@ -266,17 +267,51 @@ const monthlyActivity = [...groupBy(rows, (r) => r.trade_date.slice(0, 7))]
   }))
   .sort((a, b) => a.month.localeCompare(b.month));
 
+/**
+ * A sparse series on purpose: only the months in which something was cancelled.
+ *
+ *   SELECT substr(trade_date, 1, 7) AS month, COUNT(*), SUM(notional_usd)
+ *   FROM   post_trade
+ *   WHERE  status = 'Cancelled'
+ *   GROUP  BY month ORDER BY month;
+ *
+ * No month has zero rows filled in, because that is not what the query returns — and
+ * that is the whole reason this table exists. Its `month` column is a date, the months
+ * in it are non-consecutive, and a chart that spaces categories evenly will draw a quiet
+ * month as though it never happened. See roadmap item 21; this is the table to look at
+ * when deciding whether a date column should get a time axis.
+ */
+const cancellationsByMonth = [...groupBy(rows.filter((r) => r.status === 'Cancelled'), (r) => r.trade_date.slice(0, 7))]
+  .map(([month, group]) => ({
+    month,
+    cancellations: group.length,
+    notional_usd: round(sum(group.map((r) => r.notional_usd)), 2),
+  }))
+  .sort((a, b) => a.month.localeCompare(b.month));
+
 const writeJson = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 
 mkdirSync(DATA_DIR, { recursive: true });
 writeJson(OUT, rows);
 writeJson(COUNTERPARTY_OUT, counterpartySummary);
 writeJson(MONTHLY_OUT, monthlyActivity);
+writeJson(CANCELLATIONS_OUT, cancellationsByMonth);
 
 console.log(`wrote ${rows.length} rows to ${OUT}`);
 console.log(`  settled=${count(rows, (r) => r.status === 'Settled')} failed=${count(rows, (r) => r.status === 'Failed')}`);
 console.log(`wrote ${counterpartySummary.length} rows to ${COUNTERPARTY_OUT}`);
 console.log(`wrote ${monthlyActivity.length} rows to ${MONTHLY_OUT}`);
+console.log(`wrote ${cancellationsByMonth.length} rows to ${CANCELLATIONS_OUT}`);
+
+// The gap is the point of that last one, so report it rather than leaving it to be
+// noticed: every month between the first and the last, and which of them are absent.
+const cancelledMonths = cancellationsByMonth.map((row) => row.month);
+const allMonths = [...groupBy(rows, (r) => r.trade_date.slice(0, 7)).keys()].sort();
+const missingMonths = allMonths.filter((month) => !cancelledMonths.includes(month));
+console.log(
+  `  cancellations cover ${cancelledMonths.length} of ${allMonths.length} months` +
+    `${missingMonths.length > 0 ? `; absent: ${missingMonths.join(', ')} (a category axis draws the rest evenly regardless)` : ''}`,
+);
 
 // What re-aggregating each table would do to it, printed rather than asserted in
 // prose. Three kinds of damage, in increasing order of danger:

@@ -306,6 +306,12 @@ identical. It stops looking identical the moment the series has a **gap**: a cat
 axis spaces points evenly and a time axis does not, so a missing month is drawn as though
 it were not missing. Silently.
 
+**There is a reproduction to look at.** The example's "Present gapped dates" demo charts
+`data/cancellations-by-month.json`: five months in which something was cancelled, with
+2026-05 absent because nothing was. `month` infers as a date, the x axis comes out as
+categories, and the spacings that are really 31, 28, 31 and **61** days are drawn as four
+equal steps. Hand the same rows a datetime axis and the 61-day gap is a 61-day gap.
+
 Two decisions, and they are separate:
 
 - **Wire it or delete it.** Wiring means deriving `value_type` from the column's inferred

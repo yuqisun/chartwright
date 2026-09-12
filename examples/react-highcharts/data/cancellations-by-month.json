@@ -1,0 +1,27 @@
+[
+  {
+    "month": "2026-01",
+    "cancellations": 1,
+    "notional_usd": 8289530.95
+  },
+  {
+    "month": "2026-02",
+    "cancellations": 3,
+    "notional_usd": 22848435.2
+  },
+  {
+    "month": "2026-03",
+    "cancellations": 4,
+    "notional_usd": 23104726.33
+  },
+  {
+    "month": "2026-04",
+    "cancellations": 1,
+    "notional_usd": 15602146.29
+  },
+  {
+    "month": "2026-06",
+    "cancellations": 3,
+    "notional_usd": 14551041.3
+  }
+]
