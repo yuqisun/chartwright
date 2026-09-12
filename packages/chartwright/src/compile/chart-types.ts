@@ -24,7 +24,7 @@ import type { CapabilitySource } from '../types.ts';
 import type { ColorRole } from './theme.ts';
 
 /** A channel a spec can carry. Every one is a `{ field }` reference into the one table. */
-export type ChannelName = 'x' | 'y' | 'y2' | 'series';
+export type ChannelName = 'x' | 'y' | 'y2' | 'series' | 'size';
 
 /**
  * Every channel, as a runtime list.
@@ -32,7 +32,7 @@ export type ChannelName = 'x' | 'y' | 'y2' | 'series';
  * Keyed by the union so that adding a `ChannelName` without adding it here is a
  * compile error rather than a channel the validator silently never looks at.
  */
-const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, y2: true, series: true };
+const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, y2: true, series: true, size: true };
 export const CHANNEL_NAMES = Object.keys(CHANNEL_SET) as readonly ChannelName[];
 
 /** What a channel *means* for one type — the same `y` is a height for a bar and a colour for a heatmap. */
@@ -48,7 +48,7 @@ export type ChannelRole = 'category' | 'measure' | 'series';
 export type Modifier = 'stacking' | 'polar' | 'hole' | 'compact' | 'type2';
 
 /** The neutral model shape that builds a type. A new kind is a project; a new type inside one is not. */
-export type ChartKind = 'categorical' | 'part-to-whole' | 'matrix';
+export type ChartKind = 'categorical' | 'part-to-whole' | 'matrix' | 'point-cloud';
 
 export type ChartTypeSpec = {
   kind: ChartKind;
@@ -124,6 +124,23 @@ export const CHART_TYPES = {
     // The measure is the colour here, so the role is the ramp and not the palette: a
     // categorical palette on a heatmap would turn an ordered measure into unrelated hues.
     colorRoles: ['series.sequential'],
+  },
+  scatter: {
+    kind: 'point-cloud',
+    channels: { x: 'measure', y: 'measure', series: 'series' },
+    required: ['x', 'y'],
+    modifiers: ['compact'],
+    // Two points can share an x value — that is normal for a cloud, not a collision.
+    allowsDuplicateCategories: true,
+    colorRoles: ['series.categorical'],
+  },
+  bubble: {
+    kind: 'point-cloud',
+    channels: { x: 'measure', y: 'measure', size: 'measure', series: 'series' },
+    required: ['x', 'y', 'size'],
+    modifiers: ['compact'],
+    allowsDuplicateCategories: true,
+    colorRoles: ['series.categorical'],
   },
 } as const satisfies Record<string, ChartTypeSpec>;
 

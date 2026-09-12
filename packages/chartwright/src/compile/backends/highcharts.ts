@@ -370,5 +370,11 @@ export function toHighchartsOptions(
       return matrixOptions(model, emphasis, theme, layout);
     case 'categorical':
       return categoricalOptions(model, emphasis, theme, layout);
+    case 'point-cloud':
+      // Backend support for point-cloud types (scatter, bubble) is added in Task 3.
+      throw new Error(
+        `the Highcharts backend does not yet render '${model.chartType}' charts. ` +
+          `The model built successfully (kind: point-cloud); the backend case is next.`,
+      );
   }
 }

@@ -182,6 +182,8 @@ export type ChartSpec = {
     y2?: Encoding;
     /** Optional channel that splits the data into multiple series. */
     series?: Encoding;
+    /** Optional size channel for bubble charts — maps a measure to mark size. */
+    size?: Encoding;
   };
   /**
    * Axis overrides. Omitted, every axis is inferred: a category channel wants a band axis and a

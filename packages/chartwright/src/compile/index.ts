@@ -100,7 +100,7 @@ export {
   resolveAvailableTypes,
   resolveCapabilities,
 } from './chart-types.ts';
-export type { CategoryCollision, ChartModel, MatrixModel, SupportedChartType } from './model.ts';
+export type { CategoryCollision, ChartModel, MatrixModel, PointCloudModel, SupportedChartType } from './model.ts';
 export type { ColorRole, Theme, ThemeInput, ThemeRoles } from './theme.ts';
 export type { AxisLayout, LayoutInput } from './layout.ts';
 export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec, Modifier } from './chart-types.ts';

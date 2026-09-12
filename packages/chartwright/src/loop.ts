@@ -203,6 +203,7 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
     y: candidate.encodings?.y?.field,
     y2: candidate.encodings?.y2?.field,
     series: candidate.encodings?.series?.field,
+    size: candidate.encodings?.size?.field,
   };
   // An unrecognised type has no declaration to read, so there is nothing to check channels against
   // — and checking them would be noise: the model mistyped a type, and the useful repair is the

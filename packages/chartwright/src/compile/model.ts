@@ -86,8 +86,16 @@ export type MatrixModel = Base & {
   series: SeriesValues[];
 };
 
+export type PointCloudModel = Base & {
+  kind: 'point-cloud';
+  /** Each point is [x, y] or [x, y, size] in table order. */
+  points: Array<{ values: number[]; seriesName?: string }>;
+  /** The field names in order: [xField, yField, sizeField?]. */
+  valueFields: string[];
+};
+
 /**
- * Deliberately two shapes, not three.
+ * Deliberately four shapes, not three.
  *
  * There was a third, `TemporalModel`: a `datetime` axis with points sorted by time,
  * chosen by `encodings.x.value_type === 'temporal'`. Nothing in the library ever set
@@ -98,7 +106,7 @@ export type MatrixModel = Base & {
  * was deleted; a date column is a category, and `docs/roadmap.md` records what that
  * costs: a series with a gap is drawn as though the gap were not there.
  */
-export type ChartModel = CategoricalModel | PartToWholeModel | MatrixModel;
+export type ChartModel = CategoricalModel | PartToWholeModel | MatrixModel | PointCloudModel;
 
 /**
  * Identifies a datum: its category value, plus the series it belongs to when the
@@ -236,9 +244,10 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
 
   const seriesField = series?.field;
   const y2Field = y2?.field;
+  const sizeField = spec.encodings.size?.field;
   if (dataset.length > 0) {
     const columns = Object.keys(dataset[0] as Row);
-    for (const field of [x.field, y.field, y2Field, seriesField].filter((f): f is string => typeof f === 'string')) {
+    for (const field of [x.field, y.field, y2Field, seriesField, sizeField].filter((f): f is string => typeof f === 'string')) {
       if (!columns.includes(field)) {
         throw new Error(`encoding field '${field}' is not in the produced table (available: ${columns.join(', ')})`);
       }
@@ -273,6 +282,21 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
           value: Number(row[y.field]),
         })),
       },
+      warnings: [],
+    };
+  }
+
+  if (kind === 'point-cloud') {
+    const pcValueFields = [y.field, ...(sizeField ? [sizeField] : [])];
+    // Points are emitted in table order. The positional index is the datum key
+    // for point-cloud types (§2.1): two points can share an x value, so the
+    // category-value key would conflate them.
+    const points = dataset.map((row) => ({
+      values: [Number(row[x.field]), ...pcValueFields.map((f) => Number(row[f]))],
+      ...(seriesField ? { seriesName: String(row[seriesField]) } : {}),
+    }));
+    return {
+      model: { ...base, kind: 'point-cloud' as const, points, valueFields: [x.field, ...pcValueFields] },
       warnings: [],
     };
   }
