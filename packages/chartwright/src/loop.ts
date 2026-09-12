@@ -297,6 +297,22 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
     if (typeof value === 'string' && value !== '') encodings[channel] = { field: value };
   }
 
+  // Extract validated axis properties into typed locals so the assembly below carries
+  // proper types without relying on the upstream cast. Validation has already rejected
+  // invalid kind values, so these are safe to narrow.
+  type AxisKind = 'band' | 'linear' | 'log';
+  const xKind = candidate.axes?.x?.kind as AxisKind | undefined;
+  const yKind = candidate.axes?.y?.kind as AxisKind | undefined;
+  const y2Kind = candidate.axes?.y2?.kind as AxisKind | undefined;
+
+  const axes: ChartSpec['axes'] = {};
+  const xHasContent = xRange.min !== undefined || xRange.max !== undefined || xKind !== undefined;
+  const yHasContent = range.min !== undefined || range.max !== undefined || yKind !== undefined;
+  const y2HasContent = y2Range.min !== undefined || y2Range.max !== undefined || y2Kind !== undefined;
+  if (xHasContent) axes.x = { ...(xKind !== undefined ? { kind: xKind } : {}), ...xRange };
+  if (yHasContent) axes.y = { ...(yKind !== undefined ? { kind: yKind } : {}), ...range };
+  if (y2HasContent) axes.y2 = { ...(y2Kind !== undefined ? { kind: y2Kind } : {}), ...y2Range };
+
   return {
     spec: {
       schema_version: 1,
@@ -310,28 +326,7 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
         ...(chart?.compact !== undefined ? { compact: chart.compact } : {}),
         ...(chart?.type2 ? { type2: chart.type2 } : {}),
       },
-      ...((() => {
-        const xAxis = candidate.axes?.x;
-        const yAxis = candidate.axes?.y;
-        const y2Axis = candidate.axes?.y2;
-        const xHasContent = xRange.min !== undefined || xRange.max !== undefined || xAxis?.kind !== undefined;
-        const yHasContent = range.min !== undefined || range.max !== undefined || yAxis?.kind !== undefined;
-        const y2HasContent = y2Range.min !== undefined || y2Range.max !== undefined || y2Axis?.kind !== undefined;
-        if (!xHasContent && !yHasContent && !y2HasContent) return {};
-        return {
-          axes: {
-            ...(xHasContent
-              ? { x: { ...(xAxis?.kind !== undefined ? { kind: xAxis.kind } : {}), ...xRange } }
-              : {}),
-            ...(yHasContent
-              ? { y: { ...(yAxis?.kind !== undefined ? { kind: yAxis.kind } : {}), ...range } }
-              : {}),
-            ...(y2HasContent
-              ? { y2: { ...(y2Axis?.kind !== undefined ? { kind: y2Axis.kind } : {}), ...y2Range } }
-              : {}),
-          },
-        };
-      })()),
+      ...(xHasContent || yHasContent || y2HasContent ? { axes } : {}),
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
       encodings,
