@@ -225,14 +225,25 @@ The model never receives your rows. It receives:
   distinct count, numeric range and median, time span, and — for low-cardinality
   columns — **up to five real sample values**;
 - what `run_query` returns: row count, column list, and a preview of at most
-  three rows.
+  three rows;
+- what `preview_rows` returns in present mode, if it asks: the **first rows of your
+  table, verbatim** — at most five. There is no offset to page with, so asking again
+  returns the same rows and a run cannot walk the table.
 
-Only the last two contain any data values, and both are bounded. If the sample
-values are a problem in your domain, switch them off:
+The last three contain data values, and each is bounded: the sample values by
+`sampleValues`, the query preview by `previewRowCount`, and `preview_rows` by its own
+ceiling of five rows. If the sample values are a problem in your domain, switch them
+off:
 
 ```ts
 const chartwright = createChartwright({ llm, profile: { sampleValues: 0 } });
 ```
+
+That switch covers `describe_table` only. It does **not** turn off `preview_rows`,
+which has no off switch today: present mode sends up to five rows of the table you
+asked to have charted, and those same rows are about to be drawn on screen. If you
+need that to be zero, that is a decision to make deliberately rather than by setting a
+profiling option — see `docs/roadmap.md`.
 
 ## 9. Budgets are yours to set
 

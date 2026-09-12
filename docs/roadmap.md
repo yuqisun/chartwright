@@ -110,14 +110,14 @@ The library contains exactly two hard-coded hex values. Every other colour is a
 Highcharts default, so an app cannot match its brand. This is also the first
 thing an integrating product will complain about.
 
-**Needed:** a palette/theme layer, and the decision in item 20 about where the
+**Needed:** a palette/theme layer, and the decision in item 21 about where the
 knowledge comes from.
 
 ### 8. Layout and geometry
 
 No canvas sizing, margins, label rotation or long-label handling. Charts with many
 categories will look cramped. flint solves this with `compute-layout`,
-`band-dodge` and axis-label measurement (see item 20).
+`band-dodge` and axis-label measurement (see item 21).
 
 ### 9. Prompt tuning against real runs
 
@@ -229,11 +229,27 @@ applies: a small tool surface (`list_chart_types`, `validate_spec`, `ask_chart`)
 reusable knowledge as resources, **no server-side rendering**, and structured
 validation results. chartwright's existing exports map onto that surface directly.
 
+### 20. An off switch for `preview_rows`
+
+Present mode sends the model up to five rows of your table, verbatim. That is
+deliberate and bounded — always the first rows, no offset to page with, so asking
+again returns the same rows — but it is also the one path by which row *values* leave
+the process in that mode, and there is no way to turn it off.
+
+`profile: { sampleValues: 0 }` covers `describe_table` only. That is a trap for
+precisely the caller who set it: the option reads like "send no values", and it does
+not mean that.
+
+**Decisions to make:** whether the switch is its own option (`preview: { rows: 0 }`) or
+whether `sampleValues: 0` should mean "no row values leave, anywhere"; and whether
+turning the preview off drops `preview_rows` from the tool list entirely — cleaner, the
+model never sees a tool it may not use — or leaves it listed and refusing.
+
 ---
 
 ## Deferred with triggers
 
-### 20. Vendor flint's compilation pipeline — or extract its conventions?
+### 21. Vendor flint's compilation pipeline — or extract its conventions?
 
 flint (MIT, Microsoft) already encodes the knowledge that item 4 and item 8 are
 missing, at scale:
@@ -267,7 +283,7 @@ types; theming/palette work starts; layout/geometry work starts.
 into the core, keeping the core dependency-free; and begin by reading flint and
 listing the specific modules to reuse rather than adopting the whole pipeline.
 
-### 21. Publishable build
+### 22. Publishable build
 
 `packages/chartwright/package.json` is `private: true`, `version: 0.0.0`, and
 `exports` points at `./src/index.ts`. Consumers therefore need two config tweaks
@@ -281,7 +297,7 @@ step 3 of `docs/using-chartwright.md` can be deleted.
 Also missing: a README **inside the package** (npm shows the repo root's, which
 describes the monorepo).
 
-### 22. Stability policy
+### 23. Stability policy
 
 At 0.0.0 nothing is frozen. Source consumers track a commit with no version
 anchor; at minimum, tag releases so they can pin. Worth writing down which parts
@@ -303,7 +319,7 @@ for a stated reason.
 | **Non-contiguous rank selection by enumeration when it gets long** ("every other one" across 50 categories) | If it cannot be expressed as a rank set or a threshold, the honest answer is that it is out of scope — not a bigger condition language. |
 | **Limits on by default** | The library imposes no policy; budgets are the consumer's to set. Only pathologies are bounded: one nudge before `AgentGaveUpError`, and a warning (not a stop) past 12 rounds. |
 | **Letting the model compute values** | "The largest" is computed by the compiler from the full table, so the answer survives the data changing and the model never touches values. |
-| **Row-level data tools for the model by default** | A model choosing which raw rows to read is the highest-risk privacy shape considered. If ever added, it must be opt-in per tool, with k-anonymity and a whole-run result budget. |
+| **Row-level data tools the model picks the window for** | A model choosing *which* rows to read is the highest-risk privacy shape considered. `preview_rows` is the bounded exception, and it is bounded structurally rather than by a limit: always the **first** rows, at most five, no offset parameter to page with, so calling it again returns the same rows. It exists only in present mode, over a table the caller handed over to be drawn. Anything wider — any window the model gets to choose, any access to the raw table — needs an explicit decision, per tool, with k-anonymity and a whole-run result budget. |
 | **chartwright advising that a table would be better than a chart** | Presentation judgement, and the consumer's to make — the library does not know what the surrounding screen is for, and a library that second-guesses the request trains callers to ignore it. It may say a *spec* is unsupported or ambiguous; it may not say the data does not deserve a chart. |
 | **Mandatory structured column semantics** | See item 18: too much to require of a consumer, and every declaration it gets wrong becomes a confidently wrong chart. Optional and advisory if ever added. |
 

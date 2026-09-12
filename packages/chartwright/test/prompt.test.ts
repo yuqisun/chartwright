@@ -37,7 +37,7 @@ test('ask mode offers exactly the tools that can change the table', () => {
 });
 
 test('present mode offers exactly the tools that cannot', () => {
-  assert.deepEqual(names(buildToolDefs('present')), ['describe_table', 'submit_spec']);
+  assert.deepEqual(names(buildToolDefs('present')), ['describe_table', 'preview_rows', 'submit_spec']);
 });
 
 test('TOOL_DEFS stays the ask-mode list, for callers who import it directly', () => {

@@ -192,6 +192,14 @@ now travel to the provider — so that clause landed here rather than waiting fo
 definition ("Look at up to five actual rows to understand the table's shape. Read
 only.") and register it in `createToolHandlers`.
 
+**Step 2b — the bound has to be structural, or it is not a bound.** "At most five" is
+only reassuring if there is no way to ask for a *different* five. So: no offset, no
+sort, no filter — the tool returns the first rows, full stop, and calling it again
+returns the same rows. An unrecognised parameter is therefore an **error** rather than
+something ignored, because a model that asked for rows 10–14 and silently got rows 0–4
+would go on to reason about data it never saw. That is the same rule as the rest of the
+library: a request we cannot honour must make a sound.
+
 **Step 3.** Available in present mode only: in `'ask'` mode the model already gets
 a three-row preview from `run_query`'s summary, and keeping that tool list short
 is deliberate. Recorded as a note; adding it to both modes later is a one-line
@@ -200,6 +208,18 @@ change if the need appears.
 **Step 4.** Verify: `test/tools.test.ts` plus the full suite.
 
 **Commit:** `feat(tools): preview_rows — a bounded, read-only look at the table`
+
+**Status: done.** 96 library tests pass. Two consequences worth recording here, because
+they are docs the task did not mention and both would have gone stale:
+
+- `preview_rows` is a row-level tool, and the roadmap refuses row-level tools by
+  default. It is not a contradiction — always the first rows, no window for the model
+  to choose, present mode only, over a table handed over to be drawn — but the refused
+  row now says exactly that, or it reads as a rule the design broke.
+- it is a new way for row *values* to leave the process, so
+  `docs/using-chartwright.md` section 8 had to say so, along with the fact that
+  `profile: { sampleValues: 0 }` does **not** switch it off. That gap is recorded as
+  item 20 in `docs/roadmap.md` rather than decided here.
 
 ---
 

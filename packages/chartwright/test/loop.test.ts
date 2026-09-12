@@ -388,7 +388,7 @@ test('ask({ present: true }) charts the caller rows, in the caller order, unchan
 
   assert.deepEqual(
     (llm.calls[0]?.tools ?? []).map((t) => t.name),
-    ['describe_table', 'submit_spec'],
+    ['describe_table', 'preview_rows', 'submit_spec'],
     'the model was offered no way to change the table',
   );
   assert.deepEqual(result.spec.transform_plan?.steps, []);

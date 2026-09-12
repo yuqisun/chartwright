@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createToolHandlers, describeTable, inferColumns, runQuery } from '../src/tools.ts';
+import { createToolHandlers, describeTable, inferColumns, previewRows, runQuery } from '../src/tools.ts';
 import type { Row } from '../src/types.ts';
 
 const rows: Row[] = [
@@ -121,4 +121,76 @@ test('createToolHandlers binds both tools to one dataset', () => {
 test('run_query rejects a missing steps array', () => {
   const handlers = createToolHandlers({ rows });
   assert.throws(() => handlers.run_query?.({}), /needs a "steps" array/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// preview_rows: a bounded, read-only look at the table.
+//
+// The bound is the point. It always returns the FIRST rows, and there is no way
+// to ask for a different window — so a model cannot page through a table by
+// calling it repeatedly, however many rounds it is given.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const manyRows: Row[] = Array.from({ length: 40 }, (_, index) => ({ id: index + 1, value: (index + 1) * 10 }));
+
+test('preview_rows returns three rows by default', () => {
+  const preview = previewRows(manyRows, {});
+  assert.equal(preview.rows.length, 3);
+  assert.deepEqual(preview.rows.map((r) => r.id), [1, 2, 3]);
+});
+
+test('the model may ask for up to five rows, and no more', () => {
+  assert.equal(previewRows(manyRows, { limit: 5 }).rows.length, 5);
+  assert.equal(previewRows(manyRows, { limit: 1 }).rows.length, 1);
+  assert.throws(
+    () => previewRows(manyRows, { limit: 50 }),
+    /between 1 and 5/,
+    'the ceiling belongs to the tool, not to the model',
+  );
+});
+
+test('an unusable limit is refused with a message that says what is allowed', () => {
+  for (const limit of [0, -3, 2.5]) {
+    assert.throws(() => previewRows(manyRows, { limit }), /integer between 1 and 5/);
+  }
+});
+
+test('the preview always starts at the first row — there is no offset to page with', () => {
+  const handlers = createToolHandlers({ rows: manyRows });
+  assert.throws(
+    () => handlers.preview_rows?.({ offset: 10, limit: 5 }),
+    /'offset' is not a parameter/,
+    'silently ignoring it would let the model believe it had read rows 10-14',
+  );
+  assert.throws(() => handlers.preview_rows?.({ startAt: 10 }), /not a parameter/);
+});
+
+test('the preview reports the size of the whole table, so the model knows what it is not seeing', () => {
+  const preview = previewRows(manyRows, {});
+  assert.equal(preview.rowCount, 40);
+  assert.equal(preview.truncated, true);
+
+  const whole = previewRows(manyRows.slice(0, 2), {});
+  assert.deepEqual(whole.rows.map((r) => r.id), [1, 2]);
+  assert.equal(whole.rowCount, 2);
+  assert.equal(whole.truncated, false, 'nothing is being withheld');
+});
+
+test('a short or empty table returns what there is rather than throwing', () => {
+  assert.equal(previewRows([], {}).rows.length, 0);
+  assert.equal(previewRows([], {}).rowCount, 0);
+  assert.equal(previewRows([], {}).truncated, false);
+  assert.equal(previewRows([{ only: 'row' }], { limit: 5 }).rows.length, 1);
+});
+
+test('the preview returns the rows as they are, keys and values untouched', () => {
+  const preview = previewRows(rows, {});
+  assert.deepEqual(preview.rows[0], rows[0], 'no reshaping, no coercion, no added columns');
+  assert.equal(preview.rows[0] === rows[0], true, 'and not a copy that could drift');
+});
+
+test('createToolHandlers exposes preview_rows alongside the rest', () => {
+  const handlers = createToolHandlers({ rows: manyRows });
+  const preview = handlers.preview_rows?.({ limit: 2 }) as { rows: Row[] };
+  assert.deepEqual(preview.rows.map((r) => r.id), [1, 2]);
 });

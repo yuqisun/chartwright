@@ -172,6 +172,54 @@ export type QueryOptions = {
   previewRowCount?: number;
 };
 
+/**
+ * A bounded, read-only look at the table itself.
+ *
+ * `rowCount` is the size of the COMPLETE table, as in `QuerySummary`, so the model
+ * knows how much it is not seeing. `rows` is always the *first* rows in the order
+ * the caller gave them.
+ */
+export type RowPreview = {
+  rowCount: number;
+  rows: Row[];
+  /** True when `rows` is shorter than `rowCount`. */
+  truncated: boolean;
+};
+
+/**
+ * How many rows the model gets, and the hard ceiling on asking for more.
+ *
+ * The default matches `run_query`'s preview, so the model sees the same amount of
+ * the table in either mode. The ceiling is the tool's, not a preference: a caller
+ * cannot raise it and the model cannot argue for it.
+ */
+const PREVIEW_DEFAULT_ROWS = 3;
+const PREVIEW_MAX_ROWS = 5;
+
+/**
+ * The first few rows, verbatim.
+ *
+ * Deliberately the *first* rows and nothing else — there is no offset parameter
+ * and no way to reach a different window, so calling this repeatedly cannot walk a
+ * table. That is what keeps a row-level tool from becoming a row-*reading* tool,
+ * which the design refuses (see `docs/roadmap.md`). It is also why an unrecognised
+ * parameter is an error rather than something quietly ignored: a model that asked
+ * for rows 10–14 and got rows 0–4 without being told would go on to reason about
+ * data it never saw.
+ */
+export function previewRows(rows: Row[], options: { limit?: number } = {}): RowPreview {
+  const limit = options.limit ?? PREVIEW_DEFAULT_ROWS;
+  if (!Number.isInteger(limit) || limit < 1 || limit > PREVIEW_MAX_ROWS) {
+    throw new Error(
+      `preview_rows limit must be an integer between 1 and ${PREVIEW_MAX_ROWS}` +
+        `${options.limit === undefined ? '' : ` (got ${JSON.stringify(options.limit)})`}`,
+    );
+  }
+
+  const preview = rows.slice(0, limit);
+  return { rowCount: rows.length, rows: preview, truncated: preview.length < rows.length };
+}
+
 /** Executes a transform plan over every row and splits the result into two views. */
 export function runQuery(rows: Row[], steps: TransformStep[], options: QueryOptions = {}): QueryResult {
   const previewRowCount = options.previewRowCount ?? 3;
@@ -340,16 +388,35 @@ const SUBMIT_PRESENT: ToolDef = {
   parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
 };
 
+const PREVIEW_ROWS: ToolDef = {
+  name: 'preview_rows',
+  description:
+    'Look at the first few actual rows of the table — up to five — to see the values themselves rather than a ' +
+    'summary of them. Read only: this cannot change the data. It always returns the FIRST rows, in the order ' +
+    'the caller gave them, so there is no way to page through the table.',
+  parameters: {
+    type: 'object',
+    properties: {
+      limit: { type: 'integer', minimum: 1, maximum: 5, description: 'How many rows, up to five. Defaults to 3.' },
+    },
+    additionalProperties: false,
+  },
+};
+
 /**
  * The tool surface of a run.
  *
  * Present mode's list is shorter for one reason: every tool that could change the
  * caller's rows is absent, so the capability is not there to be argued into. `ask`
  * is the default everywhere, so an existing caller sees no change.
+ *
+ * `preview_rows` is present-mode only. In `ask` mode the model already gets a
+ * three-row preview from `run_query`'s summary, and keeping that list short is
+ * deliberate; adding it to both modes later is a one-line change if the need shows.
  */
 export function buildToolDefs(mode: ToolMode = 'ask'): ToolDef[] {
   return mode === 'present'
-    ? [DESCRIBE_TABLE, SUBMIT_PRESENT]
+    ? [DESCRIBE_TABLE, PREVIEW_ROWS, SUBMIT_PRESENT]
     : [DESCRIBE_TABLE, RUN_QUERY, SUBMIT_ASK];
 }
 
@@ -368,6 +435,23 @@ export type ToolHandler = (args: unknown) => unknown;
 export function createToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
   return {
     describe_table: (args) => describeTable(ctx.rows, { ...ctx.profile, ...(args as ProfileOptions | undefined) }),
+    preview_rows: (args) => {
+      const provided = (args ?? {}) as Record<string, unknown>;
+      // Strict on purpose. This tool hands over real values, and the one guarantee
+      // that keeps it safe is that it can only ever return the first rows; a
+      // parameter it ignored — an offset, a sort — would break that quietly.
+      for (const key of Object.keys(provided)) {
+        if (key !== 'limit') {
+          throw new Error(
+            `preview_rows: '${key}' is not a parameter. It takes only 'limit' (1-${PREVIEW_MAX_ROWS}), and ` +
+              'always returns the first rows of the table.',
+          );
+        }
+      }
+      // A non-numeric limit is passed through so previewRows can refuse it out loud
+      // rather than falling back to the default and looking like it worked.
+      return previewRows(ctx.rows, { limit: provided.limit as number | undefined });
+    },
     run_query: (args) => {
       const steps = (args as { steps?: TransformStep[] }).steps;
       if (!Array.isArray(steps)) throw new Error('run_query needs a "steps" array');
