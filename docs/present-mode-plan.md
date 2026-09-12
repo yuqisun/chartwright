@@ -170,7 +170,8 @@ and are authoritative.
 **Status: done.** 88 library tests pass. The merge lives in `prompt.ts`
 (`applyColumnDescriptions`) rather than inline in `ask()`, so "unknown names are
 ignored, a declared type wins" is unit-testable without going through a whole `ask()`.
-One thing this task turned out to need: `docs/using-chartwright.md` section 8 answers
+One thing this task turned out to need: `docs/using-chartwright.md`'s "What the model
+sees" section answers
 "what leaves my process?", and descriptions change that answer — the caller's own words
 now travel to the provider — so that clause landed here rather than waiting for task 6.
 
@@ -217,7 +218,7 @@ they are docs the task did not mention and both would have gone stale:
   to choose, present mode only, over a table handed over to be drawn — but the refused
   row now says exactly that, or it reads as a rule the design broke.
 - it is a new way for row *values* to leave the process, so
-  `docs/using-chartwright.md` section 8 had to say so, along with the fact that
+  `docs/using-chartwright.md`'s "What the model sees" section had to say so, along with the fact that
   `profile: { sampleValues: 0 }` does **not** switch it off. That gap is recorded as
   item 20 in `docs/roadmap.md` rather than decided here.
 
@@ -471,6 +472,20 @@ left is the part that only becomes true once this mode exists:
   because no reachable tool changes the data.
 
 **Commit:** `docs: present mode in the example and the consumer guide`
+
+**Status: done, with one caveat that matters.** The example now has the two demos behind
+one switch, and the present one passes `present: true`, the two optional descriptions
+from task 2, and reads the `run_query` verdict off `result.trace` rather than asserting
+what the library does. The guide has a "Two modes" section (before "What you get back",
+which renumbered the sections after it — no prose referred to them by number, and the two
+places that did now refer to the section by name, because a name does not rot).
+
+Caveat: **the example was typechecked, not run.** No browser and no `npm` in the
+environment this was written in, so the demo's runtime behaviour — the switch, the
+verdict line, the request actually going out — is unverified until someone opens it. The
+library side has 117 tests; the example has its 6 proxy tests and `tsc`. That gap is
+roadmap P0 item 4, which is about visual behaviour being asserted nowhere, and this adds
+one more thing to it rather than closing it.
 
 ---
 

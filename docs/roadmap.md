@@ -37,11 +37,18 @@ with the same deterministic comparator as `top_k`.
 `top_k` **includes ties at the boundary** (four rows tied for 3rd are all "top 3"),
 `rank` is **positional** (value descending, then name ascending as the tiebreak).
 
+Unchanged by present mode, and worth saying because the mode makes it look solved:
+`top_k` still works there — the compiler ranks internally, so "highlight the top three"
+is expressible however the rows are ordered — but a *visually ranked* chart depends on
+the order the caller delivered. Present mode does not sort, by design, so the ranking is
+the caller's `ORDER BY` or there is none.
+
 ### 2. `emphasis` cannot name a colour
 
 Only two tones exist (`highlight` → `#e8590c`, `muted` → `#c9ced6`), so
 "highlight top 3 **in yellow**" silently produces orange. The word is dropped
-with no signal.
+with no signal. Unchanged by present mode: a tone is still the only thing a spec can
+say, and the backend still picks the colour.
 
 **Decided direction:** add an optional **named** colour — closed set, resolved by
 the backend, e.g. `style: { tone, color?: 'yellow' | 'red' | 'green' | 'blue' | 'orange' | 'grey' }`.
@@ -51,12 +58,17 @@ carry. Free-form hex and arbitrary styling stay refused.
 ### 3. A request we cannot honour must make a sound
 
 The pattern behind gaps 1 and 2: the user asks for something the spec cannot
-express and the chart is drawn anyway. Three cases, with three different fixes:
+express and the chart is drawn anyway. Four cases, with four different fixes:
 
 - **The pipeline can detect it.** A rejected chart type, a plan refused for
   `limit` without `sort`, an emphasis rule that matches nothing — all already
   surface in `AskResult.warnings` and go back to the model as tool results. Keep
-  doing this for every new rule.
+  doing this for every new rule. **As of the present-mode work this is the whole
+  submission path, not a list of cases:** the loop hands every submission to the
+  compiler before accepting it (`src/submit.ts`), so anything the compiler refuses
+  becomes a rejected submission the model can repair in the same run, rather than an
+  exception reaching the caller after the model has gone. A new compiler rule needs
+  no second implementation to be delivered this way — which is the point.
 - **Only the model knows.** "Highlight it in yellow" and "the 1st and 3rd" are
   invisible to the pipeline: nothing in the submitted spec says the requirement
   was dropped. This part can only be fixed at the prompt level — instruct the
@@ -141,6 +153,13 @@ failure modes are collectable.
 Specifically worth checking after real use: does the model reliably sort before
 limiting, choose `orientation: horizontal` for long labels, and use `emphasis`
 instead of naming a category it saw in a preview?
+
+And one question left open on purpose: in present mode, does the model find
+`preview_rows` at all? The tool list and its description carry it, but the prompt does
+not mention it — deliberately, so the model is not nudged towards raw values. If real
+runs show it never previews, and so misses a grain problem it could have seen, that is
+the evidence to add one line. Without a run to look at, adding it now would be guessing,
+which is what this item exists to avoid.
 
 ### 10. Provider convenience for Node consumers
 

@@ -61,9 +61,21 @@ re-aggregating would corrupt — an average, a distinct count, a maximum, a rati
 
 ## What the app shows after a request
 
+The page has **two demos**, and they differ by one prop:
+
+- **Ask the data** — 800 raw executions, the model investigates with tools and shapes the
+  table with a query plan;
+- **Present a result** — a twelve-row table a query already produced: grouped, ranked,
+  carrying an average and a distinct count. The model chooses how to draw it and has no
+  tool that could change it (`present: true`).
+
+Both then show:
+
 - **progress events** as the agent works (rounds, tool calls, results) — this is
   why a non-streaming client still never leaves the user staring at nothing;
 - the **chart**, from `result.options`;
+- a **query tool** verdict, read off `result.trace`: `not called`, `refused ×n`, or
+  `ran ×n`. In the present demo it should never say `ran`;
 - the **dataset that was plotted** (`result.dataset`) — bound into the chart here, in
   this tab. The model never received it as a payload; at most it saw a preview of the
   first rows, and what else leaves is a profile of the columns;

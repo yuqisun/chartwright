@@ -1,9 +1,9 @@
-import type { AgentEvent, AskResult } from 'chartwright';
+import type { AgentEvent, AskResult, Row } from 'chartwright';
 import { createChartwright } from 'chartwright';
 import { useRef, useState } from 'react';
 
 import { ChartView } from './components/ChartView';
-import { rows } from './data';
+import { counterpartySummary, rows } from './data';
 import { createBrowserClient } from './llm/browserClient';
 
 /**
@@ -17,12 +17,72 @@ import { createBrowserClient } from './llm/browserClient';
  */
 const chartwright = createChartwright({ llm: createBrowserClient() });
 
-const PRESETS = [
+const ASK_PRESETS = [
   'Which 10 counterparties have the largest traded notional?',
   'How has monthly traded notional developed, split by asset class?',
   'Which venues have the most failed settlements?',
   'What share of total notional does each asset class represent?',
   'Show the top counterparties and fade the rest so the big three stand out',
+];
+
+const PRESENT_PRESETS = [
+  'Which counterparty traded the most notional?',
+  'Chart the traded notional by counterparty',
+  'Which counterparty pays the highest commission?',
+  'Keep the ranking, but fade everything except the top three',
+];
+
+/**
+ * The two demos differ in one prop.
+ *
+ * `ask` hands over 800 raw executions and lets the model shape them with queries.
+ * `present` hands over a result the caller already produced — grouped, ranked, final —
+ * and the model has no tool that can change it.
+ */
+type Demo = {
+  id: 'ask' | 'present';
+  label: string;
+  blurb: string;
+  rows: Row[];
+  presets: string[];
+  present: boolean;
+  /** The caller's own words about the table, and about any column that misleads. */
+  dataDescription?: string;
+  columns?: Array<{ name: string; description?: string }>;
+};
+
+const DEMOS: Demo[] = [
+  {
+    id: 'ask',
+    label: 'Ask the data',
+    blurb:
+      '800 raw post-trade executions. The model investigates with tools, shapes the table with a query plan, ' +
+      'and the compiler binds the result into the chart.',
+    rows,
+    presets: ASK_PRESETS,
+    present: false,
+  },
+  {
+    id: 'present',
+    label: 'Present a result',
+    blurb:
+      'Twelve rows a query already produced: grouped by counterparty, ranked by notional, with an average and a ' +
+      'distinct count in them. It chooses how to draw this table — and has no tool that could change it.',
+    rows: counterpartySummary,
+    presets: PRESENT_PRESETS,
+    present: true,
+    // Descriptions are optional, and this is the case they exist for: nothing in the
+    // values says that one column is an average and another is a count of distinct
+    // venues, and a model that assumes otherwise would recompute them.
+    dataDescription: 'One row per counterparty, already aggregated and ranked by traded notional descending.',
+    columns: [
+      { name: 'notional_usd', description: 'Sum over that counterparty’s trades. Additive.' },
+      { name: 'avg_commission_bps', description: 'Average commission in basis points. NOT additive.' },
+      { name: 'distinct_venues', description: 'How many different venues that counterparty used. NOT additive.' },
+      { name: 'largest_trade_usd', description: 'The largest single trade. A maximum, not a sum.' },
+      { name: 'settled_share_pct', description: 'Settled as a percentage of that counterparty’s trades.' },
+    ],
+  },
 ];
 
 /** One line of human-readable progress per agent event. */
@@ -45,13 +105,41 @@ function describeEvent(event: AgentEvent): string {
   }
 }
 
+/**
+ * What `run_query` did, read off the trace rather than asserted.
+ *
+ * The interesting outcome in present mode is not "the model behaved" but "it tried and
+ * could not", which is only visible if the attempt is traced — so the UI reports the
+ * trace it was given instead of a claim about how the library behaves.
+ */
+function queryToolVerdict(trace: AskResult['trace']): string {
+  const attempts = trace.filter((entry) => entry.tool === 'run_query');
+  if (attempts.length === 0) return 'not called';
+  const refused = attempts.every((entry) => {
+    const result = entry.result as { error?: unknown; summary?: unknown } | undefined;
+    return result?.error !== undefined && result.summary === undefined;
+  });
+  return refused ? `refused ×${attempts.length}` : `ran ×${attempts.length}`;
+}
+
 export function App() {
-  const [query, setQuery] = useState(PRESETS[0] as string);
+  const [demoId, setDemoId] = useState<Demo['id']>('ask');
+  const demo = DEMOS.find((candidate) => candidate.id === demoId) ?? (DEMOS[0] as Demo);
+  const [query, setQuery] = useState(demo.presets[0] as string);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string[]>([]);
   const [result, setResult] = useState<AskResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  /** Switching demos starts over: a transcript from the other one would be noise. */
+  function switchTo(next: Demo) {
+    setDemoId(next.id);
+    setQuery(next.presets[0] as string);
+    setResult(null);
+    setProgress([]);
+    setError(null);
+  }
 
   async function ask(followUp: boolean) {
     setBusy(true);
@@ -64,7 +152,11 @@ export function App() {
     try {
       const asked = await chartwright.ask({
         query,
-        rows,
+        rows: demo.rows,
+        // The one prop that separates the two demos.
+        present: demo.present,
+        dataDescription: demo.dataDescription,
+        columns: demo.columns,
         // Stateless follow-ups: hand the previous transcript back.
         messages: followUp && result ? result.messages : undefined,
         sessionId: result?.sessionId,
@@ -90,13 +182,40 @@ export function App() {
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 1040, margin: '0 auto', padding: 24 }}>
       <h1 style={{ marginBottom: 4 }}>chartwright — React + Highcharts</h1>
       <p style={{ color: '#555', marginTop: 0 }}>
-        Ask a question about 800 synthetic post-trade records. The model investigates with local tools; the browser
-        never holds an API key, and what leaves this tab is a profile plus the rows the model asks to preview — not
-        the table.
+        The browser never holds an API key, and what leaves this tab is a profile plus the rows the model asks to
+        preview — not the table.
+      </p>
+
+      <section style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        {DEMOS.map((candidate) => (
+          <button
+            key={candidate.id}
+            onClick={() => switchTo(candidate)}
+            disabled={busy}
+            style={{
+              padding: '8px 14px',
+              fontSize: 14,
+              cursor: 'pointer',
+              fontWeight: candidate.id === demo.id ? 600 : 400,
+              border: `1px solid ${candidate.id === demo.id ? '#0969da' : '#c9d1d9'}`,
+              background: candidate.id === demo.id ? '#ddf4ff' : 'transparent',
+              borderRadius: 6,
+            }}
+          >
+            {candidate.label}
+          </button>
+        ))}
+      </section>
+
+      <p style={{ color: '#555', marginTop: 0, marginBottom: 12 }}>
+        {demo.blurb}{' '}
+        {demo.present ? (
+          <strong>Nothing the model does can change these numbers or this order.</strong>
+        ) : null}
       </p>
 
       <section style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        {PRESETS.map((preset) => (
+        {demo.presets.map((preset) => (
           <button
             key={preset}
             onClick={() => setQuery(preset)}
@@ -175,9 +294,18 @@ export function App() {
           <section style={{ display: 'flex', gap: 24, flexWrap: 'wrap', margin: '16px 0' }}>
             <Stat label="plotted rows" value={result.dataset.length} />
             <Stat label="tool calls" value={result.trace.length} />
+            <Stat label="query tool" value={queryToolVerdict(result.trace)} />
+            <Stat label="plan steps" value={result.spec.transform_plan?.steps.length ?? 0} />
             <Stat label="warnings" value={result.warnings.length} />
-            <Stat label="session" value={result.sessionId.slice(0, 8)} />
           </section>
+
+          {demo.present && (
+            <p style={{ color: '#555', fontSize: 13, marginTop: 0 }}>
+              Read off <code>result.trace</code>, not asserted by the UI: no <code>run_query</code> produced a table
+              here, and the spec&rsquo;s plan is empty — so the chart is exactly the rows above, in the order they
+              arrived.
+            </p>
+          )}
 
           <details>
             <summary style={{ cursor: 'pointer', fontWeight: 600 }}>

@@ -173,7 +173,93 @@ to grow. `sessionId` is an opaque correlation id.
 **a non-streaming client still shows progress** — it never leaves the user
 staring at nothing. `signal` (an `AbortSignal`) cancels a run in flight.
 
-## 6. What you get back
+## 6. Two modes: chart a question, or chart a result
+
+`ask()` does one of two jobs, and one boolean picks which.
+
+**Default — the model investigates.** You hand over a table and a question. The model
+profiles the data, runs declarative queries over it, and submits a spec; the compiler
+binds the result into the chart. This is the mode for "which counterparties are
+biggest?" when all you have is the raw table.
+
+**`present: true` — the model presents.** You hand over rows you have already produced:
+your own `GROUP BY`, your own `ORDER BY`, the numbers you intend to show. The model
+chooses how to draw them and nothing else.
+
+```ts
+const result = await chartwright.ask({
+  query: 'which counterparty traded the most notional?',
+  rows: myAggregatedResult,      // already grouped and ranked, by your own query
+  present: true,
+});
+```
+
+### What `present` guarantees
+
+Not by instruction — by the tool list. In this mode the model is offered
+`describe_table`, `preview_rows` and `submit_spec` and nothing else: there is no
+aggregate, filter, sort, limit, derive or time binning it could call. A call for a tool
+it was not offered is refused before any implementation is reached.
+
+So, concretely:
+
+- `result.spec.transform_plan.steps` is always `[]`;
+- `result.dataset` is the rows you passed, in the order you passed them, unchanged;
+- `result.options` is drawn from those rows, so any ranking on the chart is **your**
+  ranking. Put the `ORDER BY` in your own query, which is where it belongs; the library
+  will not second-guess it.
+
+### What the model still decides
+
+The chart type, the title, which column is x and which is the measure, the orientation,
+and any `emphasis` — "highlight the top three" is a condition it declares and the
+compiler evaluates against your rows. That is most of what makes a chart readable, and
+it is the reason to use this rather than a fixed chart template.
+
+### When it cannot do what you asked
+
+Two honest failures, both of which say so instead of drawing something else:
+
+- **Your table is finer-grained than the chart the model picked.** If two rows share the
+  value it chose for x — a result grouped by country *and* asset class, charted by
+  country — it cannot add them up. It is refused, told which column distinguishes those
+  rows, and asked to put that in `encodings.series`; usually it does, and the only trace
+  you see is a warning.
+- **The request needs aggregation.** "Total by region" over a table with no such column
+  is not something this mode can do. That is `ask` mode, where the model has `run_query`.
+
+Anything the compiler refuses is handed back to the model **while it is still running**,
+so a fixable submission gets fixed rather than turning into an exception for you to
+handle.
+
+### Descriptions, when the values cannot speak for themselves
+
+Optional, never required. A pre-aggregated table is where they earn their place, because
+the numbers cannot say what they mean:
+
+```ts
+const result = await chartwright.ask({
+  query: 'which counterparty pays the highest commission?',
+  rows: summary,
+  present: true,
+  dataDescription: 'One row per counterparty, already aggregated and ranked by notional.',
+  columns: [
+    { name: 'avg_commission_bps', description: 'Average commission. NOT additive.' },
+    { name: 'distinct_venues', description: 'How many venues it used. NOT additive.' },
+    { name: 'trade_id', type: 'string', description: 'An identifier, not a quantity.' },
+  ],
+});
+```
+
+A declared `type` overrides inference — only you know that an all-digit `trade_id` is an
+identifier — and it is used in the prompt *and* by `describe_table`, so the model is not
+told two different things about one column. A name that is not in your rows is ignored
+rather than invented.
+
+This text goes to the provider with the request: it is the one part of the prompt that
+is yours. See "What the model sees" below.
+
+## 7. What you get back
 
 | Field | What it is | What it is for |
 |---|---|---|
@@ -197,7 +283,7 @@ const again = compileToHighcharts(result.spec, rows);
 
 That is what makes golden tests, diffs and audit possible.
 
-## 7. Supported today
+## 8. Supported today
 
 `chart.type` accepts **`bar`**, **`line`**, **`pie`**. Anything else is rejected
 with a clear error — and because the rejected spec goes back to the model inside
@@ -213,7 +299,7 @@ Known expressiveness boundaries (they return a warning rather than a lie):
 - sorting is the plan's job: "the largest 5" **must** sort before limiting, and a
   plan that does not is refused.
 
-## 8. What the model sees
+## 9. What the model sees
 
 The model never receives your table. It receives:
 
@@ -251,7 +337,7 @@ which has no off switch today. If you need the preview to be zero, that is a dec
 to make deliberately rather than by setting a profiling option; both it and the
 reasoning are recorded in `docs/roadmap.md`.
 
-## 9. Budgets are yours to set
+## 10. Budgets are yours to set
 
 Out of the box the library imposes **no limits** — it is a library, not a policy
 engine. If you want guard rails:
@@ -265,7 +351,7 @@ but keeps going. A model that talks without ever calling `submit_spec` is stoppe
 after one nudge and reported as `AgentGaveUpError` (its own words are on
 `.explanation`), so `ask()` always terminates.
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Cause |
 |---|---|
@@ -279,26 +365,30 @@ after one nudge and reported as `AgentGaveUpError` (its own words are on
 | `"limit: N" follows an aggregate with no "sort" in between` | "Top N" without an ordering; the model is told to sort first |
 | `sort field 'X' is not in the table` | A typo'd column the model invented |
 
-## 11. API surface at a glance
+## 12. API surface at a glance
 
 ```ts
 // The agent layer
 createChartwright(options)            // → { ask(request) }
 runAgentLoop(options)                 // the loop on its own, if you want to drive it
 AgentGaveUpError                      // thrown when the model cannot produce a chart
-buildSystemPrompt() / buildUserPrompt(query, dataset)   // inspect what it sends
+buildSystemPrompt(mode?) / buildUserPrompt(query, dataset)   // inspect what it sends
+buildToolDefs(mode)                   // the tool surface of a run: 'ask' or 'present'
 
 // The deterministic layer (no LLM involved)
 compileToHighcharts(spec, rows)       // → { options, dataset, warnings }
 materialize(spec, rows)               // → the table the plan produces
 applyTransform(rows, steps)           // the engine, step by step
+findCategoryCollision(rows, encodings) // two rows competing for one category, as data
 isSupportedChartType(type) / SUPPORTED_CHART_TYPES
 
 // The local tools (usable without the agent, if you want your own orchestration)
-describeTable(rows, options?)         // profile: aggregates only
+describeTable(rows, options?, declared?)  // profile: aggregates only
+previewRows(rows, { limit })          // the first rows, bounded
 runQuery(rows, steps, options?)       // → { table, summary }
 createToolHandlers(context)           // name → handler, bound to one dataset
-TOOL_DEFS                             // the tool schemas the model is given
+applyColumnDescriptions(inferred, declared) // the caller's word on its own columns
+TOOL_DEFS                             // the natural-language tool schemas
 inferColumns(rows)                    // names + types, no values
 binDate(value, granularity)
 ```
