@@ -17,6 +17,18 @@ and `docs/present-mode-plan.md`, and to be committed with them.
 > (who runs the gates?) into the plan, and adds the four things the review showed
 > were missing entirely: theme, layout, bundle budget and options typing. What was
 > accepted, and what was rebutted, is recorded in **Review history** at the end.
+>
+> **v3 — scope committed, decisions recorded.** The owner has read v2 and decided
+> (§9 has the register): **commit to Rung 3** — the ~36 types reachable by the end of
+> P2 — with Rungs 4 and 5 as *triggered* work rather than promises; **dual-axis combo
+> charts are a confirmed requirement**, so they are now a P1 closing item with their
+> own design and three correctness rules (§3.4) rather than a one-line "P2 add-on";
+> and **flint is settled** — reimplement its three useful conventions, do not take
+> the dependency, with the measured package sizes recorded so the question is not
+> re-litigated (§6). The one thing the commitment does not cover — a consumer who
+> adopts, then discovers a gap — gets its own mechanism in **§5.8**: the boundary is
+> queryable, the refusal is loud and suggests the nearest alternative, and rejected
+> requests are counted, so Rung 4 and 5 become evidence-driven rather than guessed.
 
 ## Why
 
@@ -130,6 +142,25 @@ project can adopt this". Every entry is either delivered by a named phase or cal
 out as blocked — v1 listed "combo with a second axis" and "sparkline" here while
 §3 provided neither, which is the kind of gap the review was right to reject.
 
+**The commitment is a rung, not a ceiling.** The owner's decision is Rung 3: the
+~36 types reachable by the end of P2. Rungs 4 and 5 are not refused — they are
+*triggered*, and §5.8 says what triggers them. The reason to be explicit about this
+is the fear that produced the whole document: a consumer adopts, then discovers the
+library cannot draw what they need. A promise of "48 types eventually" does not fix
+that; a *known, queryable, dated* boundary does.
+
+| Rung | Phases | Types | Cumulative units | Calendar | What it is worth |
+|---|---|---|---|---|---|
+| 0 | today | 3 | — | — | — |
+| 1 | P0a+P0b | 3 | ~2.2 | ~1 week | **No user-visible gain.** Buys the property that every later step is cheap and cannot fail silently |
+| 2 | +P1 | ~23 | ~6.8 | ~3.5 weeks | The first rung with adoption value: theme, layout, heatmap, stacking, sparkline, **dual-axis combo** |
+| **3** | **+P2 (committed)** | **~36** | **~10.3** | **~5 weeks** | **The commitment.** scatter, bubble, ranges, boxplot, waterfall, and 12 of the bar's 15 rows |
+| 4 | +P3 | 48 | ~13.8 | ~7 weeks | treemap/sunburst/treegraph, sankey and the flow family, histogram/pareto — **triggered** |
+| 5 | +P4 | 59 | ~16.3 | ~8.5 weeks | OHLC/candlestick family, gantt/timeline — **triggered; require a licence check** |
+
+Rungs 4 and 5 are additive: nothing before them has to be revisited to reach them,
+which is what the per-kind mapper strategy in §3.1 was for.
+
 | Wanted | Delivered by |
 |---|---|
 | column / bar / line / spline / area / areaspline | P1 (family A) |
@@ -142,11 +173,11 @@ out as blocked — v1 listed "combo with a second axis" and "sparkline" here whi
 | range band (`arearange`) | P2 (family C) |
 | boxplot | P2 in **present mode** (the caller's SQL has the percentiles); ask mode needs §3's percentile addition |
 | waterfall | P2 (family C — the compiler already accumulates) |
-| treemap | P3 (family J) |
-| sankey | P3 (family K) |
+| treemap | **Rung 4** (family J) — triggered, §5.8 |
+| sankey | **Rung 4** (family K) — triggered, §5.8 |
 | sparkline | P1 (`chart.compact` modifier — no axes, no legend, no title) |
-| **combo with a second axis** | **P2 add-on**: needs `encodings.y2` + `axes.y2`. Not free, and v1 should not have implied it was |
-| gantt / timeline | **licence-gated** (§7 R11) — not part of the bar until that is answered |
+| **dual-axis combo** | **P1, closing item** — a **confirmed requirement**, not a nice-to-have (§3.4): `y`/`y2` channels, two labelled axes, bar+line by default |
+| gantt / timeline | **Rung 5** — triggered; needs a licence check (§7 R11) |
 
 ## 2. What the probes changed
 
@@ -233,7 +264,7 @@ are derived by the backend. The collision rule generalises: one row per
 **But the submit path must change with it** (§Evidence): `validateSpec` requires x
 and y for every type today, so `required` belongs in the declaration table.
 
-## 3. Proposed spec surface (v2)
+## 3. Proposed spec surface
 
 Nothing here is library vocabulary. The test each addition must pass: **could a
 reader who has never heard of Highcharts audit this spec?** If not, it belongs in
@@ -332,7 +363,7 @@ that is not here is a reason that family is not yet reachable.
 | `encodings.size` | `Encoding` | bubble, packedbubble, wordcloud | P2 |
 | `encodings.direction` | `Encoding` | `vector`, `windbarb` | P3 (with family O) |
 | `encodings.width`, `encodings.target` | `Encoding` | `variwide`, `bullet` | P2 |
-| `encodings.y2` + `axes.y2` | `Encoding` | **combo charts** — the adoption bar's last gap | P2 add-on |
+| `encodings.y2`, `chart.type2` | `Encoding`, a mark name | **dual-axis combo — a confirmed requirement**, §3.4 | **P1 (closing item)** |
 | `data.shape: 'links'` + `from`/`to`/`value` | explicit shape, with its own three fields — an edge sits on no axis, so it is not a channel | sankey family (6) | P3 |
 | `data.shape: 'hierarchy'` | a list of group-by levels | treemap family (3) | P3 |
 
@@ -357,6 +388,62 @@ refused or deferred by name.
 | node attributes for `organization`/`networkgraph` (`size`/`color` per node) | **deferred** — links v1 supports `from`/`to`/`value` only; nodes are derived, and derived nodes take their styling from the backend |
 | geo geometry / tile URLs (`map`, `geoheatmap`, `tiledwebmap`) | **refused** — a second data source (§4) |
 | icon resources (`item`, `pictorial`) | **refused** — same reason |
+
+### 3.4 Dual-axis combo — a confirmed requirement, with three rules
+
+```ts
+encodings: {
+  x:  { field: 'counterparty' },
+  y:  { field: 'notional_usd' },        // primary measure -> left axis
+  y2: { field: 'avg_commission_bps' },  // secondary measure -> right axis
+},
+chart: {
+  type:  'bar',    // how y is drawn
+  type2: 'line',   // how y2 is drawn; defaults to 'line'
+}
+```
+
+Axis assignment is **implied by the channel** (`y` → left, `y2` → right), so no
+`axis` field is needed and no library word enters the spec: `bar` and `line` are
+already our vocabulary, and "which way the bars point" stays `chart.orientation`.
+
+**Why this is committed rather than deferred.** The example's own present-mode table
+is a dual-axis dataset: `notional_usd` is ~10⁹ while `avg_commission_bps` is single
+digits — a **magnitude gap of 10⁹**, which is the textbook case for a second axis
+(put both on one axis and the commission line is flat at zero). The owner confirmed
+this is a real requirement, and today "show notional and commission together" has no
+expression at all — which is exactly why every preset in `App.tsx` asks for one
+measure at a time and the gap stayed invisible.
+
+Three rules, because each prevents a silent wrong answer:
+
+1. **Series are named after their measure field** (`notional_usd`,
+   `avg_commission_bps`). That is what makes the legend readable, and it is also what
+   keeps the datum key unique: with two measures sharing one category, a key of
+   (category, series) is distinct only if the two measures' series names differ.
+   Otherwise `top_k` on the secondary measure would also style the primary bar in
+   that category — the same failure mode as §2.1's scatter key.
+2. **Both axes carry their field name as their title**, and with `y2` present the
+   title is *required* rather than optional. Two axes are the only way to read a chart
+   with two units, so the labels are the feature, not decoration.
+3. **The misuse boundary is documented, and the library does not volunteer it.**
+   Independently scaled axes can be made to show any correlation; the backend cannot
+   prevent that. What it can do: refuse to *choose* combo unasked (one prompt line:
+   only when the request names two measures of different units, never invented),
+   label both axes, and state the risk in `docs/using-chartwright.md`.
+
+Cost: **8–9 files, ~250–350 lines (~0.6 unit ≈ 3–4 days)** — `types.ts`, the
+`validateSpec` assembler (or `y2` is **silently dropped**, the R2 trap), `tools.ts`'s
+schema, `model.ts` (a second measure on the series, named), the backend (a second
+`yAxis`, `yAxis: 1` per series, `type2`), one prompt line, tests (golden options, the
+naming/key rule, the reachability test), and docs.
+
+`series` plus `y2` on a long table splits both measures, giving 2N series and a 2N
+legend: allowed, documented, and not the normal case — a wide table is what combo is
+for, which the collision rule (one row per category) already enforces.
+
+This also gives the example app its fifth demo ("notional and commission by
+counterparty", columns + line) and the labelled selection set its first entry.
 
 ## 4. Coverage matrix — the full accounting of 71
 
@@ -557,6 +644,42 @@ At 3 types a wrong chart is traceable; at 48, triage cost is a product feature.
   `result.spec.chart.type` against a floor, and expanded whenever a real run
   misfires. That is also the evidence roadmap item 9 was waiting for.
 
+### 5.8 The boundary must be queryable, and loud
+
+The commitment in §1 is a rung, so the honest question is not "are 36 types enough"
+but "what does a consumer hit at the boundary, and when do they find out". The
+failure this section exists to prevent is the one that produced this document: they
+adopt, integrate, ship, and *then* discover a request the library cannot answer.
+
+Four mechanisms, all cheap, all in P1 except the first:
+
+1. **The support matrix is queryable, not just documented.** `CHART_TYPES` already
+   generates the schema enum and the prompt's list; it should also generate the table
+   in `docs/using-chartwright.md` §8 **and** an export (`listChartTypes()`) so a
+   consumer can print what they actually got at integration time — each type with its
+   rung, licence and `since`. A gap that is visible on day one is a scoping decision;
+   the same gap found in production is a broken promise.
+2. **A refusal names the nearest alternative.** The library already refuses rather
+   than drawing something wrong, and the model already receives the reason as a tool
+   result. What is missing is the *next step*: "OHLC is not supported; the closest is a
+   line or column chart of the same measure" — for the person reading it and for the
+   model. That turns a dead end into a decision.
+3. **The capability intersection is visible at integration time.** Declaring
+   capabilities (§5.2) yields the intersection the tool panel is built from, so a
+   consumer who declares eight types and is granted three learns it on their first run,
+   not from a support ticket.
+4. **Rejected requests are counted.** Every refusal is a data point about what is
+   actually wanted; recording `{ requested type, mode, sessionId }` on rejection is a
+   few lines, and it answers roadmap item 9's question — "which failures are real?" —
+   with observation instead of guesswork. **This is also what triggers Rungs 4 and 5**:
+   a threshold of real requests for treemap, sankey or OHLC is the evidence that pulls
+   them forward, which is precisely what the deferred rows in §4 are waiting for.
+
+Deliberately **not** proposed: the library second-guessing the user ("this table does
+not deserve a chart"). The roadmap's refused-by-design table already settles that
+presentation judgement belongs to the consumer. §5.8 is about *capability* boundaries,
+not opinions.
+
 ## 6. Phases and effort
 
 Calibrated on **shipped commits** rather than on a declined proposal. The repo's own
@@ -576,44 +699,57 @@ full feature the size of present mode is ~4 units.
 |---|---|---|---|---|
 | **P0a — single source, zero behaviour change** | `CHART_TYPES` in its own module; derive the 11 sites; `required`/`forbidden` in the validator; schema↔`validateSpec` reachability test. **Acceptance: the existing three types compile byte-identically.** | 10–14 files, ~250–400 lines (precedent `d81079e`) | ~0.7 | whether the prompt's per-type rule can move into the table without losing the model's phrasing |
 | **P0b — capability + gates** | `capabilities` (neutral, lazy, versioned) through `ask`/`tools`/`loop`; root `verify`; CI; golden harness | 10–14 files, ~600–800 lines (precedent `f701a21`) | ~1.5 | **CI and a headless runner have no precedent here** — first dev dependency, first workflow file |
-| **P1 — cheap families + theme + layout** | families A, B, G, N, and H-minus-`variablepie`; `stacking`/`polar`/`hole`/`compact`; `axes.y.range`; theme layer; layout derivation; labelled selection set; structured warnings; `explainSpec` | ~2,000 lines (present-mode scale) | ~4 | layout heuristics are judgement-heavy; the selection set's floor needs real runs to set |
-| **P2 — axes, points, ranges** | `axes.*.kind` + linear axis; `low`/`high`/`width`/`target`; `size`; scatter/bubble with §2.1's collision + key signature change; percentile for ask-mode boxplot; `y2` combo add-on; **item 21 decision executed** | ~1,800 lines | ~3.5 | the key signature change touches two consumers; the item 21 decision reaches present mode's ordering promise |
+| **P1 — cheap families + theme + layout + combo** | families A, B, G, N, and H-minus-`variablepie`; `stacking`/`polar`/`hole`/`compact`; `axes.y.range`; theme layer; layout derivation; labelled selection set; structured warnings; `explainSpec`; **dual-axis combo (§3.4) as the closing item** | ~2,300 lines (present-mode scale) | ~4.6 | layout heuristics are judgement-heavy; the selection set's floor needs real runs to set |
+| **P2 — axes, points, ranges** | `axes.*.kind` + linear axis; `low`/`high`/`width`/`target`; `size`; scatter/bubble with §2.1's collision + key signature change; percentile for ask-mode boxplot; **item 21 decision executed** | ~1,800 lines | ~3.5 | the key signature change touches two consumers; the item 21 decision reaches present mode's ordering promise |
 | **P3 — new shapes + DSL** | links (6) with the `validateSpec` change; hierarchy (3) with parent-row synthesis; numeric `bin`; `direction` for `vector`/`windbarb` | ~1,700 lines | ~3.5 | parent-row value semantics for treemap (the engine emits leaves only) |
 | **P4 — licence-gated** | `time` axis for `xrange`/`gantt`/`timeline`; `open`/`close` for the OHLC family | ~1,200 lines | ~2.5 | **blocked on the licence answer (§7 R11)** |
 | **Verification** | headless matrix, screenshot baselines, flake policy | ~400 lines + infra | ~1 | ongoing maintenance is the real cost, not the first version |
-| | **Total** | **~10,000 lines** | **~17** | **≈8–10 weeks of focused work** |
+| | **Total** | **~10,300 lines** | **~17.3** | **≈8–9 weeks of focused work** |
 
-**Twelve of §1's fifteen rows are reached at the end of P1–P2** — about 5 weeks,
-which is longer than v1's 3 weeks because v1 excluded CI, the render matrix, theme,
-layout and the selection set from its own accounting. The two remaining rows
-(treemap, sankey) land with P3 at ~7 weeks, which is also where the 48 reachable
-types stand; the licence-gated families add ~2.5 units on top of that, at ~10 weeks.
-Those extras are not optional: the reviews were right that breadth without them is
-not adoptable.
+**Twelve of §1's fifteen rows land at the end of P1–P2 — that is Rung 3, the
+committed scope, at ~5 weeks and ~10.3 units.** Longer than v1's 3 weeks because v1
+excluded CI, the render matrix, theme, layout and the selection set from its own
+accounting; the reviews were right that breadth without them is not adoptable. The
+two rows the commitment does not cover (treemap, sankey) sit in Rung 4 at ~7 weeks,
+and the OHLC/Gantt rows in Rung 5 at ~8.5 weeks — both **triggered by §5.8's
+rejected-request evidence rather than by a date.**
 
-### The decision gate that fires before P1
+### The flint question — decided (2026-09)
 
-Roadmap item 22 says to reopen the flint question at **"more than ~8 chart types"**.
-P1 crosses that line. v1 framed this as binary (self-build vs vendor the 78k-line
-pipeline) and dismissed flint on the grounds that upstream has no Highcharts backend.
-That argument shows flint does not *give* us the types; it does not show its pipeline
-is worthless. The roadmap itself records the third option:
+Roadmap item 22 says to reopen the flint decision at **"more than ~8 chart types"**.
+P1 crosses that line, so the owner settled it in advance: **read flint, reimplement the
+three conventions we want, take no dependency.**
 
-1. **Self-built grammar** — ~2–3k lines, keeps the zero-dependency promise, keeps the
-   spec ours. **Recommended**, because the coverage question is about *our* neutral
-   vocabulary, and every alternative makes someone else's spec the source of truth.
-2. **flint as a plain dependency, our spec → `ChartAssemblyInput`** — buys
-   `getCategoryOrder`, `compute-layout`, `band-dodge`, `color-decisions`, i.e. exactly
-   roadmap items 7 and 8 and the "library conventions" knowledge that produced the
-   horizontal-bar sorting bug. Costs a second spec dialect (the same drift risk as
-   R1) and a translation layer.
-3. **Vendor the pipeline** — 78k lines, publishing difficulty, no Highcharts backend
-   upstream. Not recommended.
+The evidence, measured from the published package (`flint-chart@0.5.1`, MIT, Microsoft,
+zero runtime dependencies, `sideEffects: false`, ESM with subpath exports):
 
-**Before P1**: a timeboxed spike that maps our three current types through option 2
-and compares the emitted options with what the backend produces today. The answer is
-either "the conventions are worth a dependency" or "we now know which of those
-functions to reimplement", and both are cheaper than guessing.
+| Entry | raw | gzip |
+|---|---|---|
+| `.` (everything) | 1,545 KB | 338 KB |
+| **`./core`** (the conventions) | 303 KB | **68 KB** |
+| `./echarts` | 528 KB | 109 KB |
+| `./chartjs` | 308 KB | 63 KB |
+| `./vegalite` | 724 KB | 171 KB |
+
+Three reasons this is the right call:
+
+1. **It would not answer the question that matters.** flint's backends are Vega-Lite,
+   ECharts, Chart.js, Plotly and Excel — **there is no Highcharts backend**, so
+   bundling it adds no chart type to this library.
+2. **68 KB gzip buys three functions**, and using them means translating our neutral
+   model into flint's input — two data shapes at once, which is R1's drift risk with a
+   dependency attached.
+3. **The judgement is the valuable part, not the code.** What we want is when a label
+   rotates, how categories are ordered, how colours spread across series. That is a P1
+   task of its own: read those three modules, write down the rules, implement them in
+   our backend in ~300–600 lines, credited the way the README's Prior art section
+   already credits `flint-chart` and `deepseek-harness`.
+
+The option stays open: if that reimplementation ends up fighting flint's maturity —
+roadmap item 4's rendering gap and item 8's layout gap are exactly what flint solved —
+the dependency can be revisited with `./core`'s 68 KB as the known price. Also noted:
+flint publishes `flint-chart-mcp`, an MCP server doing compile/validate/render, which is
+roadmap item 19's shape and worth reading when that item moves.
 
 ## 7. Risks
 
@@ -629,8 +765,10 @@ functions to reimplement", and both are cheaper than guessing.
 | R8 | Model choice quality falls as the type list grows | No few-shot examples, deliberately (item 9); 48 types with no selection corpus is worse than 3 | Capability-scoped panel; the labelled selection set in CI (§5.7) with a hit-rate floor |
 | R9 | Sprawl in `model.ts` (248 lines) and `tools.ts` (486 lines) | They are already the largest files in the library | `CHART_TYPES` in its own module; per-type knowledge stays in `backends/`; per-kind mapper strategy rather than per-type branches |
 | R10 | Version skew between our mapping and the consumer's Highcharts | The 71/8/`module` facts are 12.6.0 facts; a v11 or v13 consumer has a different registry, and `available` ≠ `renderable` | Declared support range + `since` per row; unknown names warn; a second-version (v11) pin test for capability and option shape |
-| R11 | **Stock / Gantt are separate licensed products** | 11 of the 71 types are not in `highcharts.js`: four are registered by `highstock.js` (`candlestick flags hlc ohlc`), two by `highcharts-gantt.js` (`gantt xrange`), and five ship as their own modules (`timeline heikinashi hollowcandlestick renko pointandfigure`). `highstock.js` and `highcharts-gantt.js` are separate builds, and historically separate products with their own terms ([EULA note](https://www.highcharts.com/blog/news/our-new-eula-makes-free-usage-clearer/)) — a consumer cannot render what it has not licensed | **Precondition, not a risk to manage later**: state the licence in one sentence per type or leave those families out of the supported list. Answer before P4, and before promising financial or Gantt charts to anyone |
-| R12 | The plan now includes infrastructure with no precedent here | CI, a headless runner, screenshot baselines and their flake policy are new for this repo, and the first dev dependency contradicts its zero-dependency habit (roadmap item 17 asks for a concrete reason; this is one) | Costed as its own line in §6 rather than folded into P0; start with the per-family matrix, grow only when a type needs it |
+| R11 | **Stock / Gantt are separate licensed products** | 11 of the 71 types are not in `highcharts.js`: four are registered by `highstock.js` (`candlestick flags hlc ohlc`), two by `highcharts-gantt.js` (`gantt xrange`), and five ship as their own modules (`timeline heikinashi hollowcandlestick renko pointandfigure`). `highstock.js` and `highcharts-gantt.js` are separate builds, and historically separate products with their own terms ([EULA note](https://www.highcharts.com/blog/news/our-new-eula-makes-free-usage-clearer/)) | **No longer a blocker, still a caveat** (owner, 2026-09: the consumer holds a Highcharts licence, and licence cover is not the worry). These families stay in Rung 5 regardless, because the confirmed requirement does not include them. If they are ever promised, state the licence in one sentence per type first |
+| R12 | The plan now includes infrastructure with no precedent here | CI, a headless runner, screenshot baselines and their flake policy are new for this repo, and the first dev dependency contradicts its zero-dependency habit (roadmap item 17 asks for a concrete reason; this is one) | Costed as its own line in §6 rather than folded into P0; start with the per-family matrix, grow only when a type needs it. CI itself is feasible: the repo has a GitHub remote (`git@github.com:yuqisun/chartwright.git`) |
+| R13 | **A consumer adopts, then discovers the library cannot draw what they need** | This is the risk the whole document exists for, and no rung removes it: some request will always fall outside, and today the only signal is a rejected submission that nobody counts | §5.8: a queryable support matrix carrying rungs and dates, refusals that name the nearest alternative, the capability intersection visible on the first run, and rejected requests counted — so Rungs 4 and 5 are triggered by evidence rather than by a date |
+| R14 | Dual-axis combos invite the dual-axis lie | Two independently scaled axes can be made to show any correlation, and §3.4 is what makes that possible. The library cannot prevent misuse | The three rules in §3.4: both axes titled with their field name, combo never volunteered by the prompt, and the misuse boundary written into `docs/using-chartwright.md` |
 
 ## 8. Explicitly out of scope
 
@@ -644,24 +782,41 @@ functions to reimplement", and both are cheaper than guessing.
 - **3D beyond the modifier** — `options3d` on existing types is cheap; the 3D module
   adds its own render surface and belongs in the matrix first.
 
-## 9. Open decisions
+## 9. Decision register
 
-1. **flint** — self-built grammar (recommended) vs a dependency on flint's
-   conventions vs vendoring; decided by the spike in §6, before P1.
-2. **Stock / Gantt licences** (R11) — the precondition for 11 types and for any
-   promise involving financial or Gantt charts.
-3. **Roadmap item 21 (date axis)** — decided at the start of P2, not incidentally.
-4. **`schema_version`** — v1 asked "1 or 2?". Better answer: it is written once
-   (`loop.ts:193`) and **read nowhere**, so it is the same shape of field as the
-   `value_type` this project already deleted for being unreachable. Either make it
-   load-bearing (refuse an unknown version at the door) or leave it alone; adding
-   `2` as decoration repeats a recorded mistake.
-5. **`AggregationFn` percentile** — needed for ask-mode boxplot; P2, or earlier if a
-   consumer asks.
-6. **Keep or delete the `spike/` files** — `spec-probes.ts`, `gate-ok.ts`,
-   `gate-missing.ts` are evidence for this document; as permanent fixtures they need
-   `tsconfig` entries and a purpose (the mapper gate is arguably worth keeping as a
-   compile-time fixture).
+**Decided** — owner, 2026-09. These are the answers v3 records:
+
+| # | Decision | Where it lands |
+|---|---|---|
+| 1 | **Commit to Rung 3** — the ~36 types reachable by the end of P2. Rungs 4 and 5 are *triggered*, not promised | §1, §5.8, §6 |
+| 2 | **Dual-axis combo charts are a confirmed requirement** — promoted from a one-line "P2 add-on" to a P1 closing item with its own design and three rules | §1, §3.4 |
+| 3 | **flint: reimplement its three conventions, take no dependency** — with the measured sizes recorded so the question is not re-litigated | §6 |
+| 4 | **OHLC / K-line is not needed by the confirmed consumer** — no price series in their data. Stays in Rung 5, triggered by §5.8's counter | §4, §6 |
+| 5 | **Licences are not the constraint** — the consumer holds a Highcharts licence, so R11 is demoted from precondition to caveat | §7 R11 |
+| 6 | **CI is feasible** — the repo has a GitHub remote, so P0b adds `.github/workflows/verify.yml` instead of inventing a hosting story | §5.1, §6 |
+
+**Working defaults** — stated to the owner with no objection recorded, and cheap to
+reverse. Listed separately so that "decided" is not overstated:
+
+| # | Default | Reversal cost |
+|---|---|---|
+| 7 | Capability is declared in **neutral names, lazily, per-ask, with a version range** (§5.2) | small before the first release; it is a public API shape |
+| 8 | Existing public exports (`SUPPORTED_CHART_TYPES`, `isSupportedChartType`, `SupportedChartType`) are **derived from `CHART_TYPES`, not deleted** | none — derivation is what keeps them working |
+| 9 | **No `schema_version: 2`.** The field is written once (`loop.ts:193`) and read nowhere — the same shape as the `value_type` this project already deleted for being unreachable. Either make it load-bearing or leave it alone | trivial |
+| 10 | **Percentile aggregation is triggered, not scheduled**: boxplot ships in present mode first, because the caller's SQL already has the percentiles | small — `median` later is ~40 lines |
+| 11 | **The render matrix needs the library's first dev dependency** (a headless browser). Roadmap item 17 asks for a concrete reason; the matrix is it | medium — the zero-dependency property is about *runtime* and this is dev-only, but it is a habit to break deliberately |
+| 12 | **`spike/gate-missing.ts` is kept** as a compile-time fixture (the mapper gate's only runnable proof); `spec-probes.ts` and `gate-ok.ts` go once §Evidence no longer needs reproducing by hand | trivial |
+
+**Still open, and when each must be settled:**
+
+- **Roadmap item 21 (the date axis)** — at the start of P2, not incidentally. It is a
+  semantic decision (does a date column get a real time axis, and does that override
+  present mode's "the order you pass is the order shown"), not a chart type.
+- **The licence sentence for Rung 5** — only if OHLC or Gantt is ever promised.
+- **Which starts first: P0a or the flint-conventions read.** Both are unblocked and
+  independent: the read produces P1's input, P0a produces the foundation. Running them
+  together is reasonable.
+- **Whether to push `f959b35`** — it sits one commit ahead of `origin/main`.
 
 ## Acceptance criteria
 
@@ -687,6 +842,14 @@ Plan-wide:
 - [ ] The selection set runs in CI with a hit-rate floor.
 - [ ] `docs/using-chartwright.md` §8 and `docs/roadmap.md` item 6 are checked against
       `CHART_TYPES` in the same test that checks the schema enum.
+- [ ] **Dual-axis combo (§3.4):** `y2` survives the assembler, both axes are titled
+      with their own field, series are named after their measures, and `top_k` on the
+      secondary measure styles only its own datum — the naming/key test.
+- [ ] **§5.8:** `listChartTypes()` is exported with each type's rung, licence and
+      `since`; a refusal names the nearest supported alternative; rejected requests are
+      counted with the type that was asked for.
+- [ ] **The commitment is checkable:** the support matrix reports 36 types at Rung 3
+      and marks treemap, sankey, OHLC and Gantt as triggered, with what triggers them.
 
 Per type, the definition of done:
 
@@ -765,6 +928,10 @@ measured** rather than observed in the example app.
   the "assumed" families are named in §4 rather than presented as evidence.
 - **Scope:** each phase is independently shippable; P0a changes no behaviour and is
   accepted on byte-identical options.
-- **Known weakness, stated rather than hidden:** the calendar estimate (8–10 weeks)
+- **Scope is a commitment, not a ceiling:** §1's rung ladder and §9's register
+  separate what is promised (Rung 3) from what is triggered (Rungs 4–5), and §5.8 is
+  what makes a trigger observable rather than rhetorical. Decided items and working
+  defaults are listed separately so "decided" is not overstated.
+- **Known weakness, stated rather than hidden:** the calendar estimate (8–9 weeks)
   rests on a ~500-line unit derived from four commits. It is the least defensible
   number here, and the phase table lists the unknowns that would move it.
