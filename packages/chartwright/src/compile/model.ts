@@ -51,6 +51,12 @@ type Base = {
   compact?: boolean;
   /** A fixed y range, when the measure's scale is a fact about the measure. */
   yRange?: { min?: number; max?: number };
+  /** The secondary measure field, when two measures share one chart (§3.4). */
+  y2Field?: string;
+  /** How the secondary measure is drawn. Defaults to 'line' in the backend. */
+  type2?: string;
+  /** A fixed range for the secondary axis. */
+  y2Range?: { min?: number; max?: number };
 };
 
 export type CategoricalModel = Base & {
@@ -58,6 +64,8 @@ export type CategoricalModel = Base & {
   orientation: 'vertical' | 'horizontal';
   categories: string[];
   series: SeriesValues[];
+  /** When y2 is present, the index at which y2 series begin. All before are y. */
+  y2SeriesFrom?: number;
 };
 
 export type PartToWholeModel = Base & {
@@ -223,13 +231,14 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   const { kind } = CHART_TYPES[type];
 
   const dataset = materialize(spec, rows);
-  const { x, y, series } = spec.encodings;
+  const { x, y, y2, series } = spec.encodings;
   if (!x || !y) throw new Error('encodings.x and encodings.y are required');
 
   const seriesField = series?.field;
+  const y2Field = y2?.field;
   if (dataset.length > 0) {
     const columns = Object.keys(dataset[0] as Row);
-    for (const field of [x.field, y.field, seriesField].filter((f): f is string => typeof f === 'string')) {
+    for (const field of [x.field, y.field, y2Field, seriesField].filter((f): f is string => typeof f === 'string')) {
       if (!columns.includes(field)) {
         throw new Error(`encoding field '${field}' is not in the produced table (available: ${columns.join(', ')})`);
       }
@@ -248,6 +257,9 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     ...(spec.chart.hole !== undefined ? { hole: spec.chart.hole } : {}),
     ...(spec.chart.compact !== undefined ? { compact: spec.chart.compact } : {}),
     ...(spec.axes?.y ? { yRange: spec.axes.y } : {}),
+    ...(y2Field ? { y2Field } : {}),
+    ...(spec.chart.type2 ? { type2: spec.chart.type2 } : {}),
+    ...(spec.axes?.y2 ? { y2Range: spec.axes.y2 } : {}),
   };
 
   if (kind === 'part-to-whole') {
@@ -265,18 +277,6 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     };
   }
 
-  const groups = new Map<string, Row[]>();
-  if (seriesField) {
-    for (const row of dataset) {
-      const key = String(row[seriesField]);
-      const bucket = groups.get(key);
-      if (bucket) bucket.push(row);
-      else groups.set(key, [row]);
-    }
-  } else {
-    groups.set(y.field, dataset);
-  }
-
   const categories = distinctInOrder(dataset.map((row) => row[x.field]));
 
   // Two rows in one category cannot both be drawn on a categorical axis. Picking one
@@ -291,13 +291,41 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     );
   }
 
+  // When y2 is present, each measure produces its own set of series, named after the
+  // measure field (§3.4 rule 1). With a series encoding too, each measure splits by
+  // group, giving 2N series named "{measure}: {group}" so datum keys stay unique.
   const seriesValues: SeriesValues[] = [];
-  for (const [name, groupRows] of groups) {
-    const values = new Map<string, number>();
-    for (const row of groupRows) {
-      values.set(String(row[x.field]), Number(row[y.field]));
+  let y2SeriesFrom: number | undefined;
+  const measures: Array<{ field: string; label: string }> = y2Field
+    ? [
+        { field: y.field, label: seriesField ? y.field : y.field },
+        { field: y2Field, label: seriesField ? y2Field : y2Field },
+      ]
+    : [{ field: y.field, label: seriesField ?? y.field }];
+
+  for (let mi = 0; mi < measures.length; mi += 1) {
+    const measure = measures[mi];
+    if (mi === 1) y2SeriesFrom = seriesValues.length;
+    const groups = new Map<string, Row[]>();
+    if (seriesField) {
+      for (const row of dataset) {
+        const key = String(row[seriesField]);
+        const bucket = groups.get(key);
+        if (bucket) bucket.push(row);
+        else groups.set(key, [row]);
+      }
+    } else {
+      groups.set(measure.label, dataset);
     }
-    seriesValues.push({ name, values: categories.map((category) => values.get(category) ?? null) });
+
+    for (const [groupName, groupRows] of groups) {
+      const values = new Map<string, number>();
+      for (const row of groupRows) {
+        values.set(String(row[x.field]), Number(row[measure.field]));
+      }
+      const name = y2Field && seriesField ? `${measure.label}: ${groupName}` : groupName;
+      seriesValues.push({ name, values: categories.map((category) => values.get(category) ?? null) });
+    }
   }
 
   // A matrix is the same table read as cells rather than as bars: the categories are the columns,
@@ -315,6 +343,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
       kind: 'categorical',
       orientation: spec.chart.orientation === 'horizontal' ? 'horizontal' : 'vertical',
       ...shared,
+      ...(y2SeriesFrom !== undefined ? { y2SeriesFrom } : {}),
     },
     warnings: [],
   };
@@ -323,14 +352,19 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
 /**
  * The datum key of the i-th mark of a series, in the model's own terms.
  *
- * Takes the two fields it needs rather than a whole `CategoricalModel`, because a matrix has the
+ * Takes the fields it needs rather than a whole `CategoricalModel`, because a matrix has the
  * same pair (a column and a row) and the same identity question.
+ *
+ * When y2 is present, the series name is the measure field and must be part of the key
+ * even without an explicit series encoding — otherwise both measures share a key and
+ * emphasis on one would style the other (§3.4 rule 1).
  */
 export function keyForCategory(
-  model: { categories: string[]; seriesField?: string },
+  model: { categories: string[]; seriesField?: string; y2Field?: string },
   categoryIndex: number,
   seriesName: string,
 ): string {
   const category = model.categories[categoryIndex] as string;
-  return datumKey(category, model.seriesField === undefined ? undefined : seriesName);
+  const includeSeries = model.seriesField !== undefined || model.y2Field !== undefined;
+  return datumKey(category, includeSeries ? seriesName : undefined);
 }

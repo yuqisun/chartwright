@@ -209,4 +209,17 @@ export const GOLDEN_CASES: GoldenCase[] = [
     },
     rows: flat,
   },
+  {
+    name: 'dual-axis-combo',
+    why: 'two measures of different units on one chart (§3.4): both axes titled, series named after measures, secondary on axis 1 as line',
+    spec: {
+      chart: { type: 'bar' },
+      encodings: { x: { field: 'counterparty' }, y: { field: 'notional_usd' }, y2: { field: 'avg_commission_bps' } },
+    },
+    rows: [
+      { counterparty: 'Northgate', notional_usd: 1_382_020_048, avg_commission_bps: 4.24 },
+      { counterparty: 'Ardenne', notional_usd: 903_112_500, avg_commission_bps: 6.1 },
+      { counterparty: 'Kestrel', notional_usd: 512_004_220, avg_commission_bps: 3.05 },
+    ],
+  },
 ];

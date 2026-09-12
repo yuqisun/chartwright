@@ -1842,5 +1842,126 @@
       }
     ],
     "warnings": []
+  },
+  "dual-axis-combo": {
+    "options": {
+      "chart": {
+        "type": "column",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": true,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2",
+        "#e69f00"
+      ],
+      "xAxis": {
+        "categories": [
+          "Northgate",
+          "Ardenne",
+          "Kestrel"
+        ],
+        "title": {
+          "text": "counterparty",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": [
+        {
+          "title": {
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        {
+          "title": {
+            "text": "avg_commission_bps",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "opposite": true,
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        }
+      ],
+      "series": [
+        {
+          "name": "notional_usd",
+          "data": [
+            1382020048,
+            903112500,
+            512004220
+          ]
+        },
+        {
+          "name": "avg_commission_bps",
+          "yAxis": 1,
+          "type": "line",
+          "data": [
+            4.24,
+            6.1,
+            3.05
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "counterparty": "Northgate",
+        "notional_usd": 1382020048,
+        "avg_commission_bps": 4.24
+      },
+      {
+        "counterparty": "Ardenne",
+        "notional_usd": 903112500,
+        "avg_commission_bps": 6.1
+      },
+      {
+        "counterparty": "Kestrel",
+        "notional_usd": 512004220,
+        "avg_commission_bps": 3.05
+      }
+    ],
+    "warnings": []
   }
 }

@@ -288,17 +288,6 @@ export const CORPUS: CorpusCase[] = [
   { dataset: byName('months-in-order'), spec: spec('line', 'month', 'notional_usd'), today: { outcome: 'compiles', series: 1, points: 5 } },
   { dataset: byName('months-with-a-gap'), spec: spec('line', 'month', 'notional_usd'), today: { outcome: 'compiles', series: 1, points: 4 } },
 
-  // The dual-axis case: today the only way to state it is to drop one measure, which the
-  // test demonstrates by asserting the second measure does not appear in the output at all.
-  {
-    dataset: byName('two-measures-different-units'),
-    today: { outcome: 'no-type-yet', needs: 'encodings.y2 and chart.type2 (§3.4, committed for P1)' },
-    nearlyWorks: {
-      spec: spec('bar', 'counterparty', 'notional_usd'),
-      loses: 'avg_commission_bps, and with it the comparison the request was about',
-    },
-  },
-
   // A cloud today: refused, and the refusal advises aggregating, which is the opposite of
   // what a scatter wants (§2.1). The unique-x variant compiles, on a category axis.
   { dataset: byName('numeric-pair-with-duplicate-x'), spec: spec('line', 'tenure_months', 'nps'), today: { outcome: 'refused', matches: "more than one row for category '9'" } },
@@ -399,6 +388,19 @@ export const CORPUS: CorpusCase[] = [
     dataset: byName('nulls-and-zeros'),
     spec: spec('bar', 'month', 'trades', { chart: { type: 'bar' }, axes: { y: { min: 0, max: 40 } } }),
     today: { outcome: 'compiles', series: 1, points: 4 },
+  },
+  {
+    id: 'dual-axis-combo',
+    dataset: byName('two-measures-different-units'),
+    spec: {
+      chart: { type: 'bar' },
+      encodings: {
+        x: { field: 'counterparty' },
+        y: { field: 'notional_usd' },
+        y2: { field: 'avg_commission_bps' },
+      },
+    },
+    today: { outcome: 'compiles', series: 2, points: 4 },
   },
 ];
 

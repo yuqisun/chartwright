@@ -364,6 +364,11 @@ const SUBMIT_PROPERTIES = {
           'Drop the chrome — title, axes, legend — and keep the marks, for a sparkline in a table cell. ' +
           'Not a chart type: the same chart with nothing around it.',
       },
+      type2: {
+        type: 'string',
+        description:
+          'How encodings.y2 is drawn. Defaults to line when y2 is present. Ignored without y2.',
+      },
     },
     additionalProperties: false,
   },
@@ -376,6 +381,15 @@ const SUBMIT_PROPERTIES = {
       // quietly given something different from every other caller.
       x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
       y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
+      y2: {
+        type: 'object',
+        required: ['field'],
+        properties: { field: { type: 'string' } },
+        additionalProperties: false,
+        description:
+          'A second measure on a second (right) axis. Use ONLY when two measures of different units must share ' +
+          'one chart — putting both on one axis flattens the smaller one. Both axes are titled with their field name.',
+      },
       series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
     },
     additionalProperties: false,
@@ -388,6 +402,15 @@ const SUBMIT_PROPERTIES = {
     properties: {
       y: {
         type: 'object',
+        properties: {
+          min: { type: 'number' },
+          max: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
+      y2: {
+        type: 'object',
+        description: 'Fixed range for the secondary (right) axis. Same semantics as y.',
         properties: {
           min: { type: 'number' },
           max: { type: 'number' },
@@ -453,6 +476,7 @@ function submitProperties(available: readonly string[]) {
       properties: {
         ...SUBMIT_PROPERTIES.chart.properties,
         type: { type: 'string', enum: [...available] },
+        type2: { ...SUBMIT_PROPERTIES.chart.properties.type2, enum: [...available] },
       },
     },
   };
@@ -474,12 +498,13 @@ function submitTemplate(mode: ToolMode, available: readonly string[]): ToolDef {
       ? 'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
         'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (' +
         `${choices}); encodings.x is the category column (a date column is treated as categories), encodings.y the measure ` +
-        'column, and the optional encodings.series splits the data into series.'
+        'column, and the optional encodings.series splits the data into series. Use encodings.y2 ONLY when two ' +
+        'measures of different units must share one chart.'
       : 'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
         'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
         `automatically. chart.type is a neutral name (${choices}); encodings.x is the category column (a date ` +
         'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
-        'the data into series.';
+        'the data into series. Use encodings.y2 ONLY when two measures of different units must share one chart.';
 
   return {
     name: 'submit_spec',

@@ -24,7 +24,7 @@ import type { CapabilitySource } from '../types.ts';
 import type { ColorRole } from './theme.ts';
 
 /** A channel a spec can carry. Every one is a `{ field }` reference into the one table. */
-export type ChannelName = 'x' | 'y' | 'series';
+export type ChannelName = 'x' | 'y' | 'y2' | 'series';
 
 /**
  * Every channel, as a runtime list.
@@ -32,7 +32,7 @@ export type ChannelName = 'x' | 'y' | 'series';
  * Keyed by the union so that adding a `ChannelName` without adding it here is a
  * compile error rather than a channel the validator silently never looks at.
  */
-const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, series: true };
+const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, y2: true, series: true };
 export const CHANNEL_NAMES = Object.keys(CHANNEL_SET) as readonly ChannelName[];
 
 /** What a channel *means* for one type — the same `y` is a height for a bar and a colour for a heatmap. */
@@ -45,7 +45,7 @@ export type ChannelRole = 'category' | 'measure' | 'series';
  * that asks a pie to stack is asking for something the type cannot mean, and the validator says
  * so rather than quietly drawing an unstacked pie.
  */
-export type Modifier = 'stacking' | 'polar' | 'hole' | 'compact';
+export type Modifier = 'stacking' | 'polar' | 'hole' | 'compact' | 'type2';
 
 /** The neutral model shape that builds a type. A new kind is a project; a new type inside one is not. */
 export type ChartKind = 'categorical' | 'part-to-whole' | 'matrix';
@@ -84,9 +84,9 @@ export type ChartTypeSpec = {
 /** Every type so far is banded on x and measured on y, split optionally by a third column. */
 const categorical = {
   kind: 'categorical',
-  channels: { x: 'category', y: 'measure', series: 'series' },
+  channels: { x: 'category', y: 'measure', y2: 'measure', series: 'series' },
   required: ['x', 'y'],
-  modifiers: ['stacking', 'polar', 'compact'],
+  modifiers: ['stacking', 'polar', 'compact', 'type2'],
   allowsDuplicateCategories: false,
   colorRoles: ['series.categorical'],
 } as const;

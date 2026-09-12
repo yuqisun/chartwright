@@ -189,28 +189,58 @@ function categoricalOptions(
             // read in the direction they stack, and rotating them there fights the reader.
             { grid: false, labels: labelSizing(layout, { rotate: !horizontal }) },
           ),
-          yAxis: themedAxis(
-            theme,
-            {
-              title: { text: model.yField },
-              // A fixed range is a claim about the measure, so it overrides whatever the rows say.
-              ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
-              ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
-            },
-            { grid: true },
-          ),
+          // Two measures of different units need two axes (§3.4 rule 2: both titled).
+          // Highcharts wants them as an array; a single axis stays an object for the
+          // common case so the golden fixture does not grow brackets everywhere.
+          yAxis: model.y2Field
+            ? [
+                themedAxis(
+                  theme,
+                  {
+                    title: { text: model.yField },
+                    ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
+                    ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
+                  },
+                  { grid: true },
+                ),
+                themedAxis(
+                  theme,
+                  {
+                    title: { text: model.y2Field },
+                    opposite: true,
+                    ...(model.y2Range?.min !== undefined ? { min: model.y2Range.min } : {}),
+                    ...(model.y2Range?.max !== undefined ? { max: model.y2Range.max } : {}),
+                  },
+                  { grid: false },
+                ),
+              ]
+            : themedAxis(
+                theme,
+                {
+                  title: { text: model.yField },
+                  ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
+                  ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
+                },
+                { grid: true },
+              ),
         }),
-    series: model.series.map((series) => ({
-      name: series.name,
-      // Plain numbers unless a point needs styling: keeping the unstyled shape
-      // unchanged means an emphasis-free spec compiles to exactly what it did
-      // before, which is what makes the feature additive rather than a rewrite.
-      data: series.values.map((value, index) => {
-        if (value === null) return null;
-        const style = emphasis.styles.get(keyForCategory(model, index, series.name));
-        return style ? withTone({ y: value }, style, theme) : value;
-      }),
-    })),
+    series: model.series.map((series, seriesIndex) => {
+      const isY2 = model.y2SeriesFrom !== undefined && seriesIndex >= model.y2SeriesFrom;
+      return {
+        name: series.name,
+        // The secondary measure lives on the right axis and is drawn as whatever type2
+        // says (line by default). The primary measure keeps the chart's own type.
+        ...(isY2 ? { yAxis: 1, type: model.type2 ?? 'line' } : {}),
+        // Plain numbers unless a point needs styling: keeping the unstyled shape
+        // unchanged means an emphasis-free spec compiles to exactly what it did
+        // before, which is what makes the feature additive rather than a rewrite.
+        data: series.values.map((value, index) => {
+          if (value === null) return null;
+          const style = emphasis.styles.get(keyForCategory(model, index, series.name));
+          return style ? withTone({ y: value }, style, theme) : value;
+        }),
+      };
+    }),
   };
   return { options, warnings };
 }

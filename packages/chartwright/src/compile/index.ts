@@ -13,7 +13,7 @@
  */
 import { toHighchartsOptions } from './backends/highcharts.ts';
 import { resolveEmphasis } from './emphasis.ts';
-import { buildChartModel, rowDatumKey } from './model.ts';
+import { buildChartModel, datumKey, rowDatumKey } from './model.ts';
 import { resolveTheme } from './theme.ts';
 import type { ChartOptions } from './backends/highcharts.ts';
 import type { LayoutInput } from './layout.ts';
@@ -42,7 +42,17 @@ export type CompileOptions = {
 function keyOf(spec: ChartSpec) {
   const xField = spec.encodings.x?.field ?? '';
   const seriesField = spec.encodings.series?.field;
-  return (row: Row) => rowDatumKey(row, xField, seriesField);
+  const y2Field = spec.encodings.y2?.field;
+  // When y2 is present without a series encoding, the measure field name IS the series
+  // component of the datum key — not a column to read from the row. Using datumKey
+  // directly avoids rowDatumKey interpreting it as a column reference (§3.4 rule 1).
+  return (row: Row, measureField?: string) => {
+    if (seriesField !== undefined) return rowDatumKey(row, xField, seriesField);
+    if (y2Field !== undefined && measureField !== undefined) {
+      return datumKey(String(row[xField]), measureField);
+    }
+    return rowDatumKey(row, xField);
+  };
 }
 
 export function compileToHighcharts(spec: ChartSpec, rows: Row[], options?: CompileOptions): CompiledChart {

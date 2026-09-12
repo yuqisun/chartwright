@@ -206,6 +206,20 @@ nothing is silently crowded: the compile returns a **warning** naming the axis,
 every mark and every label is still drawn, and the warning says what would help
 (aggregate, or a wider `plotWidth`).
 
+### Two measures on one chart
+
+When two measures have different units — notional in billions and commission in
+basis points — putting both on one axis flattens the smaller one. The spec can
+name a second measure with `encodings.y2`, and the compiler draws it on a second
+(right) axis with its own title. Series are named after their measure field so
+emphasis on one cannot style the other.
+
+**The risk:** independently scaled axes can be made to show any correlation. The
+compiler will never volunteer a dual-axis chart; it draws one only when the spec
+explicitly asks for `y2`. Both axes are always titled with their field name,
+because two units need two labels and an unlabelled axis is an invitation to
+misread.
+
 ### Follow-up questions
 
 The library is **stateless**. To continue a conversation, hand the transcript

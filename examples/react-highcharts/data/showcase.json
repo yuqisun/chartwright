@@ -10,10 +10,10 @@
     "heatmap"
   ],
   "counts": {
-    "supported": 22,
-    "boundary": 6,
+    "supported": 23,
+    "boundary": 5,
     "byType": {
-      "bar": 10,
+      "bar": 11,
       "pie": 2,
       "line": 5,
       "area": 2,
@@ -3196,15 +3196,14 @@
           }
         ]
       }
-    }
-  ],
-  "boundary": [
+    },
     {
-      "id": "two-measures-different-units",
+      "id": "dual-axis-combo",
+      "chartType": "bar",
       "query": "Show traded notional and average commission by counterparty",
       "mode": "ask",
-      "modeWhy": "two measures of different units — the request that needs a second axis",
-      "expects": "Columns for notional, a line for commission, on two labelled axes.",
+      "modeWhy": "two measures of different units — notional is ~10⁹, commission is single digits",
+      "expects": "Columns for notional on the left axis, a line for commission on the right. Both axes are titled with their field name, because two units need two labels. The series are named after their measures, so emphasis on one cannot style the other.",
       "data": {
         "name": "two-measures-different-units",
         "why": "notional is ~1e9 and commission is single digits: a magnitude gap of 1e9, which is the textbook reason a second axis exists (§3.4)",
@@ -3234,27 +3233,133 @@
           "dual-axis combo"
         ]
       },
-      "reason": {
-        "kind": "no-type-yet",
-        "detail": "encodings.y2 and chart.type2 (§3.4, committed for P1)"
+      "expected": {
+        "series": 2,
+        "points": 4
       },
-      "nearlyWorks": {
-        "loses": "avg_commission_bps, and with it the comparison the request was about",
-        "spec": {
-          "chart": {
-            "type": "bar"
+      "spec": {
+        "chart": {
+          "type": "bar"
+        },
+        "encodings": {
+          "x": {
+            "field": "counterparty"
           },
-          "encodings": {
-            "x": {
-              "field": "counterparty"
-            },
-            "y": {
-              "field": "notional_usd"
-            }
+          "y": {
+            "field": "notional_usd"
+          },
+          "y2": {
+            "field": "avg_commission_bps"
           }
         }
+      },
+      "options": {
+        "chart": {
+          "type": "column",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2",
+          "#e69f00"
+        ],
+        "xAxis": {
+          "categories": [
+            "Northgate",
+            "Ardenne",
+            "Kestrel",
+            "Lumen"
+          ],
+          "title": {
+            "text": "counterparty",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": [
+          {
+            "title": {
+              "text": "notional_usd",
+              "style": {
+                "color": "#6e7781"
+              }
+            },
+            "labels": {
+              "style": {
+                "color": "#57606a"
+              }
+            },
+            "lineColor": "#d0d7de",
+            "tickColor": "#d0d7de",
+            "gridLineColor": "#eaeef2"
+          },
+          {
+            "title": {
+              "text": "avg_commission_bps",
+              "style": {
+                "color": "#6e7781"
+              }
+            },
+            "opposite": true,
+            "labels": {
+              "style": {
+                "color": "#57606a"
+              }
+            },
+            "lineColor": "#d0d7de",
+            "tickColor": "#d0d7de"
+          }
+        ],
+        "series": [
+          {
+            "name": "notional_usd",
+            "data": [
+              1382020048,
+              903112500,
+              512004220,
+              88450010
+            ]
+          },
+          {
+            "name": "avg_commission_bps",
+            "yAxis": 1,
+            "type": "line",
+            "data": [
+              4.24,
+              6.1,
+              3.05,
+              8.9
+            ]
+          }
+        ]
       }
-    },
+    }
+  ],
+  "boundary": [
     {
       "id": "numeric-pair-with-duplicate-x",
       "query": "Plot NPS against tenure for every customer",

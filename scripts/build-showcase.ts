@@ -177,6 +177,13 @@ const COPY: Record<string, Copy> = {
     modeWhy: 'the scale is a fact about the measure, not about these four rows',
     expects: 'Four bars on a 0–40 axis although the largest value is 31. The spec said so; the compiler did not decide it.',
   },
+  'dual-axis-combo': {
+    query: 'Show traded notional and average commission by counterparty',
+    mode: 'ask',
+    modeWhy: 'two measures of different units — notional is ~10⁹, commission is single digits',
+    expects:
+      'Columns for notional on the left axis, a line for commission on the right. Both axes are titled with their field name, because two units need two labels. The series are named after their measures, so emphasis on one cannot style the other.',
+  },
   heatmap: {
     query: 'Show notional by month and region as a grid',
     mode: 'ask',
@@ -186,12 +193,6 @@ const COPY: Record<string, Copy> = {
   },
 
   // The boundary zone: nothing below is drawn above, and each says why.
-  'two-measures-different-units': {
-    query: 'Show traded notional and average commission by counterparty',
-    mode: 'ask',
-    modeWhy: 'two measures of different units — the request that needs a second axis',
-    expects: 'Columns for notional, a line for commission, on two labelled axes.',
-  },
   'numeric-pair-with-duplicate-x': {
     query: 'Plot NPS against tenure for every customer',
     mode: 'ask',

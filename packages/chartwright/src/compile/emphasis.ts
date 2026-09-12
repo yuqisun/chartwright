@@ -15,7 +15,7 @@ import type { EmphasisRule, EmphasisWhen, Row } from '../types.ts';
 export type ResolvedTone = { tone: 'highlight' | 'muted'; label: boolean };
 
 /** Identifies one datum in the materialised table: its category, plus its series if any. */
-export type DatumKey = (row: Row) => string;
+export type DatumKey = (row: Row, measureField?: string) => string;
 
 function asNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
@@ -60,8 +60,10 @@ function matches(when: EmphasisWhen, row: Row, key: string, topKeys: Set<string>
  */
 function topKeysFor(when: Extract<EmphasisWhen, { op: 'top_k' }>, rows: Row[], keyOf: DatumKey): Set<string> {
   const direction = when.direction === 'min' ? 1 : -1;
+  // The measure field distinguishes the two axes in a dual-axis combo (§3.4 rule 1):
+  // without it, both measures share a datum key and emphasis on one styles the other.
   const ranked = rows
-    .map((row) => ({ key: keyOf(row), value: asNumber(row[when.field]) }))
+    .map((row) => ({ key: keyOf(row, when.field), value: asNumber(row[when.field]) }))
     .filter((entry): entry is { key: string; value: number } => entry.value !== null)
     .sort((a, b) => direction * (a.value - b.value) || (a.key < b.key ? -1 : 1));
 
@@ -110,7 +112,10 @@ export function resolveEmphasis(rules: EmphasisRule[] | undefined, rows: Row[], 
 
     let matched = 0;
     for (const row of rows) {
-      const key = keyOf(row);
+      // top_k references a measure field, which becomes the series component of the key
+      // in a dual-axis combo (§3.4 rule 1). Other rules match by value and style every
+      // measure for the matching categories, so they use no measure component.
+      const key = rule.when.op === 'top_k' ? keyOf(row, rule.when.field) : keyOf(row);
       if (matches(rule.when, row, key, topKeys)) {
         styles.set(key, style);
         matched += 1;

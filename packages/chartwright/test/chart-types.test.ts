@@ -35,8 +35,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const rows: Row[] = [
   // `desk` exists so a matrix case has a second categorical column to be its rows: a heatmap with
   // one dimension is a coloured bar chart, and the spec is refused for it.
-  { region: 'East', desk: 'Rates', revenue: 250 },
-  { region: 'West', desk: 'FX', revenue: 80 },
+  // `commission_bps` exists so the dual-axis combo schema sample has a field to reference (§3.4).
+  { region: 'East', desk: 'Rates', revenue: 250, commission_bps: 3 },
+  { region: 'West', desk: 'FX', revenue: 80, commission_bps: 7 },
 ];
 
 /** A client that replays scripted replies, repeating the last one when exhausted. */
@@ -258,10 +259,11 @@ const SCHEMA_SAMPLES = {
     y: { field: 'revenue' },
     // The rows are never touched by this test: it is about the assembler keeping what the schema
     // offered, and the loop accepts a spec without compiling it (only `ask()` adds that check).
+    y2: { field: 'commission_bps' },
     series: { field: 'currency' },
   },
   emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
-  axes: { y: { min: 0, max: 100 } },
+  axes: { y: { min: 0, max: 100 }, y2: { min: 0, max: 50 } },
 } as const;
 
 /**
@@ -275,8 +277,8 @@ const SCHEMA_SAMPLES = {
 const CHART_SAMPLES: Array<{ type: string; chart: Record<string, unknown>; why: string }> = [
   {
     type: 'bar',
-    chart: { title: 'Revenue', orientation: 'horizontal', stacking: 'percent', polar: true, compact: true },
-    why: 'a categorical type honours stacking, polar and compact',
+    chart: { title: 'Revenue', orientation: 'horizontal', stacking: 'percent', polar: true, compact: true, type2: 'line' },
+    why: 'a categorical type honours stacking, polar, compact and type2',
   },
   {
     type: 'pie',

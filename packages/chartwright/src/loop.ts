@@ -201,6 +201,7 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
   const provided: Record<ChannelName, unknown> = {
     x: candidate.encodings?.x?.field,
     y: candidate.encodings?.y?.field,
+    y2: candidate.encodings?.y2?.field,
     series: candidate.encodings?.series?.field,
   };
   // An unrecognised type has no declaration to read, so there is nothing to check channels against
@@ -227,6 +228,7 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
       ['polar', chart?.polar],
       ['hole', chart?.hole],
       ['compact', chart?.compact],
+      ['type2', chart?.type2],
     ];
     for (const [modifier, value] of asked) {
       if (value !== undefined && !declaration.modifiers.includes(modifier)) {
@@ -251,6 +253,14 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
     if (value === undefined) continue;
     if (typeof value !== 'number' || !Number.isFinite(value)) errors.push(`axes.y.${bound} must be a finite number`);
     else range[bound] = value;
+  }
+
+  const y2Range: { min?: number; max?: number } = {};
+  for (const bound of ['min', 'max'] as const) {
+    const value = candidate.axes?.y2?.[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) errors.push(`axes.y2.${bound} must be a finite number`);
+    else y2Range[bound] = value;
   }
 
   // `errors` being empty already means every required channel is a non-empty string; the
@@ -278,8 +288,16 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
         ...(chart?.polar !== undefined ? { polar: chart.polar } : {}),
         ...(chart?.hole !== undefined ? { hole: chart.hole } : {}),
         ...(chart?.compact !== undefined ? { compact: chart.compact } : {}),
+        ...(chart?.type2 ? { type2: chart.type2 } : {}),
       },
-      ...(range.min !== undefined || range.max !== undefined ? { axes: { y: range } } : {}),
+      ...((range.min !== undefined || range.max !== undefined || y2Range.min !== undefined || y2Range.max !== undefined)
+        ? {
+            axes: {
+              ...(range.min !== undefined || range.max !== undefined ? { y: range } : {}),
+              ...(y2Range.min !== undefined || y2Range.max !== undefined ? { y2: y2Range } : {}),
+            },
+          }
+        : {}),
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
       encodings,

@@ -162,12 +162,24 @@ export type ChartSpec = {
      * type; it is the same chart with nothing around it.
      */
     compact?: boolean;
+    /**
+     * How the secondary measure (`encodings.y2`) is drawn. Defaults to `'line'` when `y2`
+     * is present and this is omitted. Ignored when there is no `y2`.
+     */
+    type2?: string;
   };
   /** Omit to chart the raw rows. */
   transform_plan?: { steps: TransformStep[] };
   encodings: {
     x?: Encoding;
     y?: Encoding;
+    /**
+     * A second measure, drawn on a second (right) axis. Only meaningful when the two
+     * measures have different units — putting both on one axis would flatten the smaller
+     * one. Series from this channel are named after the field (§3.4 rule 1), and both
+     * axes carry their field name as a title (§3.4 rule 2).
+     */
+    y2?: Encoding;
     /** Optional channel that splits the data into multiple series. */
     series?: Encoding;
   };
@@ -178,6 +190,8 @@ export type ChartSpec = {
    */
   axes?: {
     y?: { min?: number; max?: number };
+    /** Fixed range for the secondary (right) axis. Same semantics as `y`. */
+    y2?: { min?: number; max?: number };
   };
   /**
    * Condition-based emphasis: "highlight the largest bar", "grey out everything
