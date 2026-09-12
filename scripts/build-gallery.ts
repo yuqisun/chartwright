@@ -17,16 +17,22 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
-import { CORPUS } from '../packages/chartwright/test/fixtures/corpus.ts';
+import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const output = join(root, 'render-out', 'gallery.html');
 
-const cases = CORPUS.filter((entry) => entry.spec !== undefined && entry.today.outcome === 'compiles').map((entry) => {
+const cases = CORPUS.filter(isDrawnCase).map((entry) => {
   const { options } = compileToHighcharts(entry.spec as never, entry.dataset.rows);
   return {
-    id: `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}`,
-    title: entry.dataset.name,
+    // The corpus's own name for the case, not one built here. Building it here is what let two
+    // different cases share a name and one of them silently draw the other's options — the
+    // self-check at the bottom of this file is what caught it.
+    id: caseId(entry),
+    // The case's own name rather than the dataset's: several variants share a dataset (area,
+    // spline, areaspline and a rose all run on the same months), and a report where four cards
+    // are titled the same is a report you have to read twice.
+    title: caseId(entry),
     kind: entry.spec?.chart.type ?? '',
     why: entry.dataset.why,
     spec: JSON.stringify(entry.spec),
@@ -144,7 +150,7 @@ if (!embeddedMatch?.[1]) throw new Error('the gallery payload could not be read 
 const embedded: Array<{ id: string; options: unknown }> = JSON.parse(embeddedMatch[1]);
 let verified = 0;
 for (const one of embedded) {
-  const source = CORPUS.find((entry) => `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}` === one.id);
+  const source = CORPUS.find((entry) => caseId(entry) === one.id);
   if (!source?.spec) throw new Error(`gallery case '${one.id}' does not correspond to a corpus case`);
   const { options } = compileToHighcharts(source.spec, source.dataset.rows);
   if (JSON.stringify(options) !== JSON.stringify(one.options)) throw new Error(`gallery case '${one.id}' does not match a fresh compile`);
