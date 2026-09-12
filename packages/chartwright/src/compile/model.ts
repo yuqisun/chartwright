@@ -66,6 +66,19 @@ export type PartToWholeModel = Base & {
 };
 
 /**
+ * A two-dimensional table of cells: categories along x, the series as rows, the measure as colour.
+ *
+ * It shares the categorical model's shape because it shares its meaning — a cell is one (column,
+ * row) pair, which is what a category and a series already are. What differs is only what the
+ * backend draws: lengths become a colour scale.
+ */
+export type MatrixModel = Base & {
+  kind: 'matrix';
+  categories: string[];
+  series: SeriesValues[];
+};
+
+/**
  * Deliberately two shapes, not three.
  *
  * There was a third, `TemporalModel`: a `datetime` axis with points sorted by time,
@@ -77,7 +90,7 @@ export type PartToWholeModel = Base & {
  * was deleted; a date column is a category, and `docs/roadmap.md` records what that
  * costs: a series with a gap is drawn as though the gap were not there.
  */
-export type ChartModel = CategoricalModel | PartToWholeModel;
+export type ChartModel = CategoricalModel | PartToWholeModel | MatrixModel;
 
 /**
  * Identifies a datum: its category value, plus the series it belongs to when the
@@ -287,20 +300,37 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     seriesValues.push({ name, values: categories.map((category) => values.get(category) ?? null) });
   }
 
+  // A matrix is the same table read as cells rather than as bars: the categories are the columns,
+  // the series are the rows, and the measure becomes colour. So it is the same computation as a
+  // categorical chart — which is the whole reason a heatmap needed no new channel, only a type
+  // that says what the three channels mean here.
+  const shared = { categories, series: seriesValues };
+  if (kind === 'matrix') {
+    return { model: { ...base, kind: 'matrix', ...shared }, warnings: [] };
+  }
+
   return {
     model: {
       ...base,
       kind: 'categorical',
       orientation: spec.chart.orientation === 'horizontal' ? 'horizontal' : 'vertical',
-      categories,
-      series: seriesValues,
+      ...shared,
     },
     warnings: [],
   };
 }
 
-/** The datum key of the i-th mark of a series, in the model's own terms. */
-export function keyForCategory(model: CategoricalModel, categoryIndex: number, seriesName: string): string {
+/**
+ * The datum key of the i-th mark of a series, in the model's own terms.
+ *
+ * Takes the two fields it needs rather than a whole `CategoricalModel`, because a matrix has the
+ * same pair (a column and a row) and the same identity question.
+ */
+export function keyForCategory(
+  model: { categories: string[]; seriesField?: string },
+  categoryIndex: number,
+  seriesName: string,
+): string {
   const category = model.categories[categoryIndex] as string;
   return datumKey(category, model.seriesField === undefined ? undefined : seriesName);
 }

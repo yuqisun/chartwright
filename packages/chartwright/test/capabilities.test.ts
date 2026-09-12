@@ -136,13 +136,13 @@ test('an async capability source is awaited', async () => {
 
 test('an unknown capability name warns and keeps what it can draw', async () => {
   const llm = capturingLlm(['bar']);
-  const chartwright = createChartwright({ llm, capabilities: ['bar', 'heatmap'] });
+  const chartwright = createChartwright({ llm, capabilities: ['bar', 'sankey'] });
 
   const result = await chartwright.ask({ query: 'revenue', rows });
 
   assert.deepEqual(submitSchema(llm.panels[0] ?? []).enum, ['bar'], 'the known name survives');
   assert.ok(
-    result.warnings.some((warning) => warning.includes('heatmap')),
+    result.warnings.some((warning) => warning.includes('sankey')),
     `the unknown name is reported, not swallowed: ${JSON.stringify(result.warnings)}`,
   );
 });
@@ -153,8 +153,8 @@ test('capabilities that resolve to nothing are refused up front', async () => {
   // may be too — so the refusal arrives as a rejection; `buildToolDefs` throws directly.
   await assert.rejects(resolveCapabilities([]), /no chart types are available/);
   await assert.rejects(
-    resolveCapabilities(['heatmap']),
-    /heatmap/,
+    resolveCapabilities(['sankey']),
+    /sankey/,
     'and the message names what could not be resolved, so it is fixable',
   );
   assert.throws(() => buildToolDefs('ask', []), /no chart types are available/);

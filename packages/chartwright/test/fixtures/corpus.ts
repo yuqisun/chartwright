@@ -383,6 +383,18 @@ export const CORPUS: CorpusCase[] = [
     today: { outcome: 'compiles', series: 1, points: 3 },
   },
   {
+    id: 'heatmap',
+    dataset: byName('matrix-two-categories'),
+    spec: spec('heatmap', 'month', 'notional_usd', {
+      chart: { type: 'heatmap', title: 'Notional by month and region' },
+      encodings: { x: { field: 'month' }, y: { field: 'notional_usd' }, series: { field: 'region' } },
+    }),
+    // Two regions by three months in the model, and **one** series of six cells in the options:
+    // the two dimensions become axes and the measure becomes the colour, so there is nothing for a
+    // second series to be. Worth stating because "series" means two different things here.
+    today: { outcome: 'compiles', series: 1, points: 6 },
+  },
+  {
     id: 'fixed-y-range',
     dataset: byName('nulls-and-zeros'),
     spec: spec('bar', 'month', 'trades', { chart: { type: 'bar' }, axes: { y: { min: 0, max: 40 } } }),

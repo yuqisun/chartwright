@@ -285,10 +285,10 @@ That is what makes golden tests, diffs and audit possible.
 
 ## 8. Supported today
 
-`chart.type` accepts **`bar`**, **`line`**, **`spline`**, **`area`**, **`areaspline`** and
-**`pie`**. Anything else is rejected with a clear error — and because the rejected spec
-goes back to the model inside the loop, it usually retries with a supported type rather
-than failing. A wrong chart is never produced silently.
+`chart.type` accepts **`bar`**, **`line`**, **`spline`**, **`area`**, **`areaspline`**,
+**`pie`** and **`heatmap`**. Anything else is rejected with a clear error — and because the
+rejected spec goes back to the model inside the loop, it usually retries with a supported
+type rather than failing. A wrong chart is never produced silently.
 
 Five chart-level modifiers change how one of those is drawn rather than what it is:
 
@@ -305,6 +305,33 @@ as an error naming what the type does honour, because a stacked pie would draw a
 one and say nothing. The set is declared per type in `packages/chartwright/src/compile/chart-types.ts`,
 which is also where the list above comes from — every other list in the library and these
 docs is derived from it.
+
+### The one type that needs a module
+
+`heatmap` is the exception to "there is nothing to load": Highcharts keeps it in a module, so
+a page that imports only `highcharts` cannot draw one — and the failure would happen at render
+time in **your** process (Highcharts error 17), not in ours. Load both:
+
+```ts
+import Highcharts from 'highcharts';
+import 'highcharts/modules/heatmap';
+import 'highcharts/modules/coloraxis';   // what turns the measure into a colour scale
+```
+
+Rather than take our word for which modules, ask the library — the answer is generated from
+the same declaration the compiler uses, and a test checks that every path it names exists in
+the installed package:
+
+```ts
+import { listChartTypes } from 'chartwright';
+listChartTypes();   // [{ name: 'heatmap', kind: 'matrix', requires: ['x','series','y'],
+                    //    honours: ['compact'], modules: [...] }, ...]
+```
+
+A heatmap's three channels are the ones a bar chart already uses, read differently: `x` is the
+column, `series` the row, and `y` is drawn as colour instead of height. That is why it needed no
+new channel — only a type that says what the channels mean. One consequence is worth knowing:
+on a heatmap the colour *is* the value, so `emphasis` highlights with a border rather than a fill.
 
 Known expressiveness boundaries (they return a warning rather than a lie):
 

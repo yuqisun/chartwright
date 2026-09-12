@@ -17,12 +17,13 @@
  *     is the acceptance criterion for P0a: byte-identical options.
  */
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { CHART_TYPES, CHART_TYPE_NAMES, isChartType } from '../src/compile/chart-types.ts';
+import { CHART_TYPES, CHART_TYPE_NAMES, isChartType, listChartTypes } from '../src/compile/chart-types.ts';
 import { compileToHighcharts } from '../src/compile/index.ts';
 import { runAgentLoop } from '../src/loop.ts';
 import { buildToolDefs, createToolHandlers, TOOL_DEFS } from '../src/tools.ts';
@@ -32,8 +33,10 @@ import type { ChartSpec, ChatMessage, LlmClient, LlmCompleteRequest, LlmComplete
 const here = dirname(fileURLToPath(import.meta.url));
 
 const rows: Row[] = [
-  { region: 'East', revenue: 250 },
-  { region: 'West', revenue: 80 },
+  // `desk` exists so a matrix case has a second categorical column to be its rows: a heatmap with
+  // one dimension is a coloured bar chart, and the spec is refused for it.
+  { region: 'East', desk: 'Rates', revenue: 250 },
+  { region: 'West', desk: 'FX', revenue: 80 },
 ];
 
 /** A client that replays scripted replies, repeating the last one when exhausted. */
@@ -114,8 +117,21 @@ test('both tool descriptions list the declared types', () => {
 
 test('required channels are declared per type, and the validator enforces the declaration', async () => {
   for (const name of CHART_TYPE_NAMES) {
-    assert.deepEqual([...CHART_TYPES[name].required], ['x', 'y'], `${name} requires x and y today`);
+    const declaration = CHART_TYPES[name];
+    assert.ok(declaration.required.length > 0, `${name} requires something`);
+    // Every required channel must be a channel the type declares it reads: a type that required a
+    // channel it has no role for would be asking for something it cannot use.
+    for (const channel of declaration.required) {
+      assert.ok(
+        Object.prototype.hasOwnProperty.call(declaration.channels, channel),
+        `${name} requires '${channel}' but does not say what it means`,
+      );
+    }
   }
+
+  // The one type that is not x-and-y: a matrix needs both dimensions, and the validator says so
+  // per channel rather than as a pair.
+  assert.deepEqual([...CHART_TYPES.heatmap.required], ['x', 'series', 'y']);
 
   const outcome = await runSubmissions([{ chart: { type: 'bar' }, encodings: { x: { field: 'region' } } }, VALID_TREE]);
   const toolMessage = outcome.messages.find((message) => message.role === 'tool');
@@ -196,6 +212,15 @@ const MAPPING: Array<{ declared: string; why: string; spec: ChartSpec; want: str
     why: 'smoothed and filled, same name',
     spec: { chart: { type: 'areaspline' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
     want: 'areaspline',
+  },
+  {
+    declared: 'heatmap',
+    why: 'the first matrix, and the first type whose name Highcharts rejects without a module',
+    spec: {
+      chart: { type: 'heatmap' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'desk' } },
+    },
+    want: 'heatmap',
   },
 ];
 
@@ -366,4 +391,51 @@ test('the golden set covers every declared type', () => {
   for (const name of CHART_TYPE_NAMES) {
     assert.ok(covered.has(name), `'${name}' is declared but no golden case covers it — add one, then recapture`);
   }
+});
+
+/**
+ * What a consumer needs to know before it can draw a type, and what makes the `modules` field
+ * worth having.
+ *
+ * The library never imports Highcharts, so a type whose module the consumer has not loaded fails
+ * at render time **in their process** — the one place no test here can look. The best this
+ * repository can do is make the instruction true and checkable: every path a declaration names
+ * must exist in the installed package. A typo would otherwise be a plausible-looking instruction
+ * that breaks someone else's build.
+ */
+test('every module a declaration names exists in the installed Highcharts', () => {
+  const repoRoot = join(here, '..', '..', '..');
+  let checked = 0;
+
+  for (const entry of listChartTypes()) {
+    for (const modulePath of entry.modules) {
+      const file = join(repoRoot, 'node_modules', `${modulePath}.js`);
+      assert.ok(existsSync(file), `'${entry.name}' names '${modulePath}', which is not a file in node_modules`);
+      checked += 1;
+    }
+  }
+
+  assert.ok(checked > 0, 'at least one type needs a module, or this test is not testing anything');
+});
+
+test('listChartTypes reports the declaration, not a second copy of it', () => {
+  const listed = listChartTypes();
+  assert.deepEqual(
+    listed.map((entry) => entry.name),
+    [...CHART_TYPE_NAMES],
+    'same order as the declaration, so the list a consumer prints matches what the library draws',
+  );
+
+  const heatmap = listed.find((entry) => entry.name === 'heatmap');
+  assert.deepEqual(heatmap?.requires, ['x', 'series', 'y'], 'a matrix needs both dimensions and a measure');
+  assert.deepEqual(heatmap?.honours, ['compact']);
+  assert.deepEqual(heatmap?.modules, ['highcharts/modules/heatmap', 'highcharts/modules/coloraxis']);
+  assert.equal(heatmap?.kind, 'matrix');
+
+  // The other five are core-only, which is what makes them cheap for a consumer to adopt: nothing
+  // to load. If one of them ever needs a module, this assertion is where that becomes visible.
+  assert.deepEqual(
+    listed.filter((entry) => entry.modules.length > 0).map((entry) => entry.name),
+    ['heatmap'],
+  );
 });

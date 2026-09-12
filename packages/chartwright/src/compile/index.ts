@@ -49,11 +49,11 @@ export {
   CHANNEL_NAMES,
   CHART_TYPES,
   CHART_TYPE_NAMES,
-  DEFAULT_REQUIRED_CHANNELS,
   isChartType,
+  listChartTypes,
   resolveAvailableTypes,
   resolveCapabilities,
 } from './chart-types.ts';
-export type { CategoryCollision, ChartModel, SupportedChartType } from './model.ts';
+export type { CategoryCollision, ChartModel, MatrixModel, SupportedChartType } from './model.ts';
 export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec, Modifier } from './chart-types.ts';
 export type { ChartOptions } from './backends/highcharts.ts';

@@ -16,7 +16,7 @@
  * See the note on `ChartModel` in `../model.ts`.
  */
 import type { EmphasisResolution, ResolvedTone } from '../emphasis.ts';
-import type { CategoricalModel, ChartModel, PartToWholeModel } from '../model.ts';
+import type { CategoricalModel, ChartModel, MatrixModel, PartToWholeModel } from '../model.ts';
 import { keyForCategory } from '../model.ts';
 
 /** Plain options object; the caller renders it. Intentionally not typed against Highcharts. */
@@ -44,7 +44,15 @@ function withTone(point: Point, style: ResolvedTone | undefined): Point {
   };
 }
 
-function baseOptions(model: ChartModel): ChartOptions {
+/**
+ * Options every shape shares.
+ *
+ * The legend is passed in rather than derived from the model, because what "a legend" means
+ * differs per shape: for a categorical chart it lists the series, a pie labels its own slices, and
+ * a matrix shows the colour scale. Deriving it from the model's series count got the matrix wrong
+ * — a heatmap has one series however many rows it draws, and a legend of one is not the point.
+ */
+function baseOptions(model: ChartModel, { legend }: { legend: boolean }): ChartOptions {
   const compact = model.compact === true;
   return {
     chart: { backgroundColor: 'transparent' },
@@ -52,7 +60,7 @@ function baseOptions(model: ChartModel): ChartOptions {
     // the data are untouched — the chart is not simplified, it is undressed.
     title: compact ? { text: '' } : { text: model.title ?? '', style: { fontSize: '15px' } },
     credits: { enabled: false },
-    legend: { enabled: !compact && model.kind !== 'part-to-whole' && model.series.length > 1 },
+    legend: { enabled: !compact && legend },
   };
 }
 
@@ -62,7 +70,7 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
   const compact = model.compact === true;
 
   return {
-    ...baseOptions(model),
+    ...baseOptions(model, { legend: model.series.length > 1 }),
     chart: {
       type: vertical ? 'column' : horizontal ? 'bar' : model.chartType,
       backgroundColor: 'transparent',
@@ -108,7 +116,8 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
 
 function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolution): ChartOptions {
   return {
-    ...baseOptions(model),
+    // A pie labels its own slices; a legend beside it would only repeat them.
+    ...baseOptions(model, { legend: false }),
     chart: { type: 'pie', backgroundColor: 'transparent' },
     // The hole is what makes a donut, and it belongs to the pie rather than to a type of its
     // own: the same slices, the same data, a different middle.
@@ -124,10 +133,64 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
   };
 }
 
+/**
+ * A matrix: the measure drawn as colour instead of as length.
+ *
+ * This branch exists rather than reusing the categorical one for one reason, and it is a library
+ * convention rather than a fact about charts: Highcharts wants heatmap cells as
+ * `[xIndex, yIndex, value]` triples, with the two category axes supplying the labels. Same model,
+ * same three channels, different data shape — which is what a backend is for.
+ *
+ * Emphasis needs a different rendering here too: on a heatmap the colour *is* the value, so a
+ * highlight cannot be a fill without destroying the datum. A highlight is a border; muting
+ * recolours the cell, which is the honest reading of "fade this one" when colour carries meaning.
+ */
+function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution): ChartOptions {
+  const compact = model.compact === true;
+  const rows = model.series.map((series) => series.name);
+
+  const data: Array<Record<string, unknown>> = [];
+  model.series.forEach((series, rowIndex) => {
+    series.values.forEach((value, columnIndex) => {
+      if (value === null) return;
+      const cell: Record<string, unknown> = { x: columnIndex, y: rowIndex, value };
+      const style = emphasis.styles.get(keyForCategory(model, columnIndex, series.name));
+      if (style) {
+        if (style.tone === 'highlight') {
+          cell.borderColor = TONES.highlight;
+          cell.borderWidth = 2;
+        } else {
+          cell.color = TONES.muted;
+        }
+        if (style.label) cell.dataLabels = { enabled: true };
+      }
+      data.push(cell);
+    });
+  });
+
+  return {
+    // The legend here is the colour scale, which is why it is on even though there is one series.
+    ...baseOptions(model, { legend: true }),
+    chart: { type: 'heatmap', backgroundColor: 'transparent' },
+    // What turns the measure into a colour scale. The module that supplies it is named in the
+    // declaration, so a consumer knows to load it.
+    colorAxis: {},
+    ...(compact
+      ? {}
+      : {
+          xAxis: { categories: model.categories, title: { text: model.xField } },
+          yAxis: { categories: rows, title: { text: model.seriesField ?? '' } },
+        }),
+    series: [{ type: 'heatmap', name: model.yField, data }],
+  };
+}
+
 export function toHighchartsOptions(model: ChartModel, emphasis: EmphasisResolution): ChartOptions {
   switch (model.kind) {
     case 'part-to-whole':
       return partToWholeOptions(model, emphasis);
+    case 'matrix':
+      return matrixOptions(model, emphasis);
     case 'categorical':
       return categoricalOptions(model, emphasis);
   }

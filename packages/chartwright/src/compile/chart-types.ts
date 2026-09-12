@@ -47,7 +47,7 @@ export type ChannelRole = 'category' | 'measure' | 'series';
 export type Modifier = 'stacking' | 'polar' | 'hole' | 'compact';
 
 /** The neutral model shape that builds a type. A new kind is a project; a new type inside one is not. */
-export type ChartKind = 'categorical' | 'part-to-whole';
+export type ChartKind = 'categorical' | 'part-to-whole' | 'matrix';
 
 export type ChartTypeSpec = {
   kind: ChartKind;
@@ -58,6 +58,16 @@ export type ChartTypeSpec = {
   modifiers: readonly Modifier[];
   /** Two rows competing for one category is an error for most types and the point of others. */
   allowsDuplicateCategories: boolean;
+  /**
+   * Highcharts modules a consumer must load for this type, as import paths.
+   *
+   * Documentation, surfaced by `listChartTypes()` — the library never imports them, because it
+   * never imports Highcharts. It matters because the failure without them happens in the
+   * consumer's process (Highcharts error 17), where no test of ours can see it. A test checks
+   * that every path listed here exists in the installed package, so this cannot rot into a
+   * plausible-looking wrong instruction.
+   */
+  modules?: readonly string[];
 };
 
 /** Every type so far is banded on x and measured on y, split optionally by a third column. */
@@ -84,17 +94,54 @@ export const CHART_TYPES = {
     modifiers: ['hole', 'compact'],
     allowsDuplicateCategories: false,
   },
+  heatmap: {
+    kind: 'matrix',
+    // The same three channels as a bar, read differently: x is the column, series the row, and
+    // the measure is drawn as colour rather than as length. That is why a heatmap needed no new
+    // channel — only a type that says what the channels mean here.
+    channels: { x: 'category', series: 'category', y: 'measure' },
+    // `series` is required: one dimension makes this a badly drawn bar chart, and the point of a
+    // matrix is that a cell is a pair.
+    required: ['x', 'series', 'y'],
+    modifiers: ['compact'],
+    // Duplicate (x, series) pairs are still an error: a cell holds one value, which is exactly
+    // what the collision rule already enforces for bars.
+    allowsDuplicateCategories: false,
+    modules: ['highcharts/modules/heatmap', 'highcharts/modules/coloraxis'],
+  },
 } as const satisfies Record<string, ChartTypeSpec>;
+
+/**
+ * What this version can draw, for a consumer deciding whether it is enough.
+ *
+ * `modules` is what makes the list actionable rather than merely informative: a type whose module
+ * a consumer has not loaded fails at render time in their process, not in ours.
+ */
+export function listChartTypes(): Array<{
+  name: ChartType;
+  kind: ChartKind;
+  requires: readonly ChannelName[];
+  honours: readonly Modifier[];
+  modules: readonly string[];
+}> {
+  return CHART_TYPE_NAMES.map((name) => {
+    // Typed as the general shape rather than the literal one, so an optional field like `modules`
+    // is visible here whether or not every declaration has it.
+    const declaration: ChartTypeSpec = CHART_TYPES[name];
+    return {
+      name,
+      kind: declaration.kind,
+      requires: declaration.required,
+      honours: declaration.modifiers,
+      modules: declaration.modules ?? [],
+    };
+  });
+}
 
 export type ChartType = keyof typeof CHART_TYPES;
 
 /** The declared types, in declaration order — the order every list derived from them appears in. */
 export const CHART_TYPE_NAMES = Object.keys(CHART_TYPES) as readonly ChartType[];
-
-/** The set an unrecognised type is held to, since there is no declaration to read. Derived, not written. */
-export const DEFAULT_REQUIRED_CHANNELS: readonly ChannelName[] = [
-  ...new Set(Object.values(CHART_TYPES).flatMap((declaration) => declaration.required as readonly ChannelName[])),
-];
 
 /**
  * Own-property check rather than `in`: a submitted `type: 'toString'` must not be

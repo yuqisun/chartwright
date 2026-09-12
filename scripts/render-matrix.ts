@@ -25,10 +25,11 @@
  * process with piped stdio, which a confined sandbox denies with `spawn EPERM`. It is not
  * a fallback for CI, where the bundled build is the reproducible choice.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { CHART_TYPES } from '../packages/chartwright/src/compile/index.ts';
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
 import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
 import type { Row } from '../packages/chartwright/src/types.ts';
@@ -87,6 +88,29 @@ async function main(): Promise<number> {
   await page.setViewportSize({ width: 960, height: 540 });
   await page.setContent('<!doctype html><html><body><div id="chart"></div></body></html>');
   await page.addScriptTag({ content: highcharts });
+
+  // The modules the declared types need, loaded the way a consumer would have to load them.
+  //
+  // This is the capability story with teeth: a type whose module is missing does not fail here —
+  // it fails in the consumer's browser, which is the one place this repository cannot look. So the
+  // matrix loads exactly what each declaration says it needs, from the same paths a consumer is
+  // told to use, and refuses to run if one of them is not there.
+  const neededModules = new Set<string>();
+  for (const entry of cases) {
+    const type = entry.spec?.chart.type;
+    if (!type) continue;
+    const declaration = (CHART_TYPES as Record<string, { modules?: readonly string[] } | undefined>)[type];
+    for (const modulePath of declaration?.modules ?? []) neededModules.add(modulePath);
+  }
+  for (const modulePath of neededModules) {
+    const file = join(root, 'node_modules', `${modulePath}.js`);
+    if (!existsSync(file)) {
+      console.error(`a declared module is missing: ${modulePath} (looked for ${file})`);
+      return 1;
+    }
+    await page.addScriptTag({ content: readFileSync(file, 'utf8') });
+    console.log(`loaded module ${modulePath}`);
+  }
 
   const failures: string[] = [];
   let drawn = 0;

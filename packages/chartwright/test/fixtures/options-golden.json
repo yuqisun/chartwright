@@ -1081,6 +1081,233 @@
     ],
     "warnings": []
   },
+  "heatmap": {
+    "options": {
+      "chart": {
+        "type": "heatmap",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": true
+      },
+      "colorAxis": {},
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "categories": [
+          "USD",
+          "EUR"
+        ],
+        "title": {
+          "text": "currency"
+        }
+      },
+      "series": [
+        {
+          "type": "heatmap",
+          "name": "revenue",
+          "data": [
+            {
+              "x": 0,
+              "y": 0,
+              "value": 250
+            },
+            {
+              "x": 1,
+              "y": 0,
+              "value": 80
+            },
+            {
+              "x": 2,
+              "y": 0,
+              "value": 120
+            },
+            {
+              "x": 0,
+              "y": 1,
+              "value": 100
+            },
+            {
+              "x": 1,
+              "y": 1,
+              "value": 40
+            },
+            {
+              "x": 2,
+              "y": 1,
+              "value": 60
+            }
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "currency": "USD",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "currency": "USD",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "currency": "USD",
+        "revenue": 120
+      },
+      {
+        "region": "East",
+        "currency": "EUR",
+        "revenue": 100
+      },
+      {
+        "region": "West",
+        "currency": "EUR",
+        "revenue": 40
+      },
+      {
+        "region": "North",
+        "currency": "EUR",
+        "revenue": 60
+      }
+    ],
+    "warnings": []
+  },
+  "heatmap-emphasis": {
+    "options": {
+      "chart": {
+        "type": "heatmap",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": true
+      },
+      "colorAxis": {},
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "categories": [
+          "USD",
+          "EUR"
+        ],
+        "title": {
+          "text": "currency"
+        }
+      },
+      "series": [
+        {
+          "type": "heatmap",
+          "name": "revenue",
+          "data": [
+            {
+              "x": 0,
+              "y": 0,
+              "value": 250,
+              "borderColor": "#e8590c",
+              "borderWidth": 2,
+              "dataLabels": {
+                "enabled": true
+              }
+            },
+            {
+              "x": 1,
+              "y": 0,
+              "value": 80
+            },
+            {
+              "x": 2,
+              "y": 0,
+              "value": 120
+            },
+            {
+              "x": 0,
+              "y": 1,
+              "value": 100
+            },
+            {
+              "x": 1,
+              "y": 1,
+              "value": 40
+            },
+            {
+              "x": 2,
+              "y": 1,
+              "value": 60
+            }
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "currency": "USD",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "currency": "USD",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "currency": "USD",
+        "revenue": 120
+      },
+      {
+        "region": "East",
+        "currency": "EUR",
+        "revenue": 100
+      },
+      {
+        "region": "West",
+        "currency": "EUR",
+        "revenue": 40
+      },
+      {
+        "region": "North",
+        "currency": "EUR",
+        "revenue": 60
+      }
+    ],
+    "warnings": []
+  },
   "fixed-y-range": {
     "options": {
       "chart": {

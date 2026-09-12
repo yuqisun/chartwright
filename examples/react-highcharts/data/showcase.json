@@ -6,10 +6,11 @@
     "spline",
     "area",
     "areaspline",
-    "pie"
+    "pie",
+    "heatmap"
   ],
   "counts": {
-    "supported": 21,
+    "supported": 22,
     "boundary": 6,
     "byType": {
       "bar": 10,
@@ -17,7 +18,8 @@
       "line": 5,
       "area": 2,
       "spline": 1,
-      "areaspline": 1
+      "areaspline": 1,
+      "heatmap": 1
     }
   },
   "supported": [
@@ -2359,6 +2361,151 @@
               250,
               80,
               120
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "heatmap",
+      "chartType": "heatmap",
+      "query": "Show notional by month and region as a grid",
+      "mode": "ask",
+      "modeWhy": "two categorical columns and a measure: one row per cell",
+      "expects": "A grid of coloured cells — months along the bottom, regions up the side, notional as the colour. The same three channels as a bar chart, read differently. And note the emphasis: on a heatmap the fill *is* the value, so highlighting a cell draws a border instead of recolouring it.",
+      "data": {
+        "name": "matrix-two-categories",
+        "why": "one row per (month, region) — exactly the shape the collision rule already enforces, which is why a heatmap needs no new channel (§2.2)",
+        "rows": [
+          {
+            "month": "2026-01",
+            "region": "EMEA",
+            "notional_usd": 250
+          },
+          {
+            "month": "2026-01",
+            "region": "AMER",
+            "notional_usd": 180
+          },
+          {
+            "month": "2026-02",
+            "region": "EMEA",
+            "notional_usd": 310
+          },
+          {
+            "month": "2026-02",
+            "region": "AMER",
+            "notional_usd": 205
+          },
+          {
+            "month": "2026-03",
+            "region": "EMEA",
+            "notional_usd": 288
+          },
+          {
+            "month": "2026-03",
+            "region": "AMER",
+            "notional_usd": 240
+          }
+        ],
+        "shapes": [
+          "matrix",
+          "heatmap"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 6
+      },
+      "spec": {
+        "chart": {
+          "type": "heatmap",
+          "title": "Notional by month and region"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          },
+          "series": {
+            "field": "region"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "heatmap",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "Notional by month and region",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": true
+        },
+        "colorAxis": {},
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "categories": [
+            "EMEA",
+            "AMER"
+          ],
+          "title": {
+            "text": "region"
+          }
+        },
+        "series": [
+          {
+            "type": "heatmap",
+            "name": "notional_usd",
+            "data": [
+              {
+                "x": 0,
+                "y": 0,
+                "value": 250
+              },
+              {
+                "x": 1,
+                "y": 0,
+                "value": 310
+              },
+              {
+                "x": 2,
+                "y": 0,
+                "value": 288
+              },
+              {
+                "x": 0,
+                "y": 1,
+                "value": 180
+              },
+              {
+                "x": 1,
+                "y": 1,
+                "value": 205
+              },
+              {
+                "x": 2,
+                "y": 1,
+                "value": 240
+              }
             ]
           }
         ]

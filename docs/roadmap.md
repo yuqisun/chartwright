@@ -122,23 +122,29 @@ cannot do without its own copy of the data.
 
 ### 6. More chart types
 
-Today: `bar`, `line`, `spline`, `area`, `areaspline`, `pie` — plus five chart-level
-modifiers (`stacking`, `polar`, `hole`, `compact`, a fixed y range) that change how one
-of those is drawn rather than adding a type. Unsupported types are **rejected** (never
-drawn wrongly), and the model is told why, so it usually retries.
+Today: `bar`, `line`, `spline`, `area`, `areaspline`, `pie`, `heatmap` — plus five chart-level
+modifiers (`stacking`, `polar`, `hole`, `compact`, a fixed y range) that change how one of
+those is drawn rather than adding a type. Unsupported types are **rejected** (never drawn
+wrongly), and the model is told why, so it usually retries.
 
 The declared set lives in one place (`packages/chartwright/src/compile/chart-types.ts`)
 and the schema the model submits against, both refusal messages, the prompt's list and
 the example's showcase are all derived from it, so adding a type is one declaration plus
 a backend mapping decision — which a test refuses to let anyone skip.
 
+`heatmap` was the first type to need a Highcharts **module**, and it is what made the
+capability story concrete: a declaration now names the modules a consumer must load
+(`listChartTypes()` surfaces them, and a test checks every path exists in the installed
+package), because without them the failure happens at render time in the consumer's process
+where nothing here can see it. It is also the first `matrix` — the same three channels as a
+bar chart, with the measure drawn as colour, which is why it needed no new channel.
+
 Still missing, cheapest first: `stackedBar`/`groupedBar` as *named* types (both are
 already expressible — grouped is `bar` plus `encodings.series`), `donut` as a *name*
 (`chart.hole` exists), `scatter` (needs a positional axis and an exemption from the
-collision rule), then the "module-dependent" family (waterfall, boxplot, gauge, funnel,
-radar, rose, streamgraph, lollipop) which needs a different mechanism — see the deferred
-flint decision below. `radar` and `rose` are the exception: they need no module at all,
-only `chart.polar`, which is implemented.
+collision rule), then the rest of the "module-dependent" family (waterfall, boxplot, gauge,
+funnel, streamgraph, lollipop) — see the deferred flint decision below. `radar` and `rose`
+needed no module at all, only `chart.polar`, which is implemented.
 
 ### 7. Colour and theming
 

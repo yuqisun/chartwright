@@ -21,7 +21,6 @@ import {
   CHANNEL_NAMES,
   CHART_TYPES,
   CHART_TYPE_NAMES,
-  DEFAULT_REQUIRED_CHANNELS,
   isChartType,
 } from './compile/index.ts';
 import type { ChannelName, ChartTypeSpec, Modifier } from './compile/index.ts';
@@ -204,10 +203,12 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
     y: candidate.encodings?.y?.field,
     series: candidate.encodings?.series?.field,
   };
-  // An unrecognised type has no declaration to read, so it is held to the channels every
-  // declared type asks for — today, x and y, which is what this checked before the
-  // declaration existed.
-  const required = declaration?.required ?? DEFAULT_REQUIRED_CHANNELS;
+  // An unrecognised type has no declaration to read, so there is nothing to check channels against
+  // — and checking them would be noise: the model mistyped a type, and the useful repair is the
+  // list of types, not a demand for columns the type it meant may not want. (This used to require
+  // the union of every declaration's channels, so a typo started asking for `series` the moment one
+  // type needed it.)
+  const required = declaration?.required ?? [];
   for (const channel of required) {
     const value = provided[channel];
     if (typeof value !== 'string' || value === '') errors.push(`encodings.${channel}.field is required`);

@@ -181,6 +181,25 @@ export const GOLDEN_CASES: GoldenCase[] = [
     rows: flat,
   },
   {
+    name: 'heatmap',
+    why: 'the first matrix: cells become [xIndex, yIndex, value] triples with a colorAxis, and the measure leaves the y axis',
+    spec: {
+      chart: { type: 'heatmap' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'currency' } },
+    },
+    rows: split,
+  },
+  {
+    name: 'heatmap-emphasis',
+    why: 'emphasis on a matrix highlights with a border rather than a fill, because here the fill is the datum',
+    spec: {
+      chart: { type: 'heatmap' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'currency' } },
+      emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight', label: true } }],
+    },
+    rows: split,
+  },
+  {
     name: 'fixed-y-range',
     why: 'a fixed range overrides the data: the axis is the caller\u2019s claim about the measure',
     spec: {

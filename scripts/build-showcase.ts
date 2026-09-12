@@ -173,6 +173,13 @@ const COPY: Record<string, Copy> = {
     modeWhy: 'the scale is a fact about the measure, not about these four rows',
     expects: 'Four bars on a 0–40 axis although the largest value is 31. The spec said so; the compiler did not decide it.',
   },
+  heatmap: {
+    query: 'Show notional by month and region as a grid',
+    mode: 'ask',
+    modeWhy: 'two categorical columns and a measure: one row per cell',
+    expects:
+      'A grid of coloured cells — months along the bottom, regions up the side, notional as the colour. The same three channels as a bar chart, read differently. And note the emphasis: on a heatmap the fill *is* the value, so highlighting a cell draws a border instead of recolouring it.',
+  },
 
   // The boundary zone: nothing below is drawn above, and each says why.
   'two-measures-different-units': {
