@@ -167,6 +167,13 @@ and are authoritative.
 
 **Commit:** `feat(agent): optional dataset and column descriptions for the model`
 
+**Status: done.** 88 library tests pass. The merge lives in `prompt.ts`
+(`applyColumnDescriptions`) rather than inline in `ask()`, so "unknown names are
+ignored, a declared type wins" is unit-testable without going through a whole `ask()`.
+One thing this task turned out to need: `docs/using-chartwright.md` section 8 answers
+"what leaves my process?", and descriptions change that answer — the caller's own words
+now travel to the provider — so that clause landed here rather than waiting for task 6.
+
 ---
 
 ## Task 3 — `preview_rows` tool (read-only, bounded)

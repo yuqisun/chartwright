@@ -9,7 +9,7 @@
  */
 import { compileToHighcharts } from './compile/index.ts';
 import { runAgentLoop } from './loop.ts';
-import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
+import { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './prompt.ts';
 import { buildToolDefs, createToolHandlers, inferColumns } from './tools.ts';
 import type { ProfileOptions, QueryOptions } from './tools.ts';
 import type { AskRequest, AskResult, Budget, ChatMessage, LlmClient, ToolMode } from './types.ts';
@@ -45,7 +45,9 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       if (!llm) throw new Error('no LLM client: pass one to createChartwright() or to ask()');
 
       const sessionId = request.sessionId ?? newSessionId();
-      const columns = inferColumns(request.rows);
+      // The caller's declarations only affect what the model is told, so they are
+      // merged here and never travel any further.
+      const columns = applyColumnDescriptions(inferColumns(request.rows), request.columns);
       // One switch, read once. Everything that differs between the two modes —
       // tools, prompt, and (through the tool list) whether a plan can exist at all
       // — is derived from it, so the modes cannot drift apart.
@@ -60,7 +62,11 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
         ...(hasSystemPrompt ? [] : [{ role: 'system' as const, content: buildSystemPrompt(mode) }]),
         // Prior turns, when this is a follow-up.
         ...priorTurns,
-        { role: 'user', content: buildUserPrompt(request.query, { rowCount: request.rows.length, columns }) },
+        { role: 'user', content: buildUserPrompt(request.query, {
+          rowCount: request.rows.length,
+          columns,
+          ...(request.dataDescription ? { dataDescription: request.dataDescription } : {}),
+        }) },
       ];
 
       const handlers = createToolHandlers({ rows: request.rows, profile: profileOptions, query: queryOptions });

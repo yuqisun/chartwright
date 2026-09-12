@@ -12,7 +12,7 @@
  * is what the model is still free to decide, because a prompt that only forbids
  * things produces timid charts.
  */
-import type { Column, ToolMode } from './types.ts';
+import type { Column, ColumnDescription, ToolMode } from './types.ts';
 
 /** True in both modes: the invariants of the protocol, not of the mode. */
 const SHARED_RULES = [
@@ -78,19 +78,73 @@ export function buildSystemPrompt(mode: ToolMode = 'ask'): string {
   ].join('\n');
 }
 
+export type PromptColumn = Column & { description?: string };
+
+export type PromptDataset = {
+  rowCount: number;
+  columns: PromptColumn[];
+  /** The caller's own words about the table. Optional, and taken on trust. */
+  dataDescription?: string;
+};
+
 /**
- * The user prompt carries only the shape of the data — names and types.
+ * Applies the caller's declarations to the columns inferred from the rows.
+ *
+ * A declaration is advisory — it changes what the model is told, never what the
+ * pipeline does. Two rules worth stating:
+ *
+ *   - only columns that exist can be described, so a declaration for an unknown
+ *     name is ignored rather than invented;
+ *   - a declared `type` wins over inference, which is the point of declaring one:
+ *     an all-digit identifier infers as `number` and only the caller knows better.
+ */
+export function applyColumnDescriptions(inferred: Column[], declared?: ColumnDescription[]): PromptColumn[] {
+  if (!declared || declared.length === 0) return inferred;
+
+  const byName = new Map(declared.map((entry) => [entry.name, entry]));
+  return inferred.map((column) => {
+    const declaration = byName.get(column.name);
+    if (!declaration) return column;
+    return {
+      name: column.name,
+      type: declaration.type ?? column.type,
+      ...(declaration.description ? { description: declaration.description } : {}),
+    };
+  });
+}
+
+/**
+ * The user prompt carries only the shape of the data — names and types, plus any
+ * descriptions the caller chose to add.
  *
  * The full profile is deliberately *not* included: it is available as the
  * `describe_table` tool, so a request that never needs it (most of them) does
  * not pay for it in tokens, while a request that does need it can ask.
  */
-export function buildUserPrompt(query: string, dataset: { rowCount: number; columns: Column[] }): string {
+export function buildUserPrompt(query: string, dataset: PromptDataset): string {
+  const described =
+    Boolean(dataset.dataDescription) || dataset.columns.some((column) => column.description !== undefined);
+
   return [
     'Request:',
     query,
     '',
     'Dataset:',
-    JSON.stringify({ rowCount: dataset.rowCount, columns: dataset.columns }),
+    JSON.stringify({
+      rowCount: dataset.rowCount,
+      // Omitted rather than set to undefined, so a caller who describes nothing
+      // gets exactly the bytes they got before descriptions existed below.
+      ...(dataset.dataDescription ? { description: dataset.dataDescription } : {}),
+      columns: dataset.columns,
+    }),
+    // Only when there is something to explain. For everyone else this would be
+    // noise, and a change in the bytes of a prompt that was already working.
+    ...(described
+      ? [
+          '',
+          'The descriptions above were written by the caller, who knows this data. Treat them as authoritative:',
+          'they are the meaning of the columns, not hints to be re-derived from the values.',
+        ]
+      : []),
   ].join('\n');
 }

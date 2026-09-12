@@ -217,7 +217,10 @@ Known expressiveness boundaries (they return a warning rather than a lie):
 
 The model never receives your rows. It receives:
 
-- column names and types, up front;
+- column names and types, up front — plus any `dataDescription` or
+  `columns[].description` text you chose to pass. That text is yours, and it goes to
+  the provider with the request, so write only what the model needs to read a column
+  correctly;
 - what `describe_table` returns when it asks: per column the type, null rate,
   distinct count, numeric range and median, time span, and — for low-cardinality
   columns — **up to five real sample values**;

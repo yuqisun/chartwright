@@ -19,6 +19,21 @@ export type Column = {
   type: ColumnType;
 };
 
+/**
+ * What the caller says about one column.
+ *
+ * Both fields are optional and independent: declare a `type` to correct inference,
+ * a `description` to say what the column means, or both. Neither is required — a
+ * request with no declarations behaves exactly as it did before this existed.
+ */
+export type ColumnDescription = {
+  name: string;
+  /** Wins over inference when present. Only the caller knows an all-digit code is an id. */
+  type?: ColumnType;
+  /** What the column means. For the model's benefit, never validated. */
+  description?: string;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Transform DSL
 //
@@ -271,6 +286,24 @@ export type AskRequest = {
    * table itself.
    */
   present?: boolean;
+  /**
+   * What the caller knows about the table as a whole, in its own words: "one row
+   * per booking country, already aggregated from the execution feed".
+   *
+   * Advisory, and deliberately so. It goes into the prompt and nowhere else — never
+   * validated, never stored in the spec, not needed to replay a run — because the
+   * pipeline must not start depending on a human sentence being accurate.
+   */
+  dataDescription?: string;
+  /**
+   * Per-column notes: a `type` that corrects inference (an all-digit identifier is
+   * not a number, and only the caller knows that) and a `description` of what the
+   * column means.
+   *
+   * A name that is not in the rows is ignored rather than added — descriptions
+   * describe this table, they do not extend it.
+   */
+  columns?: ColumnDescription[];
   /**
    * The caller's LLM client. chartwright never sees an API key.
    * Optional when the client was already supplied to `createChartwright()`.
