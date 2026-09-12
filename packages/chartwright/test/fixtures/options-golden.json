@@ -38,7 +38,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -124,9 +125,11 @@
             "color": "#6e7781"
           }
         },
+        "reversed": true,
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -139,7 +142,6 @@
             "color": "#6e7781"
           }
         },
-        "reversed": true,
         "labels": {
           "style": {
             "color": "#57606a"
@@ -216,7 +218,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -331,7 +334,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -509,7 +513,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -666,9 +671,11 @@
             "color": "#6e7781"
           }
         },
+        "reversed": true,
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -681,7 +688,6 @@
             "color": "#6e7781"
           }
         },
-        "reversed": true,
         "labels": {
           "style": {
             "color": "#57606a"
@@ -757,7 +763,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -846,7 +853,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -960,7 +968,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1054,7 +1063,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1174,7 +1184,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1358,7 +1369,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1495,7 +1507,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1514,7 +1527,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1633,7 +1647,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1652,7 +1667,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",
@@ -1775,7 +1791,8 @@
         },
         "labels": {
           "style": {
-            "color": "#57606a"
+            "color": "#57606a",
+            "fontSize": "10px"
           }
         },
         "lineColor": "#d0d7de",

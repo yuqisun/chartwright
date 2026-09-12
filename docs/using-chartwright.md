@@ -188,6 +188,24 @@ Two rules worth knowing before you override:
 The theme is fixed at `createChartwright` and a request cannot change it: the
 same spec must always mean the same picture.
 
+### How much room the compiler assumes
+
+Label rotation and label font size are **derived**, not hoped for: category count
+times label length, measured against a reference plot width of 400px. A handful
+of short labels never rotates; denser axes shrink the font, then turn the labels
+to −45° and then −90° as the bands tighten. The compiler cannot see your
+container, so on a wide screen the reference is conservative — tell it the width
+you actually render into and the derivation becomes exact:
+
+```ts
+const chartwright = createChartwright({ llm, layout: { plotWidth: 720 } });
+```
+
+When labels would not fit even at the tightest band, nothing is dropped and
+nothing is silently crowded: the compile returns a **warning** naming the axis,
+every mark and every label is still drawn, and the warning says what would help
+(aggregate, or a wider `plotWidth`).
+
 ### Follow-up questions
 
 The library is **stateless**. To continue a conversation, hand the transcript

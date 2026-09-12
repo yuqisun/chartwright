@@ -174,7 +174,7 @@ export const datasets: Dataset[] = [
   {
     name: 'sixty-categories',
     shapes: ['categorical (dense)', 'overflow'],
-    why: 'the dense regime: 60 bands against a 400px axis at a 6px minimum is where the elastic budget stops stretching and starts dropping, and where labels must rotate',
+    why: 'the dense regime: 60 bands against a 400px axis is where the elastic budget hits its 1.5x ceiling and the labels must rotate; past ~100 bands the same axis warns about crowding rather than dropping rows',
     rows: Array.from({ length: 60 }, (_, index) => ({
       counterparty: `CP-${String(index + 1).padStart(2, '0')}`,
       notional_usd: 1000 + ((index * 137) % 900),

@@ -20,6 +20,8 @@ import type { CategoricalModel, ChartModel, MatrixModel, PartToWholeModel } from
 import { keyForCategory } from '../model.ts';
 import { CHART_TYPES } from '../chart-types.ts';
 import type { ChartType } from '../chart-types.ts';
+import { deriveAxisLayout, overflowWarning, plotWidthOf } from '../layout.ts';
+import type { AxisLayout, LayoutInput } from '../layout.ts';
 import { roleColors, seriesColors } from '../theme.ts';
 import type { ColorRole, Theme } from '../theme.ts';
 
@@ -55,15 +57,36 @@ function withTone(point: Point, style: ResolvedTone | undefined, theme: Theme): 
  *
  * One helper for every axis on every shape, because a theme that restyles one axis and
  * not the other is a bug, and the alternative is the same four keys pasted per shape.
+ * `labels` carries what the layout derivation decided (font size, rotation), so theme
+ * and layout compose in one place instead of fighting over the same object.
  */
-function themedAxis(theme: Theme, axis: ChartOptions, { grid }: { grid: boolean }): ChartOptions {
+function themedAxis(
+  theme: Theme,
+  axis: ChartOptions,
+  { grid, labels }: { grid: boolean; labels?: ChartOptions },
+): ChartOptions {
+  const labelStyle = (labels?.style ?? {}) as ChartOptions;
   return {
     ...axis,
-    labels: { style: { color: theme.roles.text.secondary } },
+    labels: { ...labels, style: { color: theme.roles.text.secondary, ...labelStyle } },
     lineColor: theme.roles.structure.axis,
     tickColor: theme.roles.structure.axis,
     ...(grid ? { gridLineColor: theme.roles.structure.grid } : {}),
     title: { ...(axis.title as ChartOptions | undefined), style: { color: theme.roles.text.muted } },
+  };
+}
+
+/**
+ * What the layout derivation says, in the keys Highcharts reads.
+ *
+ * Rotation only where `rotate` is true: a category axis running down the side of a
+ * horizontal bar chart has its labels lying along the reading direction already, and
+ * turning them sideways there would fight the reader for no geometric gain.
+ */
+function labelSizing(layout: AxisLayout, { rotate }: { rotate: boolean }): ChartOptions {
+  return {
+    style: { fontSize: `${layout.fontSize}px` },
+    ...(rotate && layout.rotation !== 0 ? { rotation: layout.rotation } : {}),
   };
 }
 
@@ -109,13 +132,27 @@ function rampFor(theme: Theme, type: ChartType): readonly [string, string] | und
     : undefined;
 }
 
-function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
+function categoricalOptions(
+  model: CategoricalModel,
+  emphasis: EmphasisResolution,
+  theme: Theme,
+  layoutInput: LayoutInput | undefined,
+): { options: ChartOptions; warnings: string[] } {
   const vertical = model.chartType === 'bar' && model.orientation !== 'horizontal';
   const horizontal = model.chartType === 'bar' && model.orientation === 'horizontal';
   const compact = model.compact === true;
   const palette = paletteFor(theme, model.chartType, model.series.length);
 
-  return {
+  // The category axis is the one that can crowd. In Highcharts it is `xAxis` for every
+  // orientation — a `bar` is an inverted column, so the inversion is visual and the
+  // option names do not move — which is also why the top-to-bottom ordering of a
+  // horizontal bar is `xAxis.reversed`, not anything on the value axis. The value axis
+  // prints numbers the library formats, so it gets no sizing of ours.
+  const width = plotWidthOf(layoutInput);
+  const layout = deriveAxisLayout(model.categories, width);
+  const warnings = layout.overflow ? [overflowWarning('x', model.categories.length, width)] : [];
+
+  const options: ChartOptions = {
     ...baseOptions(model, { legend: model.series.length > 1, theme }),
     chart: {
       type: vertical ? 'column' : horizontal ? 'bar' : model.chartType,
@@ -131,11 +168,27 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
     // plotOptions. `percent` is the one that rescales, which is why it is passed through only
     // when the spec asked for it — the compiler does not decide that a comparison is a share.
     ...(model.stacking ? { plotOptions: { series: { stacking: model.stacking } } } : {}),
-    // Compact drops the axes rather than shortening them: a sparkline has no ruler.
+    // Compact drops the axes rather than shortening them: a sparkline has no ruler, and a
+    // ruler is the only thing the layout derivation knows how to size.
     ...(compact
       ? {}
       : {
-          xAxis: themedAxis(theme, { categories: model.categories, title: { text: model.xField } }, { grid: false }),
+          xAxis: themedAxis(
+            theme,
+            {
+              categories: model.categories,
+              title: { text: model.xField },
+              // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
+              // the table would land at the bottom and a descending sort would read as
+              // ascending. Reversing the category axis puts row 0 on top, which is what
+              // "top 10" means to a reader. Vertical columns run left-to-right, so they
+              // need nothing.
+              ...(horizontal ? { reversed: true } : {}),
+            },
+            // A side axis (horizontal bars) shrinks but does not turn: its labels already
+            // read in the direction they stack, and rotating them there fights the reader.
+            { grid: false, labels: labelSizing(layout, { rotate: !horizontal }) },
+          ),
           yAxis: themedAxis(
             theme,
             {
@@ -143,12 +196,6 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
               // A fixed range is a claim about the measure, so it overrides whatever the rows say.
               ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
               ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
-              // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
-              // the table would land at the bottom and a descending sort would read as
-              // ascending. Reversing the category axis puts row 0 on top, which is what
-              // "top 10" means to a reader. Vertical columns run left-to-right, so they
-              // need nothing.
-              ...(horizontal ? { reversed: true } : {}),
             },
             { grid: true },
           ),
@@ -165,11 +212,16 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
       }),
     })),
   };
+  return { options, warnings };
 }
 
-function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
+function partToWholeOptions(
+  model: PartToWholeModel,
+  emphasis: EmphasisResolution,
+  theme: Theme,
+): { options: ChartOptions; warnings: string[] } {
   const palette = paletteFor(theme, model.chartType, model.slices.length);
-  return {
+  const options: ChartOptions = {
     // A pie labels its own slices; a legend beside it would only repeat them.
     ...baseOptions(model, { legend: false, theme }),
     chart: { type: 'pie', backgroundColor: theme.roles.surface.canvas },
@@ -190,6 +242,9 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
       },
     ],
   };
+  // No axis, nothing to crowd: a pie with sixty slices has other problems, and they are
+  // the caller's to solve with a different question, not this module's.
+  return { options, warnings: [] };
 }
 
 /**
@@ -204,10 +259,26 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
  * highlight cannot be a fill without destroying the datum. A highlight is a border; muting
  * recolours the cell, which is the honest reading of "fade this one" when colour carries meaning.
  */
-function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
+function matrixOptions(
+  model: MatrixModel,
+  emphasis: EmphasisResolution,
+  theme: Theme,
+  layoutInput: LayoutInput | undefined,
+): { options: ChartOptions; warnings: string[] } {
   const compact = model.compact === true;
   const rows = model.series.map((series) => series.name);
   const ramp = rampFor(theme, model.chartType);
+
+  // Two category axes, and either can crowd on its own: months along the bottom, desks up
+  // the side. The bottom one rotates like any categorical axis; the side one only shrinks,
+  // because its labels already read in the direction they stack.
+  const width = plotWidthOf(layoutInput);
+  const across = deriveAxisLayout(model.categories, width);
+  const down = deriveAxisLayout(rows, width);
+  const warnings = [
+    ...(across.overflow ? [overflowWarning('x', model.categories.length, width)] : []),
+    ...(down.overflow ? [overflowWarning('y', rows.length, width)] : []),
+  ];
 
   const data: Array<Record<string, unknown>> = [];
   model.series.forEach((series, rowIndex) => {
@@ -228,7 +299,7 @@ function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution, theme: 
     });
   });
 
-  return {
+  const options: ChartOptions = {
     // The legend here is the colour scale, which is why it is on even though there is one series.
     ...baseOptions(model, { legend: true, theme }),
     chart: { type: 'heatmap', backgroundColor: theme.roles.surface.canvas },
@@ -240,20 +311,34 @@ function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution, theme: 
     ...(compact
       ? {}
       : {
-          xAxis: themedAxis(theme, { categories: model.categories, title: { text: model.xField } }, { grid: false }),
-          yAxis: themedAxis(theme, { categories: rows, title: { text: model.seriesField ?? '' } }, { grid: false }),
+          xAxis: themedAxis(
+            theme,
+            { categories: model.categories, title: { text: model.xField } },
+            { grid: false, labels: labelSizing(across, { rotate: true }) },
+          ),
+          yAxis: themedAxis(
+            theme,
+            { categories: rows, title: { text: model.seriesField ?? '' } },
+            { grid: false, labels: labelSizing(down, { rotate: false }) },
+          ),
         }),
     series: [{ type: 'heatmap', name: model.yField, data }],
   };
+  return { options, warnings };
 }
 
-export function toHighchartsOptions(model: ChartModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
+export function toHighchartsOptions(
+  model: ChartModel,
+  emphasis: EmphasisResolution,
+  theme: Theme,
+  layout?: LayoutInput,
+): { options: ChartOptions; warnings: string[] } {
   switch (model.kind) {
     case 'part-to-whole':
       return partToWholeOptions(model, emphasis, theme);
     case 'matrix':
-      return matrixOptions(model, emphasis, theme);
+      return matrixOptions(model, emphasis, theme, layout);
     case 'categorical':
-      return categoricalOptions(model, emphasis, theme);
+      return categoricalOptions(model, emphasis, theme, layout);
   }
 }

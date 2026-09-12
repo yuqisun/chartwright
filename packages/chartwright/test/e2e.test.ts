@@ -219,7 +219,9 @@ test('end to end: present mode charts the caller result, in the caller order, un
   const result = await chartwright.ask({ query: 'which booking country traded the most?', rows: aggregated, present: true });
 
   assert.equal((result.options.chart as { type: string }).type, 'bar');
-  assert.equal((result.options.yAxis as { reversed?: boolean }).reversed, true, 'row 0 belongs at the top');
+  // Row 0 belongs at the top, and the axis that orders rows is the category axis — which
+  // for a Highcharts `bar` is `xAxis`, the inversion being visual only.
+  assert.equal((result.options.xAxis as { reversed?: boolean }).reversed, true, 'row 0 belongs at the top');
   assert.deepEqual(
     (result.options.xAxis as { categories: string[] }).categories,
     ['GB', 'HK', 'SG'],

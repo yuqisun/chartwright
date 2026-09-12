@@ -16,6 +16,7 @@ import { resolveEmphasis } from './emphasis.ts';
 import { buildChartModel, rowDatumKey } from './model.ts';
 import { resolveTheme } from './theme.ts';
 import type { ChartOptions } from './backends/highcharts.ts';
+import type { LayoutInput } from './layout.ts';
 import type { ThemeInput } from './theme.ts';
 import type { ChartSpec, Row } from '../types.ts';
 
@@ -29,12 +30,13 @@ export type CompiledChart = {
 /**
  * What a compile can be told, beyond the spec and the rows.
  *
- * Only the theme, for now: it is the one input that changes how the same chart looks
- * without changing what it says, and it is fixed per consumer rather than per request —
- * which is why `createChartwright` holds it and a request cannot override it.
+ * The theme (how the chart looks) and the layout reference width (how much room the
+ * compiler assumes it has). Both are fixed per consumer rather than per request —
+ * which is why `createChartwright` holds them and a request cannot override them.
  */
 export type CompileOptions = {
   theme?: ThemeInput;
+  layout?: LayoutInput;
 };
 
 function keyOf(spec: ChartSpec) {
@@ -50,15 +52,25 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[], options?: Comp
   // rather than position, so it survives any reordering the backend does.
   const emphasis = resolveEmphasis(spec.emphasis, model.dataset, keyOf(spec));
 
+  const { options: chartOptions, warnings: layoutWarnings } = toHighchartsOptions(
+    model,
+    emphasis,
+    resolveTheme(options?.theme),
+    options?.layout,
+  );
+
   return {
-    options: toHighchartsOptions(model, emphasis, resolveTheme(options?.theme)),
+    options: chartOptions,
     dataset: model.dataset,
-    warnings: emphasis.warnings,
+    // An emphasis rule that matched nothing and an axis that cannot fit its labels are
+    // the same kind of news: the chart drew, and something about it deserves a sentence.
+    warnings: [...emphasis.warnings, ...layoutWarnings],
   };
 }
 
 export { isSupportedChartType, materialize, SUPPORTED_CHART_TYPES, findCategoryCollision } from './model.ts';
 export { defaultTheme, resolveTheme, roleColors, seriesColors } from './theme.ts';
+export { deriveAxisLayout, LAYOUT, overflowWarning, plotWidthOf } from './layout.ts';
 export {
   CHANNEL_NAMES,
   CHART_TYPES,
@@ -70,5 +82,6 @@ export {
 } from './chart-types.ts';
 export type { CategoryCollision, ChartModel, MatrixModel, SupportedChartType } from './model.ts';
 export type { ColorRole, Theme, ThemeInput, ThemeRoles } from './theme.ts';
+export type { AxisLayout, LayoutInput } from './layout.ts';
 export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec, Modifier } from './chart-types.ts';
 export type { ChartOptions } from './backends/highcharts.ts';

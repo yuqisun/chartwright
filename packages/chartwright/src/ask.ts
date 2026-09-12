@@ -13,7 +13,7 @@ import { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './p
 import { buildToolDefs, createToolHandlers, inferColumns } from './tools.ts';
 import { createSubmitValidator } from './submit.ts';
 import type { ProfileOptions, QueryOptions } from './tools.ts';
-import type { ThemeInput } from './compile/index.ts';
+import type { LayoutInput, ThemeInput } from './compile/index.ts';
 import type { AskRequest, AskResult, Budget, CapabilitySource, ChatMessage, LlmClient, ToolMode } from './types.ts';
 
 export type ChartwrightOptions = {
@@ -41,6 +41,13 @@ export type ChartwrightOptions = {
    * two different pictures. Resolved once per compile; see `compile/theme.ts`.
    */
   theme?: ThemeInput;
+  /**
+   * The plot width in pixels the layout derivation reasons against, when the consumer
+   * knows it. The compiler cannot see the container, so without this it derives label
+   * rotation and font size against a documented reference width — conservative on a
+   * wide screen, exact when the consumer passes its own. See `compile/layout.ts`.
+   */
+  layout?: LayoutInput;
 };
 
 export type Chartwright = {
@@ -122,6 +129,7 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       // consumer's, fixed at createChartwright, so the same spec always looks the same here.
       const { options: chartOptions, dataset, warnings: compileWarnings } = compileToHighcharts(outcome.spec, request.rows, {
         theme: config.theme,
+        layout: config.layout,
       });
 
       const result: AskResult = {

@@ -68,8 +68,13 @@ test('orientation horizontal switches to the library horizontal type', () => {
   assert.equal((options.chart as { type: string }).type, 'bar');
   // Highcharts draws horizontal bars bottom-up; reversing the category axis is
   // what puts the first row of the table at the top, so a descending sort reads
-  // as a ranking downwards.
-  assert.equal((options.yAxis as { reversed?: boolean }).reversed, true);
+  // as a ranking downwards. The category axis of a `bar` is still `xAxis` — the
+  // inversion is visual — so this is where the reversal lives. It used to sit on
+  // the value axis, which mirrored the measure instead of ordering the names;
+  // no drawn case was horizontal, so nothing rendered it until the layout work
+  // touched these axes and the golden diff showed the categories moving.
+  assert.equal((options.xAxis as { reversed?: boolean }).reversed, true);
+  assert.equal((options.yAxis as { reversed?: boolean }).reversed, undefined);
 });
 
 test('vertical bars leave the category axis unreversed', () => {
@@ -83,7 +88,7 @@ test('vertical bars leave the category axis unreversed', () => {
     }),
     rows,
   );
-  assert.equal((options.yAxis as { reversed?: boolean }).reversed, undefined);
+  assert.equal((options.xAxis as { reversed?: boolean }).reversed, undefined);
 });
 
 test('a series encoding produces one series per group, aligned to the shared categories', () => {

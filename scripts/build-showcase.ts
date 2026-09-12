@@ -93,13 +93,15 @@ const COPY: Record<string, Copy> = {
     query: 'Rank all 60 counterparties by traded notional',
     mode: 'ask',
     modeWhy: 'one row per counterparty, no aggregation needed',
-    expects: 'Sixty columns. Dense but not yet crowded: the axis stretches to about 1.5x before labels have to rotate.',
+    expects:
+      'Sixty columns at the reference width: the elastic budget stretches the axis to its 1.5x ceiling, and even then a five-character name fits a 10px band neither flat nor at 45°, so the labels turn vertical at a 9px font. All sixty are still shown — thinning or dropping names would misstate how many counterparties there are.',
   },
   'long-category-labels-bar': {
     query: 'Revenue by desk',
     mode: 'ask',
     modeWhy: 'four rows, one per desk',
-    expects: 'Four columns whose labels are far wider than their bands. This is the case layout work has to survive, and the one `chart.orientation` alone cannot fix.',
+    expects:
+      'Four columns whose labels are far wider than their bands: at the 400px reference width a 32-character name fits neither flat nor at 45°, so the labels turn vertical. Hand the compiler the width it cannot see (`layout.plotWidth`) and they lie back down — which is the whole argument for that option.',
   },
   'signed-values-bar': {
     query: 'Show profit and loss by desk',
