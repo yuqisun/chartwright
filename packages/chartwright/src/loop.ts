@@ -239,6 +239,11 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
         );
       }
     }
+    // type2 must name a supported chart type — the schema constrains it via enum, but a
+    // manually-crafted spec could bypass that and send Highcharts something it cannot draw.
+    if (chart?.type2 !== undefined && !isChartType(chart.type2 as string)) {
+      errors.push(`chart.type2 '${chart.type2}' is not a supported chart type`);
+    }
   }
   if (chart?.stacking !== undefined && chart.stacking !== 'normal' && chart.stacking !== 'percent') {
     errors.push("chart.stacking must be 'normal' or 'percent'");

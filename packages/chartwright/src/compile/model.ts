@@ -163,9 +163,9 @@ export type CategoryCollision = {
  */
 export function findCategoryCollision(
   dataset: Row[],
-  encodings: { x: string; series?: string; y?: string },
+  encodings: { x: string; series?: string; y?: string; y2?: string },
 ): CategoryCollision | undefined {
-  const { x, series, y } = encodings;
+  const { x, series, y, y2 } = encodings;
 
   const groups = new Map<string, Row[]>();
   if (series !== undefined) {
@@ -185,7 +185,7 @@ export function findCategoryCollision(
       const category = String(row[x]);
       const previous = seen.get(category);
       if (previous) {
-        const skip = new Set([x, series, y].filter((field): field is string => field !== undefined));
+        const skip = new Set([x, series, y, y2].filter((field): field is string => field !== undefined));
         return {
           category,
           ...(series !== undefined ? { series: name } : {}),
@@ -282,7 +282,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   // Two rows in one category cannot both be drawn on a categorical axis. Picking one
   // (or summing them) would silently change the numbers, so say what is wrong and let
   // the model aggregate in run_query instead.
-  const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: y.field });
+  const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: y.field, y2: y2Field });
   if (collision) {
     throw new Error(
       `the table has more than one row for category '${collision.category}'` +

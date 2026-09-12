@@ -99,3 +99,82 @@ test('without y2, there is one axis and no type2', () => {
   assert.equal(series[0].yAxis, undefined);
   assert.equal(series[0].type, undefined);
 });
+
+// --- combo + series encoding (C1, I1) ---
+
+const comboSeriesRows: Row[] = [
+  { counterparty: 'Acme', currency: 'USD', notional_usd: 1_000_000_000, avg_commission_bps: 3 },
+  { counterparty: 'Acme', currency: 'EUR', notional_usd: 500_000_000, avg_commission_bps: 5 },
+  { counterparty: 'Globex', currency: 'USD', notional_usd: 800_000_000, avg_commission_bps: 7 },
+  { counterparty: 'Globex', currency: 'EUR', notional_usd: 200_000_000, avg_commission_bps: 2 },
+];
+
+const comboSeriesSpec: ChartSpec = {
+  chart: { type: 'bar' },
+  encodings: {
+    x: { field: 'counterparty' },
+    y: { field: 'notional_usd' },
+    y2: { field: 'avg_commission_bps' },
+    series: { field: 'currency' },
+  },
+};
+
+test('combo + series produces 2N series with composite names', () => {
+  const { options } = compileToHighcharts(comboSeriesSpec, comboSeriesRows);
+  const names = (options.series as Array<{ name: string }>).map((s) => s.name);
+  assert.deepEqual(names, [
+    'notional_usd: USD',
+    'notional_usd: EUR',
+    'avg_commission_bps: USD',
+    'avg_commission_bps: EUR',
+  ]);
+});
+
+test('C1: top_k on combo+series styles only the correct measure and group', () => {
+  const { options } = compileToHighcharts(
+    {
+      ...comboSeriesSpec,
+      emphasis: [{ when: { op: 'top_k', field: 'avg_commission_bps', k: 1 }, style: { tone: 'highlight' } }],
+    },
+    comboSeriesRows,
+  );
+  const series = options.series as Array<{ name: string; data: Array<number | Record<string, unknown>> }>;
+
+  // Primary measure series are unstyled.
+  for (const s of series.filter((s) => s.name.startsWith('notional_usd'))) {
+    assert.ok(s.data.every((d) => typeof d === 'number'), `${s.name} should be unstyled`);
+  }
+
+  // Secondary measure: exactly one styled point (Globex USD has commission 7, the max).
+  const secondaryStyled = series
+    .filter((s) => s.name.startsWith('avg_commission_bps'))
+    .flatMap((s) => s.data.filter((d) => typeof d === 'object'));
+  assert.equal(secondaryStyled.length, 1, 'only the top commission datum is highlighted');
+});
+
+// --- C2: non-top_k emphasis on combo (no series encoding) ---
+
+test('C2: non-top_k emphasis on combo styles both measures for matching categories', () => {
+  const { options } = compileToHighcharts(
+    {
+      ...comboSpec,
+      emphasis: [{ when: { op: 'eq', field: 'counterparty', value: 'Globex' }, style: { tone: 'muted' } }],
+    },
+    rows,
+  );
+  const series = options.series as Array<{ name: string; data: Array<number | Record<string, unknown>> }>;
+
+  // Globex is index 1. Both measures at index 1 should be muted.
+  for (const s of series) {
+    const datum = s.data[1];
+    assert.equal(typeof datum, 'object', `${s.name}[1] (Globex) should be styled`);
+  }
+
+  // Non-Globex data should be plain numbers.
+  for (const s of series) {
+    for (let i = 0; i < s.data.length; i++) {
+      if (i === 1) continue; // Globex
+      assert.equal(typeof s.data[i], 'number', `${s.name}[${i}] should be unstyled`);
+    }
+  }
+});

@@ -91,7 +91,13 @@ export type EmphasisResolution = {
  * A rule that matches nothing produces a warning rather than silence: the user
  * asked for a highlight and got none, and that must not be invisible.
  */
-export function resolveEmphasis(rules: EmphasisRule[] | undefined, rows: Row[], keyOf: DatumKey): EmphasisResolution {
+export function resolveEmphasis(
+  rules: EmphasisRule[] | undefined,
+  rows: Row[],
+  keyOf: DatumKey,
+  /** When y2 is present, the two measure field names. Non-top_k rules emit a key per measure. */
+  measureFields?: readonly [string, string],
+): EmphasisResolution {
   const styles = new Map<string, ResolvedTone>();
   const warnings: string[] = [];
   if (!rules || rules.length === 0) return { styles, warnings };
@@ -112,13 +118,30 @@ export function resolveEmphasis(rules: EmphasisRule[] | undefined, rows: Row[], 
 
     let matched = 0;
     for (const row of rows) {
-      // top_k references a measure field, which becomes the series component of the key
-      // in a dual-axis combo (§3.4 rule 1). Other rules match by value and style every
-      // measure for the matching categories, so they use no measure component.
-      const key = rule.when.op === 'top_k' ? keyOf(row, rule.when.field) : keyOf(row);
-      if (matches(rule.when, row, key, topKeys)) {
-        styles.set(key, style);
-        matched += 1;
+      if (rule.when.op === 'top_k') {
+        // top_k references a measure field, which becomes the series component of the key
+        // in a dual-axis combo (§3.4 rule 1).
+        const key = keyOf(row, rule.when.field);
+        if (matches(rule.when, row, key, topKeys)) {
+          styles.set(key, style);
+          matched += 1;
+        }
+      } else if (measureFields !== undefined) {
+        // Non-top_k rules on a combo chart match by value and style EVERY measure for the
+        // matching categories. Emit a key per measure so both axes get the emphasis.
+        const rowMatches = matches(rule.when, row, keyOf(row), topKeys);
+        if (rowMatches) {
+          for (const field of measureFields) {
+            styles.set(keyOf(row, field), style);
+          }
+          matched += 1;
+        }
+      } else {
+        const key = keyOf(row);
+        if (matches(rule.when, row, key, topKeys)) {
+          styles.set(key, style);
+          matched += 1;
+        }
       }
     }
 

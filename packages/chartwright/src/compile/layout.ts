@@ -70,6 +70,13 @@ function clamp(value: number, low: number, high: number): number {
  * vertical labels that had room to lie down.
  */
 export function deriveAxisLayout(labels: readonly string[], plotWidth: number = LAYOUT.plotWidth): AxisLayout {
+  // plotWidthOf guards this for the normal path, but the function is exported and a direct
+  // caller could pass anything. NaN or zero here would produce Infinity pressure and cascade
+  // through every derived value, so refuse early with a clear message.
+  if (!Number.isFinite(plotWidth) || plotWidth <= 0) {
+    throw new Error(`deriveAxisLayout requires a positive finite plotWidth, got ${plotWidth}`);
+  }
+
   const count = labels.length;
   if (count === 0) {
     return { rotation: 0, fontSize: clamp(LAYOUT.baseFont - 1, 6, 10), stretched: 1, overflow: false };

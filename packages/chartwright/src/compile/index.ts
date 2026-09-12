@@ -43,10 +43,14 @@ function keyOf(spec: ChartSpec) {
   const xField = spec.encodings.x?.field ?? '';
   const seriesField = spec.encodings.series?.field;
   const y2Field = spec.encodings.y2?.field;
-  // When y2 is present without a series encoding, the measure field name IS the series
-  // component of the datum key — not a column to read from the row. Using datumKey
-  // directly avoids rowDatumKey interpreting it as a column reference (§3.4 rule 1).
+  // The datum key must match what the model names its series after (§3.4 rule 1).
+  // Combo + series: the model names series "${measure}: ${group}", so the key must too.
+  // Combo alone: the measure field name IS the series component (not a column to read).
+  // Neither: plain category key via rowDatumKey.
   return (row: Row, measureField?: string) => {
+    if (seriesField !== undefined && y2Field !== undefined && measureField !== undefined) {
+      return datumKey(String(row[xField]), `${measureField}: ${String(row[seriesField])}`);
+    }
     if (seriesField !== undefined) return rowDatumKey(row, xField, seriesField);
     if (y2Field !== undefined && measureField !== undefined) {
       return datumKey(String(row[xField]), measureField);
@@ -60,7 +64,13 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[], options?: Comp
 
   // Emphasis is evaluated over the materialised table, keyed by category value
   // rather than position, so it survives any reordering the backend does.
-  const emphasis = resolveEmphasis(spec.emphasis, model.dataset, keyOf(spec));
+  // When y2 is present, non-top_k rules must style both measures for matching
+  // categories, so we pass both measure field names (§3.4 rule 1).
+  const yField = spec.encodings.y?.field;
+  const y2Field = spec.encodings.y2?.field;
+  const measureFields =
+    yField !== undefined && y2Field !== undefined ? ([yField, y2Field] as const) : undefined;
+  const emphasis = resolveEmphasis(spec.emphasis, model.dataset, keyOf(spec), measureFields);
 
   const { options: chartOptions, warnings: layoutWarnings } = toHighchartsOptions(
     model,

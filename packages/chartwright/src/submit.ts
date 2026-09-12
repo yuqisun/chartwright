@@ -81,6 +81,7 @@ export function createSubmitValidator(options: { rows: Row[]; mode: ToolMode }):
         x: spec.encodings.x?.field ?? '',
         series: spec.encodings.series?.field,
         y: spec.encodings.y?.field,
+        y2: spec.encodings.y2?.field,
       });
       if (collision) return [presentCollisionAdvice(collision)];
     }
