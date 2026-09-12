@@ -113,6 +113,61 @@ test('scatter data is [x, y] pairs in table order', () => {
   assert.deepEqual(series[0].data[2], [14, 31]);
 });
 
+test('top_k on scatter highlights exactly one point even when two share an x', () => {
+  const rows: Row[] = [
+    { x: 9, y: 10 },
+    { x: 9, y: 50 },  // same x, higher y
+    { x: 14, y: 30 },
+  ];
+  const { options } = compileToHighcharts(
+    {
+      chart: { type: 'scatter' },
+      encodings: { x: { field: 'x' }, y: { field: 'y' } },
+      emphasis: [{ when: { op: 'top_k', field: 'y', k: 1 }, style: { tone: 'highlight' } }],
+    },
+    rows,
+  );
+  const data = (options.series as Array<{ data: unknown[] }>)[0].data;
+  // Styled points become objects with a color key; unstyled remain [x, y] arrays.
+  const styled = data.filter((d) => typeof d === 'object' && !Array.isArray(d));
+  assert.equal(styled.length, 1, 'exactly one point highlighted, not two');
+});
+
+test('scatter emphasis marks the intended datum, not a neighbour', () => {
+  const rows: Row[] = [
+    { x: 1, y: 100 },
+    { x: 2, y: 5 },
+    { x: 3, y: 50 },
+  ];
+  const { options } = compileToHighcharts(
+    {
+      chart: { type: 'scatter' },
+      encodings: { x: { field: 'x' }, y: { field: 'y' } },
+      emphasis: [{ when: { op: 'top_k', field: 'y', k: 1 }, style: { tone: 'highlight' } }],
+    },
+    rows,
+  );
+  const data = (options.series as Array<{ data: Array<Record<string, unknown> | number[]> }>)[0].data;
+  // Styled points become objects with a color key; unstyled remain [x, y] arrays.
+  const isStyled = (d: unknown): boolean => typeof d === 'object' && !Array.isArray(d);
+  assert.equal(isStyled(data[0]), true, 'row 0 (highest y) is highlighted');
+  assert.equal(isStyled(data[1]), false, 'row 1 is unstyled');
+  assert.equal(isStyled(data[2]), false, 'row 2 is unstyled');
+});
+
+test('scatter accepts duplicate x values without refusing', () => {
+  const rows: Row[] = [
+    { x: 9, y: 10 },
+    { x: 9, y: 50 },
+    { x: 14, y: 30 },
+  ];
+  const { options } = compileToHighcharts(
+    { chart: { type: 'scatter' }, encodings: { x: { field: 'x' }, y: { field: 'y' } } },
+    rows,
+  );
+  assert.equal((options.series as Array<{ data: unknown[] }>)[0].data.length, 3);
+});
+
 test('bubble emits [x, y, z] data', () => {
   const rows: Row[] = [
     { x: 1, y: 10, size: 100 },

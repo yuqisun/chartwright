@@ -385,11 +385,18 @@ function pointCloudOptions(
       data: model.points.map((point, index) => {
         const style = emphasis.styles.get(String(index));
         const values = point.values;
-        // Bubble needs object format {x, y, z}; scatter uses [x, y] arrays.
-        const base = hasSize
-          ? { x: values[0], y: values[1], z: values[2] }
-          : [values[0], values[1]];
-        return style ? withTone(base as Record<string, unknown>, style, theme) : base;
+        if (hasSize) {
+          // Bubble: object format {x, y, z}; withTone spreads correctly.
+          const base = { x: values[0], y: values[1], z: values[2] };
+          return style ? withTone(base, style, theme) : base;
+        } else {
+          // Scatter: [x, y] array. withTone would corrupt it by spreading into
+          // {0: x, 1: y, color: "..."}, so convert to object form when styling.
+          if (style) {
+            return withTone({ x: values[0], y: values[1] }, style, theme);
+          }
+          return [values[0], values[1]];
+        }
       }),
     }],
   };

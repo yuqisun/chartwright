@@ -14,6 +14,8 @@
 import { toHighchartsOptions } from './backends/highcharts.ts';
 import { resolveEmphasis } from './emphasis.ts';
 import { buildChartModel, datumKey, rowDatumKey } from './model.ts';
+import { CHART_TYPES } from './chart-types.ts';
+import type { ChartType } from './chart-types.ts';
 import { resolveTheme } from './theme.ts';
 import type { ChartOptions } from './backends/highcharts.ts';
 import type { LayoutInput } from './layout.ts';
@@ -43,11 +45,25 @@ function keyOf(spec: ChartSpec) {
   const xField = spec.encodings.x?.field ?? '';
   const seriesField = spec.encodings.series?.field;
   const y2Field = spec.encodings.y2?.field;
+  // Point-cloud types use positional keys: the row index distinguishes points
+  // that share an x value (§2.1). The declaration's allowsDuplicateCategories
+  // flag identifies these types without hardcoding names.
+  const isPointCloud = (() => {
+    const type = spec.chart.type;
+    if (typeof type !== 'string') return false;
+    const decl = CHART_TYPES[type as ChartType];
+    return decl !== undefined && decl.allowsDuplicateCategories === true;
+  })();
+
   // The datum key must match what the model names its series after (§3.4 rule 1).
   // Combo + series: the model names series "${measure}: ${group}", so the key must too.
   // Combo alone: the measure field name IS the series component (not a column to read).
   // Neither: plain category key via rowDatumKey.
-  return (row: Row, measureField?: string) => {
+  // Point-cloud: positional index, because two points can share an x value.
+  return (row: Row, measureField?: string, rowIndex?: number) => {
+    if (isPointCloud && rowIndex !== undefined) {
+      return String(rowIndex);
+    }
     if (seriesField !== undefined && y2Field !== undefined && measureField !== undefined) {
       return datumKey(String(row[xField]), `${measureField}: ${String(row[seriesField])}`);
     }

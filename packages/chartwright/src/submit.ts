@@ -16,7 +16,7 @@
  *      is "add an aggregate step in run_query". A run with no aggregation to offer must
  *      not be told that, so that one case is detected as data and said differently.
  */
-import { compileToHighcharts, findCategoryCollision, materialize } from './compile/index.ts';
+import { compileToHighcharts, findCategoryCollision, materialize, CHART_TYPES, isChartType } from './compile/index.ts';
 import type { CategoryCollision } from './compile/index.ts';
 import type { ChartSpec, Row, ToolMode } from './types.ts';
 
@@ -77,13 +77,17 @@ export function createSubmitValidator(options: { rows: Row[]; mode: ToolMode }):
         return [reasonOf(error)];
       }
 
-      const collision = findCategoryCollision(table, {
-        x: spec.encodings.x?.field ?? '',
-        series: spec.encodings.series?.field,
-        y: spec.encodings.y?.field,
-        y2: spec.encodings.y2?.field,
-      });
-      if (collision) return [presentCollisionAdvice(collision)];
+      // Point-cloud types allow duplicate x values — that is what makes them clouds.
+      const declaration = isChartType(spec.chart.type) ? CHART_TYPES[spec.chart.type] : undefined;
+      if (!declaration?.allowsDuplicateCategories) {
+        const collision = findCategoryCollision(table, {
+          x: spec.encodings.x?.field ?? '',
+          series: spec.encodings.series?.field,
+          y: spec.encodings.y?.field,
+          y2: spec.encodings.y2?.field,
+        });
+        if (collision) return [presentCollisionAdvice(collision)];
+      }
     }
 
     try {

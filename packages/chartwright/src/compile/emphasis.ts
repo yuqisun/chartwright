@@ -14,8 +14,8 @@ import type { EmphasisRule, EmphasisWhen, Row } from '../types.ts';
 
 export type ResolvedTone = { tone: 'highlight' | 'muted'; label: boolean };
 
-/** Identifies one datum in the materialised table: its category, plus its series if any. */
-export type DatumKey = (row: Row, measureField?: string) => string;
+/** Identifies one datum in the materialised table: its category, plus its series if any. For point-cloud types, the row index distinguishes points that share an x value (§2.1). */
+export type DatumKey = (row: Row, measureField?: string, rowIndex?: number) => string;
 
 function asNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
@@ -63,7 +63,7 @@ function topKeysFor(when: Extract<EmphasisWhen, { op: 'top_k' }>, rows: Row[], k
   // The measure field distinguishes the two axes in a dual-axis combo (§3.4 rule 1):
   // without it, both measures share a datum key and emphasis on one styles the other.
   const ranked = rows
-    .map((row) => ({ key: keyOf(row, when.field), value: asNumber(row[when.field]) }))
+    .map((row, ri) => ({ key: keyOf(row, when.field, ri), value: asNumber(row[when.field]) }))
     .filter((entry): entry is { key: string; value: number } => entry.value !== null)
     .sort((a, b) => direction * (a.value - b.value) || (a.key < b.key ? -1 : 1));
 
@@ -117,11 +117,13 @@ export function resolveEmphasis(
     const style: ResolvedTone = { tone: rule.style.tone, label: rule.style.label === true };
 
     let matched = 0;
-    for (const row of rows) {
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri];
       if (rule.when.op === 'top_k') {
         // top_k references a measure field, which becomes the series component of the key
-        // in a dual-axis combo (§3.4 rule 1).
-        const key = keyOf(row, rule.when.field);
+        // in a dual-axis combo (§3.4 rule 1). For point-cloud types, the row index is the
+        // datum key (§2.1).
+        const key = keyOf(row, rule.when.field, ri);
         if (matches(rule.when, row, key, topKeys)) {
           styles.set(key, style);
           matched += 1;
@@ -129,15 +131,15 @@ export function resolveEmphasis(
       } else if (measureFields !== undefined) {
         // Non-top_k rules on a combo chart match by value and style EVERY measure for the
         // matching categories. Emit a key per measure so both axes get the emphasis.
-        const rowMatches = matches(rule.when, row, keyOf(row), topKeys);
+        const rowMatches = matches(rule.when, row, keyOf(row, undefined, ri), topKeys);
         if (rowMatches) {
           for (const field of measureFields) {
-            styles.set(keyOf(row, field), style);
+            styles.set(keyOf(row, field, ri), style);
           }
           matched += 1;
         }
       } else {
-        const key = keyOf(row);
+        const key = keyOf(row, undefined, ri);
         if (matches(rule.when, row, key, topKeys)) {
           styles.set(key, style);
           matched += 1;
