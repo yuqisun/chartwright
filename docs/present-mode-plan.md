@@ -417,6 +417,25 @@ that fails if anyone later adds an implicit category sort.
 
 **Commit:** `test: end-to-end present mode over a pre-aggregated result`
 
+**Status: done.** 117 library tests pass, 4 of them added here. Two of the four went
+past the steps as written, both because writing them showed the steps would have passed
+for the wrong reason:
+
+- the "ask mode may still aggregate" test originally ran on the three-row table, where
+  an aggregate is a no-op — it proved a plan existed and nothing more. It now starts from
+  the same numbers *before* the caller's `GROUP BY` (two GB rows) and asserts that ask
+  mode adds them into the single GB row the caller had: 51,000,000 + 31,842,348 =
+  82,842,348. Aggregation that changes the numbers is the actual contrast.
+- the trace assertion was "no `run_query` at all", which passes if the model simply never
+  tries. The scripted model now reaches for it, and the test asserts the attempt is in the
+  trace, refused, with no summary — the plan's own amended wording, which had said exactly
+  this and which the first draft then ignored.
+
+Added beyond the plan: the shipped `counterparty-summary.json` is charted as it ships, in
+file order, with the whole table as the dataset — the data the example demo will run on.
+It deepens an acknowledged dependency on the example's paths (roadmap P0 item 5), so that
+item now says so.
+
 ---
 
 ## Task 6 — Example and docs
@@ -472,8 +491,8 @@ left is the part that only becomes true once this mode exists:
    other than the first rows.
 7. A colliding encoding is rejected with guidance the model can act on.
 8. Example demonstrates both modes; docs describe them.
-9. Full suite green: library tests (106 at the time of writing) plus the proxy tests
-   (6), and both typechecks.
+9. Full suite green: the whole library suite, the proxy tests (6), and both
+   typechecks. Deliberately not a count — a number here was stale within a day.
 
 ## Risks and fallbacks
 

@@ -3,7 +3,7 @@
 Everything that is known to be missing, planned, or deliberately refused. Written
 so that a decision made in a review does not have to be re-derived later.
 
-**Current size** — library: 13 source files / 2,545 lines, 9 test files / 113 tests,
+**Current size** — library: 13 source files / 2,545 lines, 9 test files / 117 tests,
 zero runtime dependencies. Example: 991 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
@@ -92,12 +92,16 @@ regression (headless browser + screenshot) once the chart types stabilise.
 
 ### 5. The package-level end-to-end test depends on the example
 
-`test/e2e.test.ts` reads `../../../examples/react-highcharts/data/post-trade.json`.
-If `packages/chartwright` is copied on its own — which is the documented
-consumption route — the test cannot run.
+`test/e2e.test.ts` reads two files out of the example —
+`../../../examples/react-highcharts/data/post-trade.json` and now
+`counterparty-summary.json`. If `packages/chartwright` is copied on its own — which is
+the documented consumption route — the test cannot run at all.
 
-**Fix:** keep a small fixture inside the package for package-level tests, and
-leave the 800-row run to the example.
+**Fix:** keep small fixtures inside the package for package-level tests, and leave the
+800-row and 12-row runs to the example. Note that the present-mode tests made this
+worse rather than better: they were the natural place to prove the shipped
+pre-aggregated table charts as it ships, and that is exactly what a package-local test
+cannot do without its own copy of the data.
 
 ---
 

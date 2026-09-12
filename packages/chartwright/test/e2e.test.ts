@@ -142,3 +142,220 @@ test('end to end: "highlight the biggest" without the model knowing any values',
   assert.equal(muted, 7, 'the remaining seven bars are muted');
   assert.deepEqual(result.warnings, []);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Present mode, end to end, on the caller's own result.
+//
+// The whole point is the negative: nothing the model does can change these numbers or
+// this order. So the assertions are about what did *not* happen — no plan, no
+// re-aggregation, no reordering — as much as about the chart that came out.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A consumer's own `GROUP BY booking_country ORDER BY trade_volume DESC`. */
+const aggregated: Row[] = [
+  { booking_country: 'GB', trade_volume: 82_842_348 },
+  { booking_country: 'HK', trade_volume: 26_610_809 },
+  { booking_country: 'SG', trade_volume: 11_420_317 },
+];
+
+const counterpartySummary = JSON.parse(
+  readFileSync(join(HERE, '..', '..', '..', 'examples', 'react-highcharts', 'data', 'counterparty-summary.json'), 'utf8'),
+) as Row[];
+
+function scriptedRun(replies: LlmCompleteResult[]) {
+  const requests: LlmCompleteRequest[] = [];
+  let index = 0;
+  return {
+    requests,
+    chartwright: createChartwright({
+      llm: {
+        async complete(request: LlmCompleteRequest) {
+          requests.push(request);
+          const reply = replies[Math.min(index, replies.length - 1)];
+          index += 1;
+          return reply ?? {};
+        },
+      },
+      budget: { maxRounds: 6, maxToolCalls: 6 },
+    }),
+  };
+}
+
+const submitBar = (chart: Record<string, unknown>, extra: Record<string, unknown> = {}): LlmCompleteResult => ({
+  content: 'A horizontal bar suits long labels.',
+  toolCalls: [
+    {
+      id: 's1',
+      name: 'submit_spec',
+      args: {
+        chart,
+        encodings: { x: { field: 'booking_country' }, y: { field: 'trade_volume' } },
+        ...extra,
+      },
+    },
+  ],
+});
+
+test('end to end: present mode charts the caller result, in the caller order, unchanged', async () => {
+  const { chartwright } = scriptedRun([
+    // The model reaches for the one tool that could change the data. It must not get
+    // one — and the trace has to show the attempt rather than hide it.
+    { toolCalls: [{ id: 'q1', name: 'run_query', args: { steps: [{ op: 'sort', by: 'trade_volume', order: 'asc' }] } }] },
+    {
+      toolCalls: [
+        {
+          id: 's1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar', title: 'Traded volume by booking country', orientation: 'horizontal' },
+            encodings: { x: { field: 'booking_country' }, y: { field: 'trade_volume' } },
+            emphasis: [{ when: { op: 'top_k', k: 1, field: 'trade_volume' }, style: { tone: 'highlight', label: true } }],
+          },
+        },
+      ],
+    },
+  ]);
+
+  const result = await chartwright.ask({ query: 'which booking country traded the most?', rows: aggregated, present: true });
+
+  assert.equal((result.options.chart as { type: string }).type, 'bar');
+  assert.equal((result.options.yAxis as { reversed?: boolean }).reversed, true, 'row 0 belongs at the top');
+  assert.deepEqual(
+    (result.options.xAxis as { categories: string[] }).categories,
+    ['GB', 'HK', 'SG'],
+    'the caller order, untouched',
+  );
+
+  // Nothing was planned, because nothing may be.
+  assert.deepEqual(result.spec.transform_plan?.steps, []);
+  // And the dataset is their table — not a re-derivation of it.
+  assert.deepEqual(result.dataset, aggregated);
+
+  const data = (result.options.series as Array<{ data: Array<number | { y: number; color?: string }> }>)[0]?.data ?? [];
+  assert.equal(typeof data[0], 'object', 'the top row is emphasised');
+  assert.equal((data[0] as { color?: string }).color, '#e8590c');
+  assert.equal(typeof data[1], 'number', 'and the others are left alone');
+
+  // The attempt is in the trace, refused — not absent, which would pass for the wrong
+  // reason, and not successful, which would be the whole bug.
+  assert.deepEqual(
+    result.trace.map((entry) => entry.tool),
+    ['run_query', 'submit_spec'],
+  );
+  const attempt = result.trace[0]?.result as { error?: string; summary?: unknown };
+  assert.match(attempt.error ?? '', /not available in this run/);
+  assert.equal(attempt.summary, undefined, 'no query ran, so there is no summary to show');
+  assert.equal(result.warnings.length, 1, 'and the caller is told the model tried');
+  assert.match(result.warnings[0] ?? '', /run_query/);
+});
+
+test('end to end: the same data in ask mode may still be aggregated — the guarantee is the mode, not the rule', async () => {
+  // The same numbers before the caller's own GROUP BY: two GB rows that have to be
+  // added to become the single GB row present mode is handed. In ask mode the model is
+  // allowed to do exactly that, and here it does — which is the contrast that shows the
+  // guarantee lives in the mode rather than in a global rule about aggregation.
+  const finerGrain: Row[] = [
+    { booking_country: 'GB', asset_class: 'Equity', trade_volume: 51_000_000 },
+    { booking_country: 'GB', asset_class: 'Fixed Income', trade_volume: 31_842_348 },
+    { booking_country: 'HK', asset_class: 'Equity', trade_volume: 26_610_809 },
+    { booking_country: 'SG', asset_class: 'Equity', trade_volume: 11_420_317 },
+  ];
+
+  const { chartwright } = scriptedRun([
+    {
+      toolCalls: [
+        {
+          id: 'q1',
+          name: 'run_query',
+          args: {
+            steps: [
+              {
+                op: 'aggregate',
+                group_by: ['booking_country'],
+                measures: [{ field: 'trade_volume', agg: 'sum', as: 'trade_volume' }],
+              },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      toolCalls: [
+        {
+          id: 's1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar' },
+            encodings: { x: { field: 'booking_country' }, y: { field: 'trade_volume' } },
+          },
+        },
+      ],
+    },
+  ]);
+
+  // No `present: true`: the model is allowed to shape the table, and does.
+  const result = await chartwright.ask({ query: 'volume by booking country', rows: finerGrain });
+
+  assert.equal(result.spec.transform_plan?.steps?.length, 1, 'ask mode may plan');
+  assert.equal((result.spec.transform_plan?.steps?.[0] as { op?: string }).op, 'aggregate');
+  assert.deepEqual(
+    result.dataset,
+    aggregated,
+    'and two GB rows became the one GB row the caller would have had',
+  );
+});
+
+test('end to end: the order survives whichever way the caller sorted, and is not re-sorted', async () => {
+  // The negative form of the guarantee: same rows, same scripted spec, two orders in,
+  // two different charts out. Add an implicit category sort anywhere and this fails.
+  const ascending: Row[] = [...aggregated].sort((a, b) => (a.trade_volume as number) - (b.trade_volume as number));
+  const descending: Row[] = [...aggregated].sort((a, b) => (b.trade_volume as number) - (a.trade_volume as number));
+
+  const chartFor = async (input: Row[]) => {
+    const { chartwright } = scriptedRun([
+      submitBar({ type: 'bar', orientation: 'horizontal' }, {}),
+    ]);
+    // The spec above names booking_country/trade_volume, which this table has.
+    const result = await chartwright.ask({ query: 'volume by booking country', rows: input, present: true });
+    return (result.options.xAxis as { categories: string[] }).categories;
+  };
+
+  const first = await chartFor(ascending);
+  const second = await chartFor(descending);
+
+  assert.deepEqual(first, ['SG', 'HK', 'GB'], 'as delivered, ascending');
+  assert.deepEqual(second, ['GB', 'HK', 'SG'], 'as delivered, descending');
+  assert.notDeepEqual(first, second, 'nothing re-sorted them into a shared order');
+});
+
+test('end to end: the example pre-aggregated table charts as it ships', async () => {
+  // The dataset the example demo runs on, from the file, unmodified — including the
+  // columns that carry no way back (an average, a distinct count, a maximum).
+  const { chartwright } = scriptedRun([
+    {
+      toolCalls: [
+        {
+          id: 's1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar', title: 'Traded notional by counterparty', orientation: 'horizontal' },
+            encodings: { x: { field: 'counterparty' }, y: { field: 'notional_usd' } },
+            emphasis: [{ when: { op: 'top_k', k: 3, field: 'notional_usd' }, style: { tone: 'highlight' } }],
+          },
+        },
+      ],
+    },
+  ]);
+
+  const result = await chartwright.ask({ query: 'top counterparties by notional', rows: counterpartySummary, present: true });
+
+  assert.equal(result.dataset.length, counterpartySummary.length);
+  assert.deepEqual(result.dataset, counterpartySummary, 'the whole table, row for row');
+  assert.deepEqual(
+    (result.options.xAxis as { categories: string[] }).categories,
+    counterpartySummary.map((row) => row.counterparty),
+    'and in the order the caller ranked it',
+  );
+  assert.deepEqual(result.spec.transform_plan?.steps, []);
+  assert.deepEqual(result.warnings, []);
+});
