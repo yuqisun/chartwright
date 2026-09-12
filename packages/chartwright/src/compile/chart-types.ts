@@ -19,6 +19,7 @@
  * addresses a mark — `datumKey` still derives it) and `forbidden` (channels a type
  * must not carry). P1 adds each when a type needs it.
  */
+import type { CapabilitySource } from '../types.ts';
 
 /** A channel a spec can carry. Every one is a `{ field }` reference into the one table. */
 export type ChannelName = 'x' | 'y' | 'series';
@@ -84,4 +85,55 @@ export const DEFAULT_REQUIRED_CHANNELS: readonly ChannelName[] = [
  */
 export function isChartType(type: string): type is ChartType {
   return Object.prototype.hasOwnProperty.call(CHART_TYPES, type);
+}
+
+/**
+ * Narrows a list of names to the declared types, in declaration order.
+ *
+ * Declaration order rather than the caller's, so the panel the model sees is the same
+ * shape whatever order the consumer listed its bundle in. Unknown names are returned
+ * separately rather than dropped: the caller decides whether to warn (a partial list) or
+ * refuse (a list that resolves to nothing).
+ */
+export function resolveAvailableTypes(names: readonly string[]): { available: ChartType[]; unknown: string[] } {
+  const wanted = new Set(names);
+  const available = CHART_TYPE_NAMES.filter((name) => wanted.has(name));
+  const unknown = [...new Set(names.filter((name) => !isChartType(name)))];
+
+  if (available.length === 0) {
+    throw new Error(
+      names.length === 0
+        ? `no chart types are available: capabilities resolved to an empty list, and a run could never finish without one. Omit capabilities to accept the declared types (${CHART_TYPE_NAMES.join(', ')}).`
+        : `no chart types are available: capabilities named ${unknown.join(', ')}, which this version does not declare. The declared types are ${CHART_TYPE_NAMES.join(', ')}.`,
+    );
+  }
+
+  return { available, unknown };
+}
+
+export type CapabilityResolution = {
+  available: readonly ChartType[];
+  warnings: string[];
+};
+
+/**
+ * Resolves the consumer's answer about what its bundle can draw.
+ *
+ * Called per request, so a lazy source can follow the route the user is on. No source at
+ * all means every declared type, which is what this library did before capabilities
+ * existed — the option is additive.
+ */
+export async function resolveCapabilities(source?: CapabilitySource): Promise<CapabilityResolution> {
+  if (source === undefined) return { available: CHART_TYPE_NAMES, warnings: [] };
+
+  const names = typeof source === 'function' ? await source() : source;
+  const { available, unknown } = resolveAvailableTypes(names);
+
+  return {
+    available,
+    warnings: unknown.map(
+      (name) =>
+        `capabilities named '${name}', which this version does not declare; it will not be offered to the model`,
+    ),
+  };
 }

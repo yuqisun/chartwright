@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "npm run dev --workspace examples/react-highcharts",
     "build": "npm run build --workspace examples/react-highcharts",
-    "gen:data": "node examples/react-highcharts/scripts/generate-data.mjs"
+    "gen:data": "node examples/react-highcharts/scripts/generate-data.mjs",
+    "verify": "npm run typecheck --workspace chartwright && node scripts/verify-tests.mjs"
   },
   "license": "MIT"
 }

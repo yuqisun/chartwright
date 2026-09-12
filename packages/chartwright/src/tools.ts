@@ -17,7 +17,7 @@
  */
 import { applyTransform, binDate } from './transform.ts';
 import { validateChartPlan } from './plans.ts';
-import { CHART_TYPE_NAMES } from './compile/index.ts';
+import { CHART_TYPE_NAMES, resolveAvailableTypes } from './compile/index.ts';
 import type { Column, ColumnType, Row, ToolDef, ToolMode, TransformStep } from './types.ts';
 
 const DATE_LIKE = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/;
@@ -336,7 +336,9 @@ const SUBMIT_PROPERTIES = {
     type: 'object',
     required: ['type'],
     properties: {
-      type: { type: 'string', enum: [...CHART_TYPE_NAMES] },
+      // The enum is added per consumer by `submitProperties`: what the model may ask for
+      // is the capability handshake's answer, not a constant.
+      type: { type: 'string' },
       title: { type: 'string' },
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
     },
@@ -397,30 +399,59 @@ const SUBMIT_PROPERTIES = {
   },
 };
 
-const SUBMIT_ASK: ToolDef = {
-  name: 'submit_spec',
-  description:
-    'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
-    'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
-    `automatically. chart.type is a neutral name (${CHART_TYPE_NAMES.join(' | ')}); encodings.x is the category column (a date ` +
-    'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
-    'the data into series.',
-  parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
-};
+/**
+ * The submit schema for a given set of available types.
+ *
+ * Built by cloning the template rather than keeping a second copy of sixty lines whose
+ * only difference is one enum: two copies of a schema is two things to keep in step.
+ */
+function submitProperties(available: readonly string[]) {
+  return {
+    ...SUBMIT_PROPERTIES,
+    chart: {
+      ...SUBMIT_PROPERTIES.chart,
+      properties: {
+        ...SUBMIT_PROPERTIES.chart.properties,
+        type: { type: 'string', enum: [...available] },
+      },
+    },
+  };
+}
 
 /**
- * The present-mode wording differs where the ask-mode wording would be a lie: it
- * must not refer to a query the model cannot run, or to a plan it cannot write.
+ * The submit tool, built for what this consumer can actually draw.
+ *
+ * A function rather than a module constant because the panel is per consumer: the schema
+ * enum and the description's list are the two places the model is told what it may ask
+ * for, so both follow the capability handshake. The present-mode wording differs where
+ * the ask-mode wording would be a lie — it must not refer to a query the model cannot
+ * run, or to a plan it cannot write.
  */
-const SUBMIT_PRESENT: ToolDef = {
-  name: 'submit_spec',
-  description:
-    'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
-    'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (' +
-    `${CHART_TYPE_NAMES.join(' | ')}); encodings.x is the category column (a date column is treated as categories), encodings.y the measure ` +
-    'column, and the optional encodings.series splits the data into series.',
-  parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
-};
+function submitTemplate(mode: ToolMode, available: readonly string[]): ToolDef {
+  const choices = available.join(' | ');
+  const description =
+    mode === 'present'
+      ? 'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
+        'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (' +
+        `${choices}); encodings.x is the category column (a date column is treated as categories), encodings.y the measure ` +
+        'column, and the optional encodings.series splits the data into series.'
+      : 'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
+        'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
+        `automatically. chart.type is a neutral name (${choices}); encodings.x is the category column (a date ` +
+        'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
+        'the data into series.';
+
+  return {
+    name: 'submit_spec',
+    description,
+    parameters: {
+      type: 'object',
+      required: ['chart', 'encodings'],
+      properties: submitProperties(available),
+      additionalProperties: false,
+    },
+  };
+}
 
 const PREVIEW_ROWS: ToolDef = {
   name: 'preview_rows',
@@ -452,11 +483,21 @@ const PREVIEW_ROWS: ToolDef = {
  * The tool definitions are module-level templates, so `buildToolDefs` hands out deep
  * copies rather than the templates themselves. A caller that edits what it receives —
  * to add a field its provider wants, say — cannot then reach into the library's copy,
- * or into the other mode's tool: without this, `SUBMIT_ASK` and `SUBMIT_PRESENT` share
- * the same `parameters` object and editing one changes both.
+ * or into the other mode's tool: without this, the two modes would share the same
+ * `parameters` object and editing one would change both.
+ *
+ * `capabilities` is the consumer's answer about what its bundle can draw. Omitted, the
+ * panel offers every declared type, which is what it offered before capabilities
+ * existed. Names the library does not declare are refused here rather than quietly
+ * dropped: a panel built from names it cannot honour would offer the model a chart that
+ * fails at render, in the consumer's process.
  */
-export function buildToolDefs(mode: ToolMode = 'ask'): ToolDef[] {
-  const templates = mode === 'present' ? [DESCRIBE_TABLE, PREVIEW_ROWS, SUBMIT_PRESENT] : [DESCRIBE_TABLE, RUN_QUERY, SUBMIT_ASK];
+export function buildToolDefs(mode: ToolMode = 'ask', capabilities?: readonly string[]): ToolDef[] {
+  const available = capabilities === undefined ? CHART_TYPE_NAMES : resolveAvailableTypes(capabilities).available;
+  const templates =
+    mode === 'present'
+      ? [DESCRIBE_TABLE, PREVIEW_ROWS, submitTemplate('present', available)]
+      : [DESCRIBE_TABLE, RUN_QUERY, submitTemplate('ask', available)];
   return structuredClone(templates);
 }
 

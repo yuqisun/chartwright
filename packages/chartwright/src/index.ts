@@ -41,6 +41,7 @@ export type {
   AskResult,
   BinTimeStep,
   Budget,
+  CapabilitySource,
   ChartSpec,
   ChatMessage,
   ChatRole,

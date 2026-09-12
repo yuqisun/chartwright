@@ -9,6 +9,27 @@
  *      owns credentials; the caller injects a client.
  */
 
+/**
+ * Which chart types the consumer's bundle can actually draw.
+ *
+ * Offered because 63 of Highcharts' 71 series types live in modules: emitting options
+ * for a module the consumer never loaded fails in *their* process, where no test of this
+ * library can observe it. The consumer answers in this library's neutral vocabulary —
+ * never Highcharts' — and the backend owns the translation.
+ *
+ * A *function* is accepted, and called on every request, because a real application
+ * code-splits its chart modules: what is loaded can change between routes, and the
+ * registry behind it is a global mutable singleton. An async function is accepted for
+ * the server, where the modules cannot be imported at all and the answer has to come
+ * from somewhere else.
+ *
+ * Names the library does not declare are *warned about*, not silently dropped: a
+ * capability mismatch whose only symptom is "the model never picks heatmaps" is the
+ * worst bug report there is. A source that resolves to nothing is refused outright,
+ * because such a run could never finish.
+ */
+export type CapabilitySource = readonly string[] | (() => readonly string[] | Promise<readonly string[]>);
+
 /** A row is opaque to chartwright: no schema is assumed, no field is required. */
 export type Row = Record<string, unknown>;
 
@@ -320,6 +341,12 @@ export type AskRequest = {
   llm?: LlmClient;
   /** Target library. Only 'highcharts' is supported today. */
   library?: 'highcharts';
+  /**
+   * What this consumer's bundle can draw. Omit to accept every declared type — which is
+   * what every caller did before this existed. Overrides whatever `createChartwright`
+   * was given, because capability is a property of the screen being rendered.
+   */
+  capabilities?: CapabilitySource;
   /** Pass the previous result's messages back to continue the conversation. */
   messages?: ChatMessage[];
   /** Correlation id; opaque to chartwright. */

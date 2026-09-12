@@ -71,6 +71,12 @@ export type AgentLoopOptions = {
    * exception instead of a chart.
    */
   validateSubmit?: (spec: ChartSpec) => string[];
+  /**
+   * The chart types this run may submit, when the consumer's bundle cannot draw all of
+   * them. Omitted means no restriction. A type that is declared but not listed here is
+   * refused with its own message — it exists, but not in this application.
+   */
+  capabilities?: readonly string[];
   onEvent?: (event: AgentEvent) => void;
   budget?: Budget;
   signal?: AbortSignal;
@@ -172,7 +178,7 @@ function validateEmphasis(raw: unknown): { rules: EmphasisRule[]; errors: string
  * refusal at submit time costs a whole extra round for something harmless, and this is
  * the run's only way to end.
  */
-function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec; errors: string[] } {
+function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: readonly string[]): { spec?: ChartSpec; errors: string[] } {
   const errors: string[] = [];
   if (typeof raw !== 'object' || raw === null) return { errors: ['spec must be a JSON object'] };
   const candidate = raw as Partial<ChartSpec>;
@@ -185,6 +191,11 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
   if (typeof type !== 'string') errors.push('chart.type is required');
   else if (!declaration) {
     errors.push(`chart.type '${type}' is not supported yet; supported types are ${CHART_TYPE_NAMES.join(', ')}`);
+  } else if (capabilities && !capabilities.includes(type)) {
+    // Declared, but not something this consumer's bundle can draw. Said differently from
+    // "not supported yet" because the repair is different: pick another type, rather than
+    // wait for the library to grow one.
+    errors.push(`chart.type '${type}' is not available in this app; available types are ${capabilities.join(', ')}`);
   }
 
   const provided: Record<ChannelName, unknown> = {
@@ -265,7 +276,7 @@ export function recoverPlanFrom(messages: ChatMessage[]): TransformStep[] | unde
 }
 
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopOutcome> {
-  const { llm, tools, runTool, onEvent, budget, signal } = options;
+  const { llm, tools, runTool, onEvent, budget, signal, capabilities } = options;
   const messages = [...options.messages];
   const trace: TraceEntry[] = [];
   const warnings: string[] = [];
@@ -324,7 +335,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       // giving up, so a model that narrates instead of acting still gets a nudge.
       const candidate = reply.content ? parseSpecCandidate(reply.content) : undefined;
       if (candidate !== undefined) {
-        const { spec, errors } = validateSpec(candidate, lastRunQuerySteps ?? []);
+        const { spec, errors } = validateSpec(candidate, lastRunQuerySteps ?? [], capabilities);
         if (spec && errors.length === 0) {
           return { spec, steps: lastRunQuerySteps ?? [], messages, warnings, trace, rounds: round };
         }
@@ -366,7 +377,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       let problem: string | undefined;
 
       if (call.name === 'submit_spec') {
-        const { spec, errors } = validateSpec(call.args, lastRunQuerySteps ?? []);
+        const { spec, errors } = validateSpec(call.args, lastRunQuerySteps ?? [], capabilities);
         // A shape that passes validation is not yet a chart. Ask the checked-out
         // compiler while the model is still here to fix what it says.
         const problems = spec && errors.length === 0 ? (options.validateSubmit?.(spec) ?? []) : [];
