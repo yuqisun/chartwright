@@ -64,7 +64,9 @@ re-aggregating would corrupt — an average, a distinct count, a maximum, a rati
 - **progress events** as the agent works (rounds, tool calls, results) — this is
   why a non-streaming client still never leaves the user staring at nothing;
 - the **chart**, from `result.options`;
-- the **dataset that was plotted** (`result.dataset`) — which the model never saw;
+- the **dataset that was plotted** (`result.dataset`) — bound into the chart here, in
+  this tab. The model never received it as a payload; at most it saw a preview of the
+  first rows, and what else leaves is a profile of the columns;
 - the **neutral spec** (`result.spec`), replayable without the model;
 - the **tool trace** (`result.trace`).
 

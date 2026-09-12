@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createToolHandlers, describeTable, inferColumns, previewRows, runQuery } from '../src/tools.ts';
+import { buildToolDefs, createToolHandlers, describeTable, inferColumns, previewRows, runQuery } from '../src/tools.ts';
 import type { Row } from '../src/types.ts';
 
 const rows: Row[] = [
@@ -128,7 +128,9 @@ test('run_query rejects a missing steps array', () => {
 //
 // The bound is the point. It always returns the FIRST rows, and there is no way
 // to ask for a different window — so a model cannot page through a table by
-// calling it repeatedly, however many rounds it is given.
+// calling it repeatedly, however many rounds it is given. What it bounds is a
+// count, not a proportion: a table of twenty rows or fewer can be seen whole,
+// which is a deliberate, documented decision rather than an oversight.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const manyRows: Row[] = Array.from({ length: 40 }, (_, index) => ({ id: index + 1, value: (index + 1) * 10 }));
@@ -139,19 +141,41 @@ test('preview_rows returns three rows by default', () => {
   assert.deepEqual(preview.rows.map((r) => r.id), [1, 2, 3]);
 });
 
-test('the model may ask for up to five rows, and no more', () => {
+test('the model may ask for up to twenty rows, and no more', () => {
+  assert.equal(previewRows(manyRows, { limit: 20 }).rows.length, 20);
   assert.equal(previewRows(manyRows, { limit: 5 }).rows.length, 5);
   assert.equal(previewRows(manyRows, { limit: 1 }).rows.length, 1);
   assert.throws(
-    () => previewRows(manyRows, { limit: 50 }),
-    /between 1 and 5/,
+    () => previewRows(manyRows, { limit: 21 }),
+    /between 1 and 20/,
     'the ceiling belongs to the tool, not to the model',
+  );
+  assert.throws(() => previewRows(manyRows, { limit: 500 }), /between 1 and 20/);
+});
+
+test('the ceiling the model is told is the ceiling that is enforced', () => {
+  // The one way this feature can go wrong: a schema that advertises a larger number
+  // than the handler allows, so the model asks for something legal-looking, is
+  // refused, and burns a round. Read the number out of the tool definition and push
+  // it through the handler rather than trusting that the two were edited together.
+  const tool = buildToolDefs('present').find((definition) => definition.name === 'preview_rows');
+  const properties = tool?.parameters.properties as { limit?: { maximum?: number } } | undefined;
+  const advertised = properties?.limit?.maximum;
+  assert.equal(typeof advertised, 'number');
+
+  const handlers = createToolHandlers({ rows: manyRows });
+  const atCeiling = handlers.preview_rows?.({ limit: advertised }) as { rows: Row[] };
+  assert.equal(atCeiling.rows.length, advertised, 'the advertised maximum is allowed');
+  assert.throws(
+    () => handlers.preview_rows?.({ limit: (advertised as number) + 1 }),
+    /between 1 and 20/,
+    'one more than advertised is refused',
   );
 });
 
 test('an unusable limit is refused with a message that says what is allowed', () => {
   for (const limit of [0, -3, 2.5]) {
-    assert.throws(() => previewRows(manyRows, { limit }), /integer between 1 and 5/);
+    assert.throws(() => previewRows(manyRows, { limit }), /integer between 1 and 20/);
   }
 });
 

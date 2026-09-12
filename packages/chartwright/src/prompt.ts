@@ -16,8 +16,9 @@ import type { Column, ColumnDescription, ToolMode } from './types.ts';
 
 /** True in both modes: the invariants of the protocol, not of the mode. */
 const SHARED_RULES = [
-  "- You only ever see summaries and small previews of the data. The complete table stays in the caller's process",
-  '  and is bound into the chart by the compiler. Do not ask for it, and do not try to reproduce it in your reply.',
+  '- You receive summaries of the data, and the first rows of a table when you ask to preview them. The table itself',
+  "  stays in the caller's process and is bound into the chart by the compiler: ask for the preview you need, do not",
+  '  ask for the table wholesale, and do not reproduce it in your reply.',
   '- Never emit chart-library options, code, SQL, or file paths.',
   '- For `bar`, set `chart.orientation` to "horizontal" when category labels are long or there are many categories',
   '  (a top-N by name, for instance); otherwise leave it vertical.',

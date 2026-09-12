@@ -231,19 +231,33 @@ validation results. chartwright's existing exports map onto that surface directl
 
 ### 20. An off switch for `preview_rows`
 
-Present mode sends the model up to five rows of your table, verbatim. That is
-deliberate and bounded — always the first rows, no offset to page with, so asking
-again returns the same rows — but it is also the one path by which row *values* leave
-the process in that mode, and there is no way to turn it off.
+Present mode sends the model the first rows of your table, verbatim, up to twenty. That
+is deliberate and bounded — no offset to page with, so asking again returns the same
+rows — but it is also the one path by which row *values* leave the process in that
+mode, and there is no way to turn it off.
 
 `profile: { sampleValues: 0 }` covers `describe_table` only. That is a trap for
 precisely the caller who set it: the option reads like "send no values", and it does
 not mean that.
 
-**Decisions to make:** whether the switch is its own option (`preview: { rows: 0 }`) or
-whether `sampleValues: 0` should mean "no row values leave, anywhere"; and whether
-turning the preview off drops `preview_rows` from the tool list entirely — cleaner, the
-model never sees a tool it may not use — or leaves it listed and refusing.
+**Assessed and declined for now** (2026-09). A caller-supplied `preview: { rows?: number }`
+— 0 meaning off, the value also deciding the schema's `maximum` so the model is told the
+truth — was costed at 6–8 files and ~200–260 lines including tests and docs, with one
+real risk (the advertised ceiling drifting from the enforced one, removable by feeding
+both from a single value) and one design question (create-time only, like `profile` and
+`query`, or per-request like `budget`). Declined because the preview is already bounded,
+the caller chose to hand this table over to be charted, and nothing has asked for it yet.
+
+**Trigger to revisit:** a deployment where row values must not reach the provider at all
+— for example one that currently sets `sampleValues: 0` for that reason. Then decide
+whether the switch is its own option, whether `sampleValues: 0` should also mean "no row
+values leave, anywhere", and whether turning it off drops `preview_rows` from the tool
+list entirely (cleaner: the model never sees a tool it may not use) or leaves it listed
+and refusing.
+
+Related, and deliberately *not* part of that switch: ChartBrain had sample **masking**
+("sensitive values can be masked or substituted", `docs/INTEGRATION.md`), which is a
+different and larger feature than on/off. Nothing here does that.
 
 ---
 
@@ -319,7 +333,7 @@ for a stated reason.
 | **Non-contiguous rank selection by enumeration when it gets long** ("every other one" across 50 categories) | If it cannot be expressed as a rank set or a threshold, the honest answer is that it is out of scope — not a bigger condition language. |
 | **Limits on by default** | The library imposes no policy; budgets are the consumer's to set. Only pathologies are bounded: one nudge before `AgentGaveUpError`, and a warning (not a stop) past 12 rounds. |
 | **Letting the model compute values** | "The largest" is computed by the compiler from the full table, so the answer survives the data changing and the model never touches values. |
-| **Row-level data tools the model picks the window for** | A model choosing *which* rows to read is the highest-risk privacy shape considered. `preview_rows` is the bounded exception, and it is bounded structurally rather than by a limit: always the **first** rows, at most five, no offset parameter to page with, so calling it again returns the same rows. It exists only in present mode, over a table the caller handed over to be drawn. Anything wider — any window the model gets to choose, any access to the raw table — needs an explicit decision, per tool, with k-anonymity and a whole-run result budget. |
+| **Row-level data tools the model picks the window for** | A model choosing *which* rows to read is the highest-risk privacy shape considered. `preview_rows` is the accepted exception, and what makes it acceptable is structural, not the row count: always the **first** rows, no offset parameter to page with, so calling it again returns the same rows and a run's total exposure is capped by the ceiling rather than by the number of calls. It exists only in present mode, over a table the caller handed over to be drawn. The ceiling bounds a count, not a proportion — a table of twenty rows or fewer can be read whole, and that is a stated trade rather than an oversight. Anything wider — a window the model gets to choose, or any access to the raw table — needs its own decision, per tool. |
 | **chartwright advising that a table would be better than a chart** | Presentation judgement, and the consumer's to make — the library does not know what the surrounding screen is for, and a library that second-guesses the request trains callers to ignore it. It may say a *spec* is unsupported or ambiguous; it may not say the data does not deserve a chart. |
 | **Mandatory structured column semantics** | See item 18: too much to require of a consumer, and every declaration it gets wrong becomes a confidently wrong chart. Optional and advisory if ever added. |
 

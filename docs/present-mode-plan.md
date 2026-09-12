@@ -221,6 +221,25 @@ they are docs the task did not mention and both would have gone stale:
   `profile: { sampleValues: 0 }` does **not** switch it off. That gap is recorded as
   item 20 in `docs/roadmap.md` rather than decided here.
 
+**Later revision (after review).** Two decisions changed what this task left behind,
+and both were mine to get wrong:
+
+- the ceiling went from five rows to **twenty**. Five was a count bound being used as if
+  it were a privacy bound; on the small, already-aggregated tables present mode exists
+  for, five rows is most of the table anyway. Twenty is the honest version of "the model
+  may preview some of it", and the consequence — a table of twenty rows or fewer can be
+  read whole — is now stated in the code, the consumer guide and the roadmap instead of
+  being left for a reader to notice.
+- the claim that the model **never sees the caller's rows** is gone. It was already
+  loose in `ask` mode (the model saw a three-row preview of the very table that got
+  plotted) and became plainly false here. What replaced it, in the system prompt, the
+  consumer guide and the example, is the claim that is actually true: the model receives
+  summaries and the preview it asks for, and never the table *as a payload*.
+
+The second one is the more useful lesson: the false sentence had been copied into five
+places, and nothing tested it. There is now a test that fails if either prompt starts
+claiming the model sees no rows.
+
 ---
 
 ## Task 4 — Making an unchartable table fixable, and a helpful refusal
@@ -354,7 +373,8 @@ left is the part that only becomes true once this mode exists:
    input.
 4. `dataset` in present mode is the caller's rows, order included.
 5. Descriptions are optional; without them the prompt is unchanged from today.
-6. `preview_rows` never returns more than five rows.
+6. `preview_rows` never returns more than twenty rows, and never returns a window
+   other than the first rows.
 7. A colliding encoding is rejected with guidance the model can act on.
 8. Example demonstrates both modes; docs describe them.
 9. Full suite green: library tests (currently 70) plus the new ones, proxy tests (6),

@@ -83,6 +83,19 @@ test('omitting the mode means ask — the default does not change behaviour', ()
   assert.equal(buildSystemPrompt(), buildSystemPrompt('ask'));
 });
 
+test('neither prompt claims the model never sees the data — because it can preview rows', () => {
+  // Pinned deliberately. "The model never saw these rows" was true enough to be
+  // written down for a while and stopped being true when `preview_rows` arrived, and
+  // it will stop being true again the moment anyone widens the preview. The honest
+  // claim is about the table as a payload, not about any row ever reaching the model.
+  for (const mode of ['ask', 'present'] as const) {
+    const prompt = buildSystemPrompt(mode);
+    assert.ok(!/never (receives|sees) (your )?rows/i.test(prompt), `${mode}: claims rows never reach the model`);
+    assert.ok(!/complete table stays/i.test(prompt), `${mode}: claims the model is shown nothing of the table`);
+    assert.match(prompt, /first rows of a table when you ask to preview them/, `${mode}: states what it does get`);
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Optional descriptions. The caller may know something about a column that the
 // values cannot show — that `fill_rate` is a ratio, that an all-digit `trade_id`

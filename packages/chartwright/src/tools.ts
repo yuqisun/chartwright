@@ -190,11 +190,23 @@ export type RowPreview = {
  * How many rows the model gets, and the hard ceiling on asking for more.
  *
  * The default matches `run_query`'s preview, so the model sees the same amount of
- * the table in either mode. The ceiling is the tool's, not a preference: a caller
- * cannot raise it and the model cannot argue for it.
+ * the table in either mode. The ceiling is the tool's, not a preference: the model
+ * cannot argue for more.
+ *
+ * Two things worth being explicit about, because the number is not the safety
+ * property it looks like:
+ *
+ *   - It bounds a *count*, not a proportion. A present-mode table is usually a final
+ *     result of a few rows, so for any table of `PREVIEW_MAX_ROWS` rows or fewer the
+ *     model can see the whole thing. That is accepted rather than overlooked: the
+ *     caller handed this table over to be drawn, and a proportion rule would refuse
+ *     the preview precisely where it is most useful.
+ *   - Because there is no offset, calling the tool again returns the same rows, so a
+ *     run's total row exposure is capped by this number rather than by the number of
+ *     calls. That is what makes a separate whole-run budget unnecessary here.
  */
 const PREVIEW_DEFAULT_ROWS = 3;
-const PREVIEW_MAX_ROWS = 5;
+const PREVIEW_MAX_ROWS = 20;
 
 /**
  * The first few rows, verbatim.
@@ -206,8 +218,7 @@ const PREVIEW_MAX_ROWS = 5;
  * parameter is an error rather than something quietly ignored: a model that asked
  * for rows 10–14 and got rows 0–4 without being told would go on to reason about
  * data it never saw.
- */
-export function previewRows(rows: Row[], options: { limit?: number } = {}): RowPreview {
+ */export function previewRows(rows: Row[], options: { limit?: number } = {}): RowPreview {
   const limit = options.limit ?? PREVIEW_DEFAULT_ROWS;
   if (!Number.isInteger(limit) || limit < 1 || limit > PREVIEW_MAX_ROWS) {
     throw new Error(
@@ -391,13 +402,13 @@ const SUBMIT_PRESENT: ToolDef = {
 const PREVIEW_ROWS: ToolDef = {
   name: 'preview_rows',
   description:
-    'Look at the first few actual rows of the table — up to five — to see the values themselves rather than a ' +
+    'Look at the first few actual rows of the table — up to twenty — to see the values themselves rather than a ' +
     'summary of them. Read only: this cannot change the data. It always returns the FIRST rows, in the order ' +
     'the caller gave them, so there is no way to page through the table.',
   parameters: {
     type: 'object',
     properties: {
-      limit: { type: 'integer', minimum: 1, maximum: 5, description: 'How many rows, up to five. Defaults to 3.' },
+      limit: { type: 'integer', minimum: 1, maximum: 20, description: 'How many rows, up to twenty. Defaults to 3.' },
     },
     additionalProperties: false,
   },

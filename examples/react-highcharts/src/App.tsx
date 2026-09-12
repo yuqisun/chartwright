@@ -90,8 +90,9 @@ export function App() {
     <main style={{ fontFamily: 'system-ui, sans-serif', maxWidth: 1040, margin: '0 auto', padding: 24 }}>
       <h1 style={{ marginBottom: 4 }}>chartwright — React + Highcharts</h1>
       <p style={{ color: '#555', marginTop: 0 }}>
-        Ask a question about 800 synthetic post-trade records. The model investigates with local tools; the chart data
-        never leaves this tab, and the browser never holds an API key.
+        Ask a question about 800 synthetic post-trade records. The model investigates with local tools; the browser
+        never holds an API key, and what leaves this tab is a profile plus the rows the model asks to preview — not
+        the table.
       </p>
 
       <section style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -183,7 +184,8 @@ export function App() {
               The dataset that was plotted ({result.dataset.length} rows)
             </summary>
             <p style={{ color: '#555', fontSize: 13 }}>
-              The model never saw these rows — only a summary of them. The compiler bound them into the chart.
+              The model never received this table as a payload — at most it saw a preview of the first rows, in
+              whichever mode ran. The whole table was bound into the chart here, in this tab.
             </p>
             <Table input={result.dataset} />
           </details>

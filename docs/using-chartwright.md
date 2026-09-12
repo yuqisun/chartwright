@@ -179,7 +179,7 @@ staring at nothing. `signal` (an `AbortSignal`) cancels a run in flight.
 |---|---|---|
 | `options` | Chart-library options with the data already bound | Render it |
 | `spec` | The neutral chart spec: chart type, transform plan, encodings, emphasis | The auditable artifact — see "Replay" below |
-| `dataset` | The complete table that was plotted | Tables, tooltips, exports. **The model never saw this** |
+| `dataset` | The complete table that was plotted | Tables, tooltips, exports. **Not sent to the model** — it may have previewed the first rows, never the table as a payload |
 | `messages` | The transcript | Pass back for a follow-up |
 | `sessionId` | Correlation id | Logging, support |
 | `warnings` | Non-fatal problems (a tool error, an emphasis rule that matched nothing) | Surface them; do not swallow |
@@ -215,7 +215,7 @@ Known expressiveness boundaries (they return a warning rather than a lie):
 
 ## 8. What the model sees
 
-The model never receives your rows. It receives:
+The model never receives your table. It receives:
 
 - column names and types, up front — plus any `dataDescription` or
   `columns[].description` text you chose to pass. That text is yours, and it goes to
@@ -224,26 +224,32 @@ The model never receives your rows. It receives:
 - what `describe_table` returns when it asks: per column the type, null rate,
   distinct count, numeric range and median, time span, and — for low-cardinality
   columns — **up to five real sample values**;
-- what `run_query` returns: row count, column list, and a preview of at most
-  three rows;
-- what `preview_rows` returns in present mode, if it asks: the **first rows of your
-  table, verbatim** — at most five. There is no offset to page with, so asking again
+- in ask mode, what `run_query` returns: row count, column list, and a preview of at
+  most three rows;
+- in present mode, what `preview_rows` returns if it asks: the **first rows of your
+  table, verbatim** — at most twenty. There is no offset to page with, so asking again
   returns the same rows and a run cannot walk the table.
 
-The last three contain data values, and each is bounded: the sample values by
-`sampleValues`, the query preview by `previewRowCount`, and `preview_rows` by its own
-ceiling of five rows. If the sample values are a problem in your domain, switch them
-off:
+That is the entire channel. Row values leave your process **only** through those last
+three, and each is bounded: the sample values by `sampleValues`, the query preview by
+`previewRowCount`, and `preview_rows` by its own ceiling of twenty rows.
+
+Know what a *count* bound means for a small table: present mode exists for results that
+are already aggregated, so a table of twenty rows or fewer can be previewed whole. The
+ceiling stops the model pulling a large table; it does not stop it seeing a small one.
+That is a deliberate trade — the rows in question are about to be drawn on screen — but
+it is a trade, not an accident.
+
+If the sample values are a problem in your domain, switch them off:
 
 ```ts
 const chartwright = createChartwright({ llm, profile: { sampleValues: 0 } });
 ```
 
 That switch covers `describe_table` only. It does **not** turn off `preview_rows`,
-which has no off switch today: present mode sends up to five rows of the table you
-asked to have charted, and those same rows are about to be drawn on screen. If you
-need that to be zero, that is a decision to make deliberately rather than by setting a
-profiling option — see `docs/roadmap.md`.
+which has no off switch today. If you need the preview to be zero, that is a decision
+to make deliberately rather than by setting a profiling option; both it and the
+reasoning are recorded in `docs/roadmap.md`.
 
 ## 9. Budgets are yours to set
 
