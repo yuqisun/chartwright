@@ -14,7 +14,7 @@ around them.
 | | Why |
 |---|---|
 | Rows in memory | chartwright compiles *your* data in *your* process; it never fetches anything |
-| A chart library to render with | Today the compiler emits Highcharts options (bar / line / spline / area / areaspline / pie, plus stacking, polar, donut holes and sparklines) |
+| A chart library to render with | Today the compiler emits Highcharts options (bar / line / spline / area / areaspline / pie / scatter / bubble / heatmap, plus stacking, polar, donut holes, sparklines and dual-axis combo) |
 | An LLM that supports **tool calling** | The agent loop uses `tools` / `tool_calls` (function calling). Any OpenAI-compatible endpoint works — if it does not implement tool calling, the loop cannot run |
 | Somewhere safe for the API key | **Not the browser.** A page holding a provider key leaks it to anyone with DevTools, and most providers disallow browser calls outright. Use your own backend endpoint (a ~60-line proxy; see step 4) |
 
@@ -219,6 +219,27 @@ compiler will never volunteer a dual-axis chart; it draws one only when the spec
 explicitly asks for `y2`. Both axes are always titled with their field name,
 because two units need two labels and an unlabelled axis is an invitation to
 misread.
+
+### Scatter plots and axis kinds
+
+When both channels are numeric measures rather than categories, the compiler
+infers linear axes automatically. `scatter` and `bubble` declare their x channel
+as a measure, so no axis override is needed:
+
+```ts
+{ chart: { type: 'scatter' }, encodings: { x: { field: 'tenure' }, y: { field: 'nps' } } }
+```
+
+For other chart types where you need to override the inferred axis kind (e.g.,
+treating a date column as numeric), use `axes.*.kind`:
+
+```ts
+axes: { x: { kind: 'linear' } }   // 'band' | 'linear' | 'log'
+```
+
+Scatter allows duplicate x values — two points at the same position are normal
+for a cloud, not a collision. Emphasis uses positional keys so "highlight the
+highest" marks exactly one point even when several share an x value.
 
 ### Follow-up questions
 
