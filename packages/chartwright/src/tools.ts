@@ -400,9 +400,20 @@ const SUBMIT_PROPERTIES = {
       'Optional axis overrides. Omitted, axes are inferred from the columns. Set a fixed range when the scale ' +
       'is a fact about the measure rather than about these rows — a percentage that runs 0 to 100 whatever the data says.',
     properties: {
+      x: {
+        type: 'object',
+        description: 'Override the x axis kind or range. Kind defaults to band for category channels, linear for measure.',
+        properties: {
+          kind: { type: 'string', enum: ['band', 'linear', 'log'] },
+          min: { type: 'number' },
+          max: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
       y: {
         type: 'object',
         properties: {
+          kind: { type: 'string', enum: ['band', 'linear', 'log'] },
           min: { type: 'number' },
           max: { type: 'number' },
         },
@@ -412,6 +423,7 @@ const SUBMIT_PROPERTIES = {
         type: 'object',
         description: 'Fixed range for the secondary (right) axis. Same semantics as y.',
         properties: {
+          kind: { type: 'string', enum: ['band', 'linear', 'log'] },
           min: { type: 'number' },
           max: { type: 'number' },
         },

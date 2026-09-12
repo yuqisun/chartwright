@@ -189,9 +189,10 @@ export type ChartSpec = {
    * does not reveal — a percentage that should start at 0 and end at 100 whatever the rows say.
    */
   axes?: {
-    y?: { min?: number; max?: number };
+    x?: { kind?: 'band' | 'linear' | 'log'; min?: number; max?: number };
+    y?: { kind?: 'band' | 'linear' | 'log'; min?: number; max?: number };
     /** Fixed range for the secondary (right) axis. Same semantics as `y`. */
-    y2?: { min?: number; max?: number };
+    y2?: { kind?: 'band' | 'linear' | 'log'; min?: number; max?: number };
   };
   /**
    * Condition-based emphasis: "highlight the largest bar", "grey out everything

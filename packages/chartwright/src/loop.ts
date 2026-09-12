@@ -268,6 +268,21 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
     else y2Range[bound] = value;
   }
 
+  const xRange: { min?: number; max?: number } = {};
+  for (const bound of ['min', 'max'] as const) {
+    const value = candidate.axes?.x?.[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) errors.push(`axes.x.${bound} must be a finite number`);
+    else xRange[bound] = value;
+  }
+
+  for (const axisName of ['x', 'y', 'y2'] as const) {
+    const kind = candidate.axes?.[axisName]?.kind;
+    if (kind !== undefined && !['band', 'linear', 'log'].includes(kind)) {
+      errors.push(`axes.${axisName}.kind must be 'band', 'linear', or 'log'`);
+    }
+  }
+
   // `errors` being empty already means every required channel is a non-empty string; the
   // explicit check is what lets the compiler see that when the spec is assembled below.
   if (errors.length > 0) return { errors };
@@ -295,14 +310,28 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
         ...(chart?.compact !== undefined ? { compact: chart.compact } : {}),
         ...(chart?.type2 ? { type2: chart.type2 } : {}),
       },
-      ...((range.min !== undefined || range.max !== undefined || y2Range.min !== undefined || y2Range.max !== undefined)
-        ? {
-            axes: {
-              ...(range.min !== undefined || range.max !== undefined ? { y: range } : {}),
-              ...(y2Range.min !== undefined || y2Range.max !== undefined ? { y2: y2Range } : {}),
-            },
-          }
-        : {}),
+      ...((() => {
+        const xAxis = candidate.axes?.x;
+        const yAxis = candidate.axes?.y;
+        const y2Axis = candidate.axes?.y2;
+        const xHasContent = xRange.min !== undefined || xRange.max !== undefined || xAxis?.kind !== undefined;
+        const yHasContent = range.min !== undefined || range.max !== undefined || yAxis?.kind !== undefined;
+        const y2HasContent = y2Range.min !== undefined || y2Range.max !== undefined || y2Axis?.kind !== undefined;
+        if (!xHasContent && !yHasContent && !y2HasContent) return {};
+        return {
+          axes: {
+            ...(xHasContent
+              ? { x: { ...(xAxis?.kind !== undefined ? { kind: xAxis.kind } : {}), ...xRange } }
+              : {}),
+            ...(yHasContent
+              ? { y: { ...(yAxis?.kind !== undefined ? { kind: yAxis.kind } : {}), ...range } }
+              : {}),
+            ...(y2HasContent
+              ? { y2: { ...(y2Axis?.kind !== undefined ? { kind: y2Axis.kind } : {}), ...y2Range } }
+              : {}),
+          },
+        };
+      })()),
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
       encodings,

@@ -263,7 +263,7 @@ const SCHEMA_SAMPLES = {
     series: { field: 'currency' },
   },
   emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
-  axes: { y: { min: 0, max: 100 }, y2: { min: 0, max: 50 } },
+  axes: { x: { kind: 'linear' }, y: { min: 0, max: 100 }, y2: { min: 0, max: 50 } },
 } as const;
 
 /**
@@ -358,13 +358,13 @@ test('a property the schema does not declare is dropped, silently — which is w
   const outcome = await runSubmissions([
     {
       chart: { type: 'bar', legend: 'off' },
-      axes: { x: { kind: 'linear' } },
+      axes: { z: { min: 0 } },
       encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
     },
   ]);
 
   const spec = outcome.spec as unknown as { chart: Record<string, unknown>; axes?: unknown };
-  assert.equal(spec.axes, undefined, 'axes.x is not declared, so not even the axes object survives');
+  assert.equal(spec.axes, undefined, 'axes.z is not declared, so not even the axes object survives');
   assert.equal(spec.chart.legend, undefined, 'and an invented chart property is dropped');
   assert.deepEqual(outcome.warnings, [], 'nothing warns about it — the reason the sample test above exists');
 });
