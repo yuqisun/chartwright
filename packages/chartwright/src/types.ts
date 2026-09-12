@@ -111,7 +111,11 @@ export type Encoding = {
 export type ChartSpec = {
   schema_version?: 1;
   chart: {
-    /** A neutral name such as 'bar' | 'line' | 'pie' | 'groupedBar' | ... */
+    /**
+     * A neutral name such as 'bar' | 'line' | 'pie' | 'groupedBar' | ...
+     * The set that is actually supported today is declared in `compile/chart-types.ts`,
+     * and every list the model or the caller sees is derived from it.
+     */
     type: string;
     title?: string;
     /**

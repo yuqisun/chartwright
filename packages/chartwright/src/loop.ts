@@ -17,7 +17,14 @@
  *      complete table to us and a small summary to the model; the loop strips
  *      the table before the tool result is serialised.
  */
-import { isSupportedChartType } from './compile/index.ts';
+import {
+  CHANNEL_NAMES,
+  CHART_TYPES,
+  CHART_TYPE_NAMES,
+  DEFAULT_REQUIRED_CHANNELS,
+  isChartType,
+} from './compile/index.ts';
+import type { ChannelName } from './compile/index.ts';
 import type {
   AgentEvent,
   AskResult,
@@ -171,22 +178,45 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
   const candidate = raw as Partial<ChartSpec>;
 
   const type = candidate.chart?.type;
+  // The declaration, when the type is one: it decides both the refusal below and which
+  // channels are required further down, so a type that needs something else (or nothing)
+  // says so where it is declared instead of here.
+  const declaration = typeof type === 'string' && isChartType(type) ? CHART_TYPES[type] : undefined;
   if (typeof type !== 'string') errors.push('chart.type is required');
-  else if (!isSupportedChartType(type)) {
-    errors.push(`chart.type '${type}' is not supported yet; supported types are bar, line, pie`);
+  else if (!declaration) {
+    errors.push(`chart.type '${type}' is not supported yet; supported types are ${CHART_TYPE_NAMES.join(', ')}`);
   }
 
-  const x = candidate.encodings?.x?.field;
-  const y = candidate.encodings?.y?.field;
-  if (typeof x !== 'string' || x === '') errors.push('encodings.x.field is required');
-  if (typeof y !== 'string' || y === '') errors.push('encodings.y.field is required');
+  const provided: Record<ChannelName, unknown> = {
+    x: candidate.encodings?.x?.field,
+    y: candidate.encodings?.y?.field,
+    series: candidate.encodings?.series?.field,
+  };
+  // An unrecognised type has no declaration to read, so it is held to the channels every
+  // declared type asks for — today, x and y, which is what this checked before the
+  // declaration existed.
+  const required = declaration?.required ?? DEFAULT_REQUIRED_CHANNELS;
+  for (const channel of required) {
+    const value = provided[channel];
+    if (typeof value !== 'string' || value === '') errors.push(`encodings.${channel}.field is required`);
+  }
 
   const { rules: emphasis, errors: emphasisErrors } = validateEmphasis(candidate.emphasis);
   errors.push(...emphasisErrors);
 
-  // `errors` being empty already means both fields are non-empty strings; the explicit
-  // check is what lets the compiler see that when the spec is assembled below.
-  if (errors.length > 0 || typeof x !== 'string' || typeof y !== 'string') return { errors };
+  // `errors` being empty already means every required channel is a non-empty string; the
+  // explicit check is what lets the compiler see that when the spec is assembled below.
+  if (errors.length > 0) return { errors };
+  if (typeof provided.x !== 'string' || typeof provided.y !== 'string') return { errors };
+
+  const encodings: ChartSpec['encodings'] = {};
+  // Assembled from the channels that were actually given, one field each. A key the schema
+  // does not declare — an invented `value_type`, say — used to travel through into the spec
+  // and change the axis for that one caller.
+  for (const channel of CHANNEL_NAMES) {
+    const value = provided[channel];
+    if (typeof value === 'string' && value !== '') encodings[channel] = { field: value };
+  }
 
   return {
     spec: {
@@ -198,16 +228,7 @@ function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec;
       },
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
-      // Built from the one field an encoding has, not copied wholesale. A key the
-      // schema does not declare — an invented `value_type`, say — used to travel
-      // through into the spec and change the axis for that one caller.
-      encodings: {
-        x: { field: x },
-        y: { field: y },
-        ...(typeof candidate.encodings?.series?.field === 'string'
-          ? { series: { field: candidate.encodings.series.field } }
-          : {}),
-      },
+      encodings,
       ...(emphasis.length > 0 ? { emphasis } : {}),
     },
     errors: [],

@@ -17,6 +17,7 @@
  */
 import { applyTransform, binDate } from './transform.ts';
 import { validateChartPlan } from './plans.ts';
+import { CHART_TYPE_NAMES } from './compile/index.ts';
 import type { Column, ColumnType, Row, ToolDef, ToolMode, TransformStep } from './types.ts';
 
 const DATE_LIKE = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/;
@@ -335,7 +336,7 @@ const SUBMIT_PROPERTIES = {
     type: 'object',
     required: ['type'],
     properties: {
-      type: { type: 'string', enum: ['bar', 'line', 'pie'] },
+      type: { type: 'string', enum: [...CHART_TYPE_NAMES] },
       title: { type: 'string' },
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
     },
@@ -401,7 +402,7 @@ const SUBMIT_ASK: ToolDef = {
   description:
     'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
     'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
-    'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category column (a date ' +
+    `automatically. chart.type is a neutral name (${CHART_TYPE_NAMES.join(' | ')}); encodings.x is the category column (a date ` +
     'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
     'the data into series.',
   parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
@@ -415,8 +416,8 @@ const SUBMIT_PRESENT: ToolDef = {
   name: 'submit_spec',
   description:
     'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
-    'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (bar | line | pie); ' +
-    'encodings.x is the category column (a date column is treated as categories), encodings.y the measure ' +
+    'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (' +
+    `${CHART_TYPE_NAMES.join(' | ')}); encodings.x is the category column (a date column is treated as categories), encodings.y the measure ` +
     'column, and the optional encodings.series splits the data into series.',
   parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
 };

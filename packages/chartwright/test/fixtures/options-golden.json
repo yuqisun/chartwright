@@ -1,0 +1,533 @@
+{
+  "bar-vertical": {
+    "options": {
+      "chart": {
+        "type": "column",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "Revenue",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        }
+      },
+      "series": [
+        {
+          "name": "revenue",
+          "data": [
+            250,
+            80,
+            120
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      }
+    ],
+    "warnings": []
+  },
+  "bar-horizontal": {
+    "options": {
+      "chart": {
+        "type": "bar",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "Revenue",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        },
+        "reversed": true
+      },
+      "series": [
+        {
+          "name": "revenue",
+          "data": [
+            250,
+            80,
+            120
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      }
+    ],
+    "warnings": []
+  },
+  "bar-series": {
+    "options": {
+      "chart": {
+        "type": "column",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": true
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        }
+      },
+      "series": [
+        {
+          "name": "USD",
+          "data": [
+            250,
+            80,
+            120
+          ]
+        },
+        {
+          "name": "EUR",
+          "data": [
+            100,
+            40,
+            60
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "currency": "USD",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "currency": "USD",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "currency": "USD",
+        "revenue": 120
+      },
+      {
+        "region": "East",
+        "currency": "EUR",
+        "revenue": 100
+      },
+      {
+        "region": "West",
+        "currency": "EUR",
+        "revenue": 40
+      },
+      {
+        "region": "North",
+        "currency": "EUR",
+        "revenue": 60
+      }
+    ],
+    "warnings": []
+  },
+  "line-series": {
+    "options": {
+      "chart": {
+        "type": "line",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "Revenue over regions",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": true
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        }
+      },
+      "series": [
+        {
+          "name": "USD",
+          "data": [
+            250,
+            80,
+            120
+          ]
+        },
+        {
+          "name": "EUR",
+          "data": [
+            100,
+            40,
+            60
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "currency": "USD",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "currency": "USD",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "currency": "USD",
+        "revenue": 120
+      },
+      {
+        "region": "East",
+        "currency": "EUR",
+        "revenue": 100
+      },
+      {
+        "region": "West",
+        "currency": "EUR",
+        "revenue": 40
+      },
+      {
+        "region": "North",
+        "currency": "EUR",
+        "revenue": 60
+      }
+    ],
+    "warnings": []
+  },
+  "pie": {
+    "options": {
+      "chart": {
+        "type": "pie",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "Share",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "series": [
+        {
+          "type": "pie",
+          "name": "revenue",
+          "data": [
+            {
+              "name": "East",
+              "y": 250
+            },
+            {
+              "name": "West",
+              "y": 80
+            },
+            {
+              "name": "North",
+              "y": 120
+            }
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      }
+    ],
+    "warnings": []
+  },
+  "bar-emphasis-top": {
+    "options": {
+      "chart": {
+        "type": "column",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "West",
+          "North"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        }
+      },
+      "series": [
+        {
+          "name": "revenue",
+          "data": [
+            {
+              "y": 250,
+              "color": "#e8590c",
+              "dataLabels": {
+                "enabled": true
+              }
+            },
+            80,
+            120
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      }
+    ],
+    "warnings": []
+  },
+  "pie-emphasis-eq": {
+    "options": {
+      "chart": {
+        "type": "pie",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "series": [
+        {
+          "type": "pie",
+          "name": "revenue",
+          "data": [
+            {
+              "name": "East",
+              "y": 250
+            },
+            {
+              "name": "West",
+              "y": 80,
+              "color": "#c9ced6"
+            },
+            {
+              "name": "North",
+              "y": 120
+            }
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      }
+    ],
+    "warnings": []
+  },
+  "bar-aggregated-and-sorted": {
+    "options": {
+      "chart": {
+        "type": "bar",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false
+      },
+      "xAxis": {
+        "categories": [
+          "East",
+          "North",
+          "West"
+        ],
+        "title": {
+          "text": "region"
+        }
+      },
+      "yAxis": {
+        "title": {
+          "text": "revenue"
+        },
+        "reversed": true
+      },
+      "series": [
+        {
+          "name": "revenue",
+          "data": [
+            250,
+            120,
+            80
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "region": "East",
+        "revenue": 250
+      },
+      {
+        "region": "North",
+        "revenue": 120
+      },
+      {
+        "region": "West",
+        "revenue": 80
+      }
+    ],
+    "warnings": []
+  }
+}

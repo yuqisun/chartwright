@@ -9,13 +9,22 @@
  */
 import { validateChartPlan } from '../plans.ts';
 import { applyTransform } from '../transform.ts';
+import { CHART_TYPES, CHART_TYPE_NAMES, isChartType } from './chart-types.ts';
+import type { ChartType } from './chart-types.ts';
 import type { ChartSpec, Row } from '../types.ts';
 
-export const SUPPORTED_CHART_TYPES = ['bar', 'line', 'pie'] as const;
-export type SupportedChartType = (typeof SUPPORTED_CHART_TYPES)[number];
+/**
+ * The supported set, derived from the declaration (`./chart-types.ts`).
+ *
+ * Kept as a named export because it is public API — `src/index.ts` re-exports it, and
+ * a caller asking "can this library draw a sankey" should not have to import a table
+ * to find out. The type is the declaration's key union, so it stays in step.
+ */
+export const SUPPORTED_CHART_TYPES: readonly SupportedChartType[] = CHART_TYPE_NAMES;
+export type SupportedChartType = ChartType;
 
 export function isSupportedChartType(type: string): type is SupportedChartType {
-  return (SUPPORTED_CHART_TYPES as readonly string[]).includes(type);
+  return isChartType(type);
 }
 
 export type SeriesValues = { name: string; values: (number | null)[] };
@@ -183,6 +192,9 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
       `chart type '${type}' is not supported by the built-in compiler yet. Supported: ${SUPPORTED_CHART_TYPES.join(', ')}`,
     );
   }
+  // Which shape this type is built as comes from the declaration, not from its name:
+  // a second part-to-whole type would otherwise take the categorical path silently.
+  const { kind } = CHART_TYPES[type];
 
   const dataset = materialize(spec, rows);
   const { x, y, series } = spec.encodings;
@@ -207,7 +219,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     ...(seriesField ? { seriesField } : {}),
   };
 
-  if (type === 'pie') {
+  if (kind === 'part-to-whole') {
     return {
       model: {
         ...base,
