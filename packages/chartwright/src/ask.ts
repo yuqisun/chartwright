@@ -11,6 +11,7 @@ import { compileToHighcharts } from './compile/index.ts';
 import { runAgentLoop } from './loop.ts';
 import { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './prompt.ts';
 import { buildToolDefs, createToolHandlers, inferColumns } from './tools.ts';
+import { createSubmitValidator } from './submit.ts';
 import type { ProfileOptions, QueryOptions } from './tools.ts';
 import type { AskRequest, AskResult, Budget, ChatMessage, LlmClient, ToolMode } from './types.ts';
 
@@ -81,6 +82,10 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
         llm,
         messages,
         tools: buildToolDefs(mode),
+        // A submission is accepted only once the compiler has actually built it, so a
+        // refusal reaches the model as a tool result rather than the caller as an
+        // exception it cannot act on.
+        validateSubmit: createSubmitValidator({ rows: request.rows, mode }),
         runTool: (name, args) => {
           const handler = handlers[name];
           if (!handler) throw new Error(`unknown tool '${name}'`);

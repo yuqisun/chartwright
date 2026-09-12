@@ -11,12 +11,12 @@
  */
 export { applyTransform, binDate } from './transform.ts';
 export { buildToolDefs, createToolHandlers, describeTable, inferColumns, previewRows, runQuery, TOOL_DEFS } from './tools.ts';
-export { compileToHighcharts, isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './compile/index.ts';
+export { compileToHighcharts, findCategoryCollision, isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './compile/index.ts';
 export { AgentGaveUpError, runAgentLoop } from './loop.ts';
 export { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './prompt.ts';
 export { createChartwright } from './ask.ts';
 
-export type { ChartModel, ChartOptions, CompiledChart, SupportedChartType } from './compile/index.ts';
+export type { CategoryCollision, ChartModel, ChartOptions, CompiledChart, SupportedChartType } from './compile/index.ts';
 export type { PromptColumn, PromptDataset } from './prompt.ts';
 export type { AgentLoopOptions, AgentLoopOutcome } from './loop.ts';
 export type { Chartwright, ChartwrightOptions } from './ask.ts';

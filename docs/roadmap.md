@@ -3,7 +3,7 @@
 Everything that is known to be missing, planned, or deliberately refused. Written
 so that a decision made in a review does not have to be re-derived later.
 
-**Current size** — library: 12 source files / 2,346 lines, 8 test files / 106 tests,
+**Current size** — library: 13 source files / 2,545 lines, 9 test files / 113 tests,
 zero runtime dependencies. Example: 991 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
@@ -70,6 +70,13 @@ express and the chart is drawn anyway. Three cases, with three different fixes:
   cannot see, even though both facts (the sort step, the temporal encoding) are in
   hand before compilation. Reachable in `'ask'` mode only; discovered while
   designing present mode, where `sort` does not exist at all.
+- **…and two more of that shape**, found while making submissions fail early rather
+  than after the model had gone. A `y` encoding over a text column draws
+  `[null, null, null]` — a blank chart with `warnings: []`. A `filter` over a column
+  the plan never produced matches nothing and yields an empty table, silently, while
+  `sort` on a missing column throws (the change log has that fix). The inconsistency
+  is the tell: the same class of mistake is loud in one operator and mute in another.
+  A chart with no data and a chart with the wrong data both deserve a sound.
 
 ### 4. Visual behaviour is asserted nowhere
 
@@ -363,3 +370,5 @@ Kept here because the reasoning matters more than the code.
 | `preview_rows` | Present mode only: the first rows, verbatim, at most twenty, no offset, so a run cannot walk the table and repeated calls return the same rows. A bound on a count and not a proportion — a table of twenty rows or fewer can be read whole. That trade is stated in the consumer guide and in the refused-by-design row rather than left to be discovered. |
 | A tool's arguments are not the caller's policy | Every tool now rejects arguments it does not declare. Tool arguments used to be spread over the profiling options, so a model could set `sampleValues` itself, over the top of a caller's `profile: { sampleValues: 0 }`. |
 | Tool definitions are handed out as copies | `buildToolDefs` deep-clones its templates. `SUBMIT_ASK` and `SUBMIT_PRESENT` shared a single `parameters` object, so a caller editing the definition it received was editing both modes. |
+| A submission is accepted only if a chart comes out of it | The loop takes an optional `validateSubmit`, and `ask()` supplies one that runs the compiler over the submission while the model is still there. Everything the compiler refuses — two rows on one category, an encoding over a column the plan never produced — used to surface *after* the loop ended: the caller got an exception and the model was never told. Now it is a rejected submission the model can repair, in either mode, with the compiler's own message. |
+| The refusal that names the reason | A run with no data-changing tool answers a `run_query` call with why the rows are final, instead of a tool list. Derived from the tool list rather than a mode flag — the list *is* the mode — and it names only the tools actually present. |

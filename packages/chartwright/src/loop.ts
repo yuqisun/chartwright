@@ -54,6 +54,16 @@ export type AgentLoopOptions = {
   tools: ToolDef[];
   /** Executes one tool call. May throw; the message is fed back to the model. */
   runTool: (name: string, args: unknown) => ToolRunResult;
+  /**
+   * Last say on a submission: return the reasons to reject it, or nothing to accept.
+   *
+   * This exists so that "the submission looked right" and "a chart comes out of it"
+   * can be the same thing. Without it, everything the compiler refuses — two rows on
+   * one category, an encoding over a column the plan never produced — surfaces after
+   * the loop has ended, when the model is gone and the caller is left holding an
+   * exception instead of a chart.
+   */
+  validateSubmit?: (spec: ChartSpec) => string[];
   onEvent?: (event: AgentEvent) => void;
   budget?: Budget;
   signal?: AbortSignal;
@@ -329,9 +339,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       if (call.name === 'submit_spec') {
         const { spec, errors } = validateSpec(call.args, lastRunQuerySteps ?? []);
-        if (errors.length > 0) {
-          problem = errors.join('; ');
-          payload = { accepted: false, errors };
+        // A shape that passes validation is not yet a chart. Ask the checked-out
+        // compiler while the model is still here to fix what it says.
+        const problems = spec && errors.length === 0 ? (options.validateSubmit?.(spec) ?? []) : [];
+        const rejected = [...errors, ...problems];
+        if (rejected.length > 0) {
+          problem = rejected.join('; ');
+          payload = { accepted: false, errors: rejected };
         } else {
           payload = { accepted: true };
           // Read the clock once: the event and the trace entry describe the same
@@ -347,11 +361,23 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           return { spec: spec as ChartSpec, steps: lastRunQuerySteps ?? [], messages, warnings, trace, rounds: round };
         }
       } else if (!reachable.has(call.name)) {
-        // Refused before any handler is consulted, so the capability is absent
-        // rather than merely discouraged. The message names what *is* available,
-        // because a model that gets a bare "no" tends to try again.
+        // Refused before any handler is consulted, so the capability is absent rather
+        // than merely discouraged. This is the ONLY place a tool call is stopped:
+        // moving it after `runTool` above turns present mode's guarantee back into a
+        // promise, and test/loop.test.ts asserts that a call the run never declared
+        // reaches no handler at all.
+        const readers = tools.filter((tool) => tool.name !== 'submit_spec').map((tool) => tool.name);
+        // A model that reaches for the tool which changes data is asking a question
+        // about *why*, not about the tool list, so answer that — and name only the
+        // tools this run actually has.
         problem =
-          `tool '${call.name}' is not available in this run; available tools: ` + [...reachable].join(', ');
+          call.name === 'run_query'
+            ? 'run_query is not available in this run: nothing here can change the data, so the rows you were ' +
+              'given are final. ' +
+              (readers.length > 0
+                ? `Look at the table with ${readers.join(' or ')}, then choose encodings that present it.`
+                : 'Choose encodings that present the table as it is.')
+            : `tool '${call.name}' is not available in this run; available tools: ${[...reachable].join(', ')}`;
         payload = { error: problem };
       } else {
         try {

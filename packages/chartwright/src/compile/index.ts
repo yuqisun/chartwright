@@ -44,6 +44,6 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[]): CompiledChart
   };
 }
 
-export { isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './model.ts';
-export type { ChartModel, SupportedChartType } from './model.ts';
+export { isSupportedChartType, materialize, SUPPORTED_CHART_TYPES, findCategoryCollision } from './model.ts';
+export type { CategoryCollision, ChartModel, SupportedChartType } from './model.ts';
 export type { ChartOptions } from './backends/highcharts.ts';

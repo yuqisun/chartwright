@@ -90,6 +90,69 @@ function distinctInOrder(values: unknown[]): string[] {
   return out;
 }
 
+/** Two rows competing for one category on a categorical axis. */
+export type CategoryCollision = {
+  /** The category value those rows share. */
+  category: string;
+  /** The series the collision happened in, when the spec splits the data into series. */
+  series?: string;
+  /** The x column. */
+  x: string;
+  /** Columns whose values differ between the colliding rows: they can tell them apart. */
+  distinguishing: string[];
+};
+
+/**
+ * Finds the first two rows that would land on the same category, if there are any.
+ *
+ * Returned as data rather than thrown, because the rule needs two different messages:
+ * the compiler tells a caller to aggregate, and a run that has no aggregation to offer
+ * has to say something else. Detection is shared so the rule itself cannot drift.
+ *
+ * The order is the one the compiler used before this was extracted — the first group,
+ * then the first repeat in row order — so the message a caller sees is unchanged.
+ */
+export function findCategoryCollision(
+  dataset: Row[],
+  encodings: { x: string; series?: string; y?: string },
+): CategoryCollision | undefined {
+  const { x, series, y } = encodings;
+
+  const groups = new Map<string, Row[]>();
+  if (series !== undefined) {
+    for (const row of dataset) {
+      const key = String(row[series]);
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(row);
+      else groups.set(key, [row]);
+    }
+  } else {
+    groups.set('', dataset);
+  }
+
+  for (const [name, groupRows] of groups) {
+    const seen = new Map<string, Row>();
+    for (const row of groupRows) {
+      const category = String(row[x]);
+      const previous = seen.get(category);
+      if (previous) {
+        const skip = new Set([x, series, y].filter((field): field is string => field !== undefined));
+        return {
+          category,
+          ...(series !== undefined ? { series: name } : {}),
+          x,
+          distinguishing: Object.keys(row).filter(
+            (field) => !skip.has(field) && String(previous[field]) !== String(row[field]),
+          ),
+        };
+      }
+      seen.set(category, row);
+    }
+  }
+
+  return undefined;
+}
+
 export type BuildResult = {
   model: ChartModel;
   warnings: string[];
@@ -101,6 +164,11 @@ export type BuildResult = {
  * Throws rather than guessing: an unsupported chart type, an encoding that names
  * a column the plan did not produce, or two rows competing for one category are
  * all errors the caller (or the model, through the tool result) can act on.
+ *
+ * That last parenthesis became true later than the sentence was written: the model
+ * only sees these through a tool result now that a submission is checked against the
+ * compiler while it is still in the loop (`src/submit.ts`). Before that, every one of
+ * them surfaced after the loop had ended, to the caller.
  */
 export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   const type = spec.chart.type;
@@ -181,22 +249,24 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   }
 
   const categories = distinctInOrder(dataset.map((row) => row[x.field]));
+
+  // Two rows in one category cannot both be drawn on a categorical axis. Picking one
+  // (or summing them) would silently change the numbers, so say what is wrong and let
+  // the model aggregate in run_query instead.
+  const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: y.field });
+  if (collision) {
+    throw new Error(
+      `the table has more than one row for category '${collision.category}'` +
+        `${collision.series !== undefined ? ` in series '${collision.series}'` : ''}. Add an aggregate step ` +
+        `(group_by '${x.field}') in run_query before charting.`,
+    );
+  }
+
   const seriesValues: SeriesValues[] = [];
   for (const [name, groupRows] of groups) {
     const values = new Map<string, number>();
     for (const row of groupRows) {
-      const category = String(row[x.field]);
-      if (values.has(category)) {
-        // Two rows in one category cannot both be drawn on a categorical axis.
-        // Picking one (or summing them) would silently change the numbers, so
-        // say what is wrong and let the model aggregate in run_query instead.
-        throw new Error(
-          `the table has more than one row for category '${category}'` +
-            `${seriesField ? ` in series '${name}'` : ''}. Add an aggregate step ` +
-            `(group_by '${x.field}') in run_query before charting.`,
-        );
-      }
-      values.set(category, Number(row[y.field]));
+      values.set(String(row[x.field]), Number(row[y.field]));
     }
     seriesValues.push({ name, values: categories.map((category) => values.get(category) ?? null) });
   }

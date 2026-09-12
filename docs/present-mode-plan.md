@@ -282,6 +282,29 @@ Removing `sort` leaves present mode with exactly one lever — the encodings —
 task covers the two things left: the model being told why it has no data tool, and
 the one failure that a change of encoding *can* fix.
 
+**Two corrections after measuring the current behaviour** (both found while checking
+what the plan claimed, before writing any code):
+
+1. **The dead end is not present-mode-specific.** In ask mode, a model that submits a
+   spec over an unaggregated table gets exactly the same treatment: `ask()` rejects
+   with `the table has more than one row for category 'East'. Add an aggregate step…`,
+   the model has already gone, and the caller holds an exception instead of a chart.
+   So the check belongs at submit time in **both** modes, with wording that fits what
+   each can do — which also means it should not be a duplicate-category check bolted on,
+   but the general rule *a submission is accepted only if the compiler can build it*.
+   Measured, the unchecked class is wider than duplicates: `encodings.y` naming a column
+   that does not exist throws `encoding field 'nope' is not in the produced table
+   (available: region, revenue)` — a genuinely helpful message, delivered to the wrong
+   party, after the loop has ended.
+2. **The drafted guidance was wrong.** "…or choose a different `encodings.x`" is not
+   always actionable: measured on a table grouped by country and asset class, moving x
+   from `booking_country` to `asset_class` collides just as hard. The advice has to name
+   the property x needs — values unique for every row in *this* table — and, better, the
+   column that actually distinguishes the two colliding rows. That column is computable
+   from the rows, so the message should say which one it is rather than leaving the model
+   to guess. Verified separately: putting it in `encodings.series` does rescue the chart
+   (`categories=["GB","HK","SG"]`, two series, `null` where a series has no value).
+
 **Step 1 (test first).**
 
 - a present-mode call to `run_query` answers with an explanation (step 2), not the
@@ -290,6 +313,9 @@ the one failure that a change of encoding *can* fix.
   with guidance the model can act on (step 3);
 - the same table is **accepted** once the distinguishing column is added to
   `encodings.series`;
+- an encoding that names a column the plan did not produce is rejected at submit time
+  in **both** modes, with the compiler's own message, instead of escaping as an
+  exception from `ask()`;
 - in present mode the spec's `transform_plan.steps` is always `[]`, whatever the
   model submits.
 
@@ -297,25 +323,63 @@ the one failure that a change of encoding *can* fix.
 an earlier `ask`-mode turn in the transcript) will try it. The dispatcher answers,
 as the tool result:
 
-> `run_query` is not available in present mode: the rows you were given are final,
-> and no tool can change them. Look at the table with `describe_table` or
+> `run_query` is not available in this run: nothing here can change the data, so the
+> rows you were given are final. Look at the table with `describe_table` or
 > `preview_rows`, then choose encodings that present it.
+
+Two things to get right in the implementation: the wording is derived from the **tool
+list** (the loop has no `mode`, and must not gain one — the list *is* the mode), and the
+tools it names are only the ones actually present, so the sentence cannot point at
+something this run does not have.
 
 **Step 3 — the gap that needs re-encoding, not aggregation.** If the rows contain two
 entries for the same category (two `GB` rows), the compiler refuses today with "add
 an aggregate step" — which present mode cannot do, so the caller would just get a
-dead end. Present mode therefore validates the submitted **encodings against the
-actual rows** at submit time and, when they would collide, rejects with guidance:
+dead end. Two moves, in this order:
 
-> Two rows share `booking_country = 'GB'`, and present mode cannot aggregate them.
-> Put the column that distinguishes them into `encodings.series`, or choose a
-> different `encodings.x`.
+- **The general rule first:** the loop gains an optional `validateSubmit`, and `ask()`
+  supplies one that runs *the compiler* over the submission. Anything the compiler
+  refuses becomes a rejected submission the model can repair, in either mode, with the
+  compiler's own message — which is already good. This is what removes the whole class
+  of "the caller got an exception after the model left", rather than one instance of it.
+- **Then the wording present mode needs:** the compiler's advice ("add an aggregate step
+  in `run_query`") names a tool present mode does not have, so that case is detected as
+  data and rewritten:
+
+> Two rows share `booking_country = 'GB'`, and this run cannot aggregate them.
+> `asset_class` tells them apart — put it in `encodings.series`. Otherwise choose an x
+> column whose values are unique for every row in this table.
+
+The distinguishing column is computed from the colliding rows, so the advice is a fact
+about this table rather than a suggestion to experiment. When no column distinguishes
+them, the message says so instead of implying a fix exists.
+
+The detection is extracted from the compiler and shared with it, so the rule "two rows,
+one category" has one implementation and two messages — the engine's and the model's.
 
 This turns a dead end for the caller into a re-encoding decision for the model.
 
 **Step 4.** Verify: `test/loop.test.ts`, `test/present.test.ts`, the full suite.
 
 **Commit:** `feat(agent): present mode tells the model why it cannot change the data`
+
+**Status: done.** 113 library tests pass. Two things went differently from the steps
+above, both recorded in the corrections at the top of this task:
+
+- the check is the *general* one — the loop takes `validateSubmit` and `ask()` hands it a
+  function that compiles the submission — rather than a duplicate-category check bolted
+  on beside it. A duplicate is then one case among several, and the fixes for "the caller
+  got an exception" apply to all of them at once. The collision is still detected as data
+  (`findCategoryCollision`, extracted from the compiler and shared with it) because present
+  mode needs different wording for that one case, not different detection.
+- the guidance names the column that actually distinguishes the colliding rows, computed
+  from them, and says so explicitly when nothing does. The drafted "or choose a different
+  `encodings.x`" was measured to be wrong advice.
+
+Two things found while doing it, recorded in `docs/roadmap.md` P0 item 3 rather than
+fixed here: a `y` encoding over a text column draws a blank chart with no warning, and a
+`filter` over a missing column yields an empty table silently — where `sort` on a missing
+column throws. Same class as the temporal-sort silence already listed there.
 
 **Not in scope here — recorded instead.** The same class of silence in `ask` mode: a
 *value* sort on a temporal chart reorders `result.dataset` but is then overwritten by
