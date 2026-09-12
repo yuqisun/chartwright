@@ -1,5 +1,5 @@
 /**
- * Generates a synthetic post-trade dataset.
+ * Generates the example's synthetic datasets.
  *
  * Why synthetic: real post-trade data (executions, allocations, settlement
  * instructions, breaks) is proprietary and often carries personal or regulated
@@ -10,18 +10,33 @@
  * been allocated, enriched with venue + counterparty + clearing details, and
  * then settled (or not).
  *
+ * Three files are written, from one pass over the same seeded rows:
+ *
+ *   post-trade.json            800 raw executions: the natural-language demo,
+ *                              where the model investigates the table itself.
+ *   counterparty-summary.json  a `GROUP BY counterparty` result, pre-sorted.
+ *   monthly-activity.json      a `GROUP BY month` result, pre-sorted.
+ *
+ * The last two are what a consumer that has already run its own aggregation
+ * hands to chartwright in "present" mode: final numbers, not raw material. They
+ * are derived here rather than typed by hand so that every figure in them can be
+ * checked against the raw rows.
+ *
  * NOTE: identifiers here are synthetic. The ISIN-like codes use the "XS"
  * prefix and random characters purely for realism — they are not real
  * securities identifiers, and nothing in this file represents real trades.
  *
- * Usage: node scripts/generate-data.mjs   (writes ../data/post-trade.json)
+ * Usage: node scripts/generate-data.mjs   (writes ../data/)
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const OUT = join(HERE, '..', 'data', 'post-trade.json');
+const DATA_DIR = join(HERE, '..', 'data');
+const OUT = join(DATA_DIR, 'post-trade.json');
+const COUNTERPARTY_OUT = join(DATA_DIR, 'counterparty-summary.json');
+const MONTHLY_OUT = join(DATA_DIR, 'monthly-activity.json');
 
 const ROW_COUNT = 800;
 const SEED = 20260910;
@@ -166,10 +181,112 @@ for (let i = 0; i < ROW_COUNT; i++) {
   });
 }
 
-mkdirSync(dirname(OUT), { recursive: true });
-writeFileSync(OUT, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
+// ---------------------------------------------------------------------------
+// Pre-aggregated tables for the "present" mode demo.
+//
+// These are what a consumer's own query would have returned. The first is, to
+// the letter, this query over the rows above:
+//
+//   SELECT counterparty,
+//          COUNT(*)                    AS trades,
+//          SUM(notional_usd)           AS notional_usd,
+//          AVG(commission_bps)         AS avg_commission_bps,
+//          COUNT(DISTINCT venue)       AS distinct_venues,
+//          MAX(notional_usd)           AS largest_trade_usd,
+//          SUM(status = 'Failed')      AS failed_settlements,
+//          100 * SUM(status = 'Settled') / COUNT(*) AS settled_share_pct
+//   FROM   post_trade
+//   GROUP  BY counterparty
+//   ORDER  BY notional_usd DESC;
+//
+// The grouping is done here, and so is the ordering: that ORDER BY *is* the
+// caller's ranking, and nothing downstream may redo it. Several columns are also
+// final in a way that re-deriving them would corrupt — an average, a distinct
+// count, a maximum, a ratio. That is the entire reason present mode exists.
+// ---------------------------------------------------------------------------
 
-const settled = rows.filter((r) => r.status === 'Settled').length;
-const failed = rows.filter((r) => r.status === 'Failed').length;
+const sum = (xs) => xs.reduce((total, x) => total + x, 0);
+const mean = (xs, dp) => round(sum(xs) / xs.length, dp);
+const count = (xs, predicate) => xs.filter(predicate).length;
+
+function groupBy(items, key) {
+  const groups = new Map();
+  for (const item of items) {
+    const k = key(item);
+    const bucket = groups.get(k);
+    if (bucket) bucket.push(item);
+    else groups.set(k, [item]);
+  }
+  return groups;
+}
+
+const counterpartySummary = [...groupBy(rows, (r) => r.counterparty)]
+  .map(([counterparty, group]) => ({
+    counterparty,
+    trades: group.length,
+    notional_usd: round(sum(group.map((r) => r.notional_usd)), 2),
+    /** Not additive: the average of averages is not the overall average. */
+    avg_commission_bps: mean(group.map((r) => r.commission_bps), 2),
+    /** Not additive: venues do not partition cleanly across counterparties. */
+    distinct_venues: new Set(group.map((r) => r.venue)).size,
+    /** Not additive: a maximum is not a sum, and the average of maxima is nothing. */
+    largest_trade_usd: round(Math.max(...group.map((r) => r.notional_usd)), 2),
+    failed_settlements: count(group, (r) => r.status === 'Failed'),
+    /** Not additive: a ratio owes its meaning to its denominator. */
+    settled_share_pct: round((count(group, (r) => r.status === 'Settled') / group.length) * 100, 1),
+  }))
+  // The caller's ORDER BY: notional descending, with a name tiebreak so the file
+  // is byte-stable across runs. Same tie policy as the library's `rank` op.
+  .sort((a, b) => b.notional_usd - a.notional_usd || a.counterparty.localeCompare(b.counterparty));
+
+const monthlyActivity = [...groupBy(rows, (r) => r.trade_date.slice(0, 7))]
+  .map(([month, group]) => ({
+    month,
+    trades: group.length,
+    notional_usd: round(sum(group.map((r) => r.notional_usd)), 2),
+    /** Not additive, for the same reason as the commission average above. */
+    avg_settlement_lag_days: mean(group.map((r) => r.settlement_lag_days), 2),
+    failed_settlements: count(group, (r) => r.status === 'Failed'),
+  }))
+  .sort((a, b) => a.month.localeCompare(b.month));
+
+const writeJson = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+
+mkdirSync(DATA_DIR, { recursive: true });
+writeJson(OUT, rows);
+writeJson(COUNTERPARTY_OUT, counterpartySummary);
+writeJson(MONTHLY_OUT, monthlyActivity);
+
 console.log(`wrote ${rows.length} rows to ${OUT}`);
-console.log(`  settled=${settled} failed=${failed} counterparties=${new Set(rows.map((r) => r.counterparty)).size}`);
+console.log(`  settled=${count(rows, (r) => r.status === 'Settled')} failed=${count(rows, (r) => r.status === 'Failed')}`);
+console.log(`wrote ${counterpartySummary.length} rows to ${COUNTERPARTY_OUT}`);
+console.log(`wrote ${monthlyActivity.length} rows to ${MONTHLY_OUT}`);
+
+// What re-aggregating each table would do to it, printed rather than asserted in
+// prose. Two different kinds of damage, and the second is the more dangerous:
+//
+//   * structural — a distinct count or a maximum does not survive re-aggregation
+//     at all, and the wrong number is obviously wrong once you compare it;
+//   * silent — the averages and ratios here are drawn from the same distributions
+//     in every group, so re-weighting them moves the answer by less than the
+//     precision the file stores. Nobody could tell by looking.
+//
+// The silent column is the argument for present mode: the caller's numbers are
+// the only ones that are certainly right.
+const overallAvg = mean(rows.map((r) => r.commission_bps), 4);
+const averageOfAverages = mean(counterpartySummary.map((r) => r.avg_commission_bps), 4);
+const trueVenues = new Set(rows.map((r) => r.venue)).size;
+const summedVenues = sum(counterpartySummary.map((r) => r.distinct_venues));
+const trueLargest = Math.max(...rows.map((r) => r.notional_usd));
+const summedLargest = sum(counterpartySummary.map((r) => r.largest_trade_usd));
+
+console.log('  re-aggregating the summary would give:');
+console.log(`    distinct_venues  sum=${summedVenues} vs a true ${trueVenues}`);
+console.log(
+  `    largest_trade    sum=${round(summedLargest, 0)} vs a true ${round(trueLargest, 0)} ` +
+    `(${round(summedLargest / trueLargest, 1)}x)`,
+);
+console.log(
+  `    avg_commission   ${averageOfAverages} vs a true ${overallAvg} — off by ` +
+    `${round(averageOfAverages - overallAvg, 4)} bps, which neither value shows at 2dp`,
+);

@@ -1,0 +1,122 @@
+[
+  {
+    "counterparty": "Northgate Capital Markets",
+    "trades": 74,
+    "notional_usd": 579158270.84,
+    "avg_commission_bps": 4.52,
+    "distinct_venues": 8,
+    "largest_trade_usd": 51689353.31,
+    "failed_settlements": 3,
+    "settled_share_pct": 87.8
+  },
+  {
+    "counterparty": "Halloway Partners",
+    "trades": 70,
+    "notional_usd": 520829924.43,
+    "avg_commission_bps": 3.64,
+    "distinct_venues": 8,
+    "largest_trade_usd": 59142946.64,
+    "failed_settlements": 1,
+    "settled_share_pct": 88.6
+  },
+  {
+    "counterparty": "Fairhaven Securities",
+    "trades": 66,
+    "notional_usd": 476756189.39,
+    "avg_commission_bps": 4.19,
+    "distinct_venues": 8,
+    "largest_trade_usd": 53667036.71,
+    "failed_settlements": 1,
+    "settled_share_pct": 87.9
+  },
+  {
+    "counterparty": "Eastvale Markets",
+    "trades": 68,
+    "notional_usd": 444259328.81,
+    "avg_commission_bps": 4.15,
+    "distinct_venues": 8,
+    "largest_trade_usd": 40195277.04,
+    "failed_settlements": 1,
+    "settled_share_pct": 91.2
+  },
+  {
+    "counterparty": "Blue Harbour Trading",
+    "trades": 74,
+    "notional_usd": 441475991.22,
+    "avg_commission_bps": 4.15,
+    "distinct_venues": 8,
+    "largest_trade_usd": 35673417.33,
+    "failed_settlements": 2,
+    "settled_share_pct": 89.2
+  },
+  {
+    "counterparty": "Granite Row Capital",
+    "trades": 67,
+    "notional_usd": 420328009.44,
+    "avg_commission_bps": 3.92,
+    "distinct_venues": 8,
+    "largest_trade_usd": 36805338.42,
+    "failed_settlements": 5,
+    "settled_share_pct": 77.6
+  },
+  {
+    "counterparty": "Aldermere Securities",
+    "trades": 69,
+    "notional_usd": 411461719.34,
+    "avg_commission_bps": 4.04,
+    "distinct_venues": 8,
+    "largest_trade_usd": 39655796.34,
+    "failed_settlements": 1,
+    "settled_share_pct": 92.8
+  },
+  {
+    "counterparty": "Kingsmere Securities",
+    "trades": 66,
+    "notional_usd": 389315375.12,
+    "avg_commission_bps": 3.86,
+    "distinct_venues": 8,
+    "largest_trade_usd": 25462391.36,
+    "failed_settlements": 0,
+    "settled_share_pct": 92.4
+  },
+  {
+    "counterparty": "Ironbridge Trading",
+    "trades": 55,
+    "notional_usd": 362035688.26,
+    "avg_commission_bps": 4.29,
+    "distinct_venues": 8,
+    "largest_trade_usd": 42321115.21,
+    "failed_settlements": 2,
+    "settled_share_pct": 85.5
+  },
+  {
+    "counterparty": "Larkspur Markets",
+    "trades": 67,
+    "notional_usd": 359974149.77,
+    "avg_commission_bps": 4.65,
+    "distinct_venues": 8,
+    "largest_trade_usd": 29367156.29,
+    "failed_settlements": 1,
+    "settled_share_pct": 83.6
+  },
+  {
+    "counterparty": "Dunmore Financial",
+    "trades": 71,
+    "notional_usd": 337254966.46,
+    "avg_commission_bps": 4.15,
+    "distinct_venues": 8,
+    "largest_trade_usd": 28643799.96,
+    "failed_settlements": 2,
+    "settled_share_pct": 85.9
+  },
+  {
+    "counterparty": "Cedar Point Brokers",
+    "trades": 53,
+    "notional_usd": 297275025.26,
+    "avg_commission_bps": 4.26,
+    "distinct_venues": 8,
+    "largest_trade_usd": 25106606.97,
+    "failed_settlements": 1,
+    "settled_share_pct": 90.6
+  }
+]

@@ -239,13 +239,18 @@ that fails if anyone later adds an implicit category sort.
 
 ## Task 6 — Example and docs
 
-**Files:** `examples/react-highcharts/src/App.tsx` (+ a small
-`examples/react-highcharts/src/preAggregated.ts`), `docs/using-chartwright.md`,
+**Files:** `examples/react-highcharts/src/App.tsx`, `docs/using-chartwright.md`,
 `docs/roadmap.md`
 
-**Step 1.** Add a second demo to the example: the pre-aggregated rows above, called
-with `present: true`, so the difference is visible next to the existing
-natural-language flow. The panel should show that no `run_query` was called.
+**Already in place** (shipped ahead of this task, so the mode has real data to run
+against): `data/counterparty-summary.json`, `data/monthly-activity.json` and their
+loaders in `src/data.ts`. Both are derived from the existing 800 rows by
+`scripts/generate-data.mjs`, so `post-trade.json` is untouched.
+
+**Step 1.** Add a second demo to the example: pick one of the two pre-aggregated
+tables and call `ask({ present: true })`, so the difference is visible next to the
+existing natural-language flow. The panel should show that no `run_query` was called,
+and that `result.dataset` is the input rows in the input order.
 
 **Step 2.** `docs/using-chartwright.md`: a "Two modes" section — when to use
 `present`, what it guarantees, what the model may still decide, and the optional

@@ -1,0 +1,44 @@
+[
+  {
+    "month": "2026-01",
+    "trades": 135,
+    "notional_usd": 842120106.82,
+    "avg_settlement_lag_days": 1.89,
+    "failed_settlements": 3
+  },
+  {
+    "month": "2026-02",
+    "trades": 128,
+    "notional_usd": 919339085.66,
+    "avg_settlement_lag_days": 1.88,
+    "failed_settlements": 2
+  },
+  {
+    "month": "2026-03",
+    "trades": 130,
+    "notional_usd": 758717069.29,
+    "avg_settlement_lag_days": 1.86,
+    "failed_settlements": 6
+  },
+  {
+    "month": "2026-04",
+    "trades": 154,
+    "notional_usd": 878115146.85,
+    "avg_settlement_lag_days": 1.84,
+    "failed_settlements": 2
+  },
+  {
+    "month": "2026-05",
+    "trades": 117,
+    "notional_usd": 850558221.83,
+    "avg_settlement_lag_days": 1.78,
+    "failed_settlements": 4
+  },
+  {
+    "month": "2026-06",
+    "trades": 136,
+    "notional_usd": 791275007.89,
+    "avg_settlement_lag_days": 1.84,
+    "failed_settlements": 3
+  }
+]

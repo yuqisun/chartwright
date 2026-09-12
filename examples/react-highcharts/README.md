@@ -43,12 +43,21 @@ In production this proxy is a route in your own backend; the shape does not chan
 | Path | What it is |
 |---|---|
 | `data/post-trade.json` | 800 synthetic post-trade records |
+| `data/counterparty-summary.json` | A `GROUP BY counterparty` result of those records — a consumer's already-aggregated table |
+| `data/monthly-activity.json` | The same, `GROUP BY month` |
 | `scripts/generate-data.mjs` | Deterministic generator (fixed seed); no real trades or identifiers |
+| `src/data.ts` | Loads all three |
 | `src/App.tsx` | The integration: build a client, call `ask()`, render `result.options` |
 | `src/llm/browserClient.ts` | Keyless browser-side `LlmClient` |
 | `server/proxy.mjs` | Node proxy that holds the key and normalises the provider dialect |
 | `server/proxy.test.mjs` | Tests for that translation (stubbed provider, no network) |
 | `src/components/ChartView.tsx` | Thin imperative Highcharts wrapper — one options object in, one chart out |
+
+`counterparty-summary.json` and `monthly-activity.json` exist because they are the
+case a chart library usually gets wrong. They are **final numbers**: already grouped,
+already ranked by the caller's own `ORDER BY`, and carrying columns that
+re-aggregating would corrupt — an average, a distinct count, a maximum, a ratio.
+`npm run gen:data` prints what re-aggregating each one would do to it.
 
 ## What the app shows after a request
 
