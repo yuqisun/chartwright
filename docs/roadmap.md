@@ -122,13 +122,23 @@ cannot do without its own copy of the data.
 
 ### 6. More chart types
 
-Today: `bar`, `line`, `pie`. Unsupported types are **rejected** (never drawn
-wrongly), and the model is told why, so it usually retries.
+Today: `bar`, `line`, `spline`, `area`, `areaspline`, `pie` — plus five chart-level
+modifiers (`stacking`, `polar`, `hole`, `compact`, a fixed y range) that change how one
+of those is drawn rather than adding a type. Unsupported types are **rejected** (never
+drawn wrongly), and the model is told why, so it usually retries.
 
-Suggested order, cheapest first: `groupedBar`, `stackedBar`, `area`, `donut`,
-`scatter`. Beyond that the "module-dependent" family (waterfall, boxplot, gauge,
-funnel, radar, rose, streamgraph, lollipop) needs a different mechanism — see the
-deferred flint decision below.
+The declared set lives in one place (`packages/chartwright/src/compile/chart-types.ts`)
+and the schema the model submits against, both refusal messages, the prompt's list and
+the example's showcase are all derived from it, so adding a type is one declaration plus
+a backend mapping decision — which a test refuses to let anyone skip.
+
+Still missing, cheapest first: `stackedBar`/`groupedBar` as *named* types (both are
+already expressible — grouped is `bar` plus `encodings.series`), `donut` as a *name*
+(`chart.hole` exists), `scatter` (needs a positional axis and an exemption from the
+collision rule), then the "module-dependent" family (waterfall, boxplot, gauge, funnel,
+radar, rose, streamgraph, lollipop) which needs a different mechanism — see the deferred
+flint decision below. `radar` and `rose` are the exception: they need no module at all,
+only `chart.polar`, which is implemented.
 
 ### 7. Colour and theming
 
@@ -417,3 +427,6 @@ Kept here because the reasoning matters more than the code.
 | A date column is a category, and the datetime branch is gone | The compiler had a temporal branch — a `datetime` axis, `[ms, value]` pairs, points sorted by time — selected by `encodings.x.value_type`, and **nothing in the library ever set that field**; only two tests did. So it never ran, and every chart including a monthly series already took the categorical path. Deleted rather than wired: wiring changes the axis of every date chart, and sorts points by time, which is in direct tension with present mode's "the order you pass is the order shown". `ValueType` and `Encoding.value_type` went with it. The cost — a gap in a series is drawn as though it were not there — is item 21, with the example's "Present gapped dates" demo as its reproduction. |
 | An encoding declares one field, and the spec is built from it | `encodings.x`, `.y` and `.series` gained `additionalProperties: false`, and `validateSpec` now assembles each encoding as `{ field }` rather than copying the submission through. A key the schema does not declare — an invented `value_type`, say — used to reach the compiler and change the axis for that one caller. |
 | The refusal that names the reason | A run with no data-changing tool answers a `run_query` call with why the rows are final, instead of a tool list. Derived from the tool list rather than a mode flag — the list *is* the mode — and it names only the tools actually present. |
+| One declaration for the chart types | The supported set was written out in eleven places; it is now declared once (`compile/chart-types.ts`) and the schema enum, both refusal sentences, the prompt's list, the validator's required channels, the model's shape choice and the backend dispatch are all derived from it. `SUPPORTED_CHART_TYPES` is derived rather than deleted, so the public API keeps working. Acceptance was byte-identical options for the types that already existed, frozen in `test/fixtures/options-golden.json` before the change and still compared on every run. |
+| The consumer says what its bundle can draw | `capabilities` is a list, a function or an async function of neutral type names, asked once per `ask` because a real app code-splits its chart modules. Unknown names warn rather than shrinking the panel in silence; a source that resolves to nothing is refused at the door, because such a run could never finish. A type that is declared but unavailable gets its own message, distinct from an unsupported one, because the repair differs. |
+| A chart type is three lines and a decision | `area`, `spline` and `areaspline` are one shared declaration each; `stacking`, `polar`, `hole`, `compact` and a fixed y range are modifiers declared per type, refused rather than ignored when a type cannot mean one. Every type must have a decided Highcharts mapping and a case in the corpus and the golden set — tests refuse to let a type be added without them, which is the hole that once let `donut` emit a chart type Highcharts does not have. |

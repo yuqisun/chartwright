@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createChartwright } from '../src/ask.ts';
+import { CHART_TYPE_NAMES } from '../src/compile/index.ts';
 import { AgentGaveUpError, runAgentLoop } from '../src/loop.ts';
 import { buildToolDefs, createToolHandlers, TOOL_DEFS } from '../src/tools.ts';
 import type { AgentEvent, ChatMessage, LlmClient, LlmCompleteRequest, LlmCompleteResult, Row } from '../src/types.ts';
@@ -106,7 +107,10 @@ test('an invalid submission is handed back to the model, which can repair it', a
   const firstToolMessage = outcome.messages.find((m) => m.role === 'tool');
   assert.deepEqual(JSON.parse(firstToolMessage?.content ?? '{}'), {
     accepted: false,
-    errors: ["chart.type 'sankey' is not supported yet; supported types are bar, line, pie"],
+    // Derived rather than pinned: the sentence is generated from the declaration, so a new chart
+    // type should not turn this into a failing test about wording. What is being asserted is that
+    // the refusal comes back with its reason and the model can repair it in the same run.
+    errors: [`chart.type 'sankey' is not supported yet; supported types are ${CHART_TYPE_NAMES.join(', ')}`],
   });
   assert.ok(outcome.warnings.some((w) => w.includes('submit_spec')));
 });

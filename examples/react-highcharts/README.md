@@ -100,17 +100,18 @@ re-aggregating would corrupt — an average, a distinct count, a maximum, a rati
 
 ## What the supported zone shows
 
-Twelve cases, each a card carrying six things: the query a person would type, the
-dataset it runs on (with its rows a click away), the mode it runs in **and why**, what
-the data stresses, what you should see, and the chart itself. The badge in each corner is
-the page checking the compiled options against the count the corpus states — a card that
-drew the wrong shape says so. The browser-rendered version of that check runs in CI
+Twenty-one cases, each a card carrying six things: the query a person would type, the
+dataset it runs on (with its rows a click away), the mode it runs in **and why**, what the
+data stresses, what you should see, and the chart itself. The badge in each corner is the
+page checking the compiled options against the count the corpus states — a card that drew
+the wrong shape says so. The browser-rendered version of that check runs in CI
 (`scripts/render-matrix.ts`).
 
-Between them the cards cover the three declared types (bar, line, pie) and the shapes that
-break naive implementations: sixty categories against a fixed axis, four labels far wider
-than their bands, a month missing from a series, a null next to a real zero, signed
-values, and a single-row table.
+Between them the cards cover the six declared types (bar, line, spline, area, areaspline,
+pie), the five chart-level modifiers (stacking, polar, a donut hole, compact sparklines, a
+fixed y range), and the shapes that break naive implementations: sixty categories against
+a fixed axis, four labels far wider than their bands, a month missing from a series, a null
+next to a real zero, signed values, and a single-row table.
 
 ## What the boundary zone shows
 

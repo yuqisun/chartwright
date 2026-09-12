@@ -230,6 +230,14 @@ export type Today =
   | { outcome: 'no-type-yet'; needs: string };
 
 export type CorpusCase = {
+  /**
+   * The case's name, when the default is not enough.
+   *
+   * The default is `<dataset>-<type>`, which breaks down once one dataset demonstrates one type in
+   * two ways — a pie and the same pie with a hole — so a variant names itself. It is also the name
+   * the showcase page shows, which is why these read like what they are.
+   */
+  id?: string;
   dataset: Dataset;
   /** A spec that uses this data with a declared type. Absent when no declared type fits. */
   spec?: ChartSpec;
@@ -247,6 +255,24 @@ const spec = (type: string, x: string, y: string, extra?: Partial<ChartSpec>): C
   encodings: { x: { field: x }, y: { field: y } },
   ...extra,
 });
+
+/** A case a declared type can draw today, as opposed to one at the boundary. */
+export function isDrawnCase(entry: CorpusCase): boolean {
+  return Boolean(entry.spec) && entry.today.outcome === 'compiles';
+}
+
+/**
+ * The case's name, shared by everything that names one: the showcase page, the render matrix's
+ * screenshots, and this file's own defaults.
+ *
+ * It lives here because it was duplicated once and the copies disagreed — the render matrix built
+ * its own label, so two different cases produced one screenshot name and one silently overwrote
+ * the other. The default is `<dataset>-<type>`; a variant sets its own `id`.
+ */
+export function caseId(entry: CorpusCase): string {
+  if (entry.id) return entry.id;
+  return isDrawnCase(entry) ? `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}` : entry.dataset.name;
+}
 
 /**
  * The corpus, paired with what happens today.
@@ -297,6 +323,71 @@ export const CORPUS: CorpusCase[] = [
   { dataset: byName('nulls-and-zeros'), spec: spec('line', 'month', 'trades'), today: { outcome: 'compiles', series: 1, points: 4 } },
 
   { dataset: byName('degenerate'), spec: spec('bar', 'region', 'revenue'), today: { outcome: 'compiles', series: 1, points: 1 } },
+
+  // The shapes P1 added: three more marks built by the same categorical model, and the chart-level
+  // modifiers, which change how a chart is drawn rather than what it is. The three types are here
+  // because the showcase refuses to run unless every declared type is demonstrated; the modifiers
+  // are here so the page draws them and the render matrix sees them.
+  {
+    id: 'area',
+    dataset: byName('months-in-order'),
+    spec: spec('area', 'month', 'notional_usd', { chart: { type: 'area', title: 'Notional by month' } }),
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'spline',
+    dataset: byName('months-in-order'),
+    spec: spec('spline', 'month', 'notional_usd'),
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'areaspline',
+    dataset: byName('months-in-order'),
+    spec: spec('areaspline', 'month', 'notional_usd'),
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'stacked-area',
+    dataset: byName('matrix-two-categories'),
+    spec: spec('area', 'month', 'notional_usd', {
+      chart: { type: 'area', stacking: 'normal', title: 'Stacked notional by region' },
+      encodings: { x: { field: 'month' }, y: { field: 'notional_usd' }, series: { field: 'region' } },
+    }),
+    today: { outcome: 'compiles', series: 2, points: 3 },
+  },
+  {
+    id: 'percent-stacked-bar',
+    dataset: byName('matrix-two-categories'),
+    spec: spec('bar', 'month', 'notional_usd', {
+      chart: { type: 'bar', stacking: 'percent' },
+      encodings: { x: { field: 'month' }, y: { field: 'notional_usd' }, series: { field: 'region' } },
+    }),
+    today: { outcome: 'compiles', series: 2, points: 3 },
+  },
+  {
+    id: 'donut',
+    dataset: byName('long-category-labels'),
+    spec: spec('pie', 'desk', 'notional_usd', { chart: { type: 'pie', hole: 0.55, title: 'Notional by desk' } }),
+    today: { outcome: 'compiles', series: 1, points: 4 },
+  },
+  {
+    id: 'rose',
+    dataset: byName('months-in-order'),
+    spec: spec('bar', 'month', 'notional_usd', { chart: { type: 'bar', polar: true, title: 'Notional around a circle' } }),
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'sparkline',
+    dataset: byName('categories-one-measure'),
+    spec: spec('line', 'region', 'revenue', { chart: { type: 'line', compact: true } }),
+    today: { outcome: 'compiles', series: 1, points: 3 },
+  },
+  {
+    id: 'fixed-y-range',
+    dataset: byName('nulls-and-zeros'),
+    spec: spec('bar', 'month', 'trades', { chart: { type: 'bar' }, axes: { y: { min: 0, max: 40 } } }),
+    today: { outcome: 'compiles', series: 1, points: 4 },
+  },
 ];
 
 function byName(name: string): Dataset {

@@ -118,4 +118,76 @@ export const GOLDEN_CASES: GoldenCase[] = [
       { region: 'North', revenue: 120 },
     ],
   },
+
+  // P1's shapes. Each is here because the modifier it carries is a promise about the emitted
+  // options, and a promise about options is exactly what this file freezes. They were added
+  // *after* the fixture was first captured: the recapture must add cases without changing a byte
+  // of the ones above, which `git diff` on the fixture shows at a glance.
+  {
+    name: 'area',
+    why: 'a third mark for the categorical model, and proof that the type name reaches Highcharts intact',
+    spec: { chart: { type: 'area', title: 'Revenue' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    rows: flat,
+  },
+  {
+    name: 'spline-series',
+    why: 'a smoothed line with more than one series — the mark and the legend together',
+    spec: {
+      chart: { type: 'spline' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'currency' } },
+    },
+    rows: split,
+  },
+  {
+    name: 'areaspline',
+    why: 'the fourth mark: smoothed and filled',
+    spec: { chart: { type: 'areaspline' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    rows: flat,
+  },
+  {
+    name: 'stacked-area',
+    why: 'stacking lands in plotOptions.series, not on the axis, and the series themselves are unchanged',
+    spec: {
+      chart: { type: 'area', stacking: 'normal' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'currency' } },
+    },
+    rows: split,
+  },
+  {
+    name: 'percent-stacked-bar',
+    why: 'the one modifier that rescales the data, so its presence in the options is worth freezing',
+    spec: {
+      chart: { type: 'bar', stacking: 'percent' },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' }, series: { field: 'currency' } },
+    },
+    rows: split,
+  },
+  {
+    name: 'donut',
+    why: 'the hole is a percentage string on plotOptions.pie, and the slices are untouched by it',
+    spec: { chart: { type: 'pie', hole: 0.5 }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    rows: flat,
+  },
+  {
+    name: 'rose',
+    why: 'polar is a chart-level flag: bars wrapped around an axis rather than along one',
+    spec: { chart: { type: 'bar', polar: true }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    rows: flat,
+  },
+  {
+    name: 'sparkline',
+    why: 'compact drops the chrome and the axes, and nothing else changes',
+    spec: { chart: { type: 'line', compact: true }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    rows: flat,
+  },
+  {
+    name: 'fixed-y-range',
+    why: 'a fixed range overrides the data: the axis is the caller\u2019s claim about the measure',
+    spec: {
+      chart: { type: 'bar' },
+      axes: { y: { min: 0, max: 400 } },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
+    },
+    rows: flat,
+  },
 ];

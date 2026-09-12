@@ -341,6 +341,29 @@ const SUBMIT_PROPERTIES = {
       type: { type: 'string' },
       title: { type: 'string' },
       orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
+      stacking: {
+        type: 'string',
+        enum: ['normal', 'percent'],
+        description:
+          'Stack the series rather than placing them side by side. "percent" makes every category total 100, ' +
+          'which is a claim about the data — use it only when the request is about shares.',
+      },
+      polar: {
+        type: 'boolean',
+        description: 'Wrap the axes around a circle: a radar with lines or areas, a rose with bars.',
+      },
+      hole: {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+        description: 'The hole in a pie, 0 to 1. 0.5 is a donut. Only meaningful for a pie.',
+      },
+      compact: {
+        type: 'boolean',
+        description:
+          'Drop the chrome — title, axes, legend — and keep the marks, for a sparkline in a table cell. ' +
+          'Not a chart type: the same chart with nothing around it.',
+      },
     },
     additionalProperties: false,
   },
@@ -354,6 +377,23 @@ const SUBMIT_PROPERTIES = {
       x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
       y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
       series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
+    },
+    additionalProperties: false,
+  },
+  axes: {
+    type: 'object',
+    description:
+      'Optional axis overrides. Omitted, axes are inferred from the columns. Set a fixed range when the scale ' +
+      'is a fact about the measure rather than about these rows — a percentage that runs 0 to 100 whatever the data says.',
+    properties: {
+      y: {
+        type: 'object',
+        properties: {
+          min: { type: 'number' },
+          max: { type: 'number' },
+        },
+        additionalProperties: false,
+      },
     },
     additionalProperties: false,
   },

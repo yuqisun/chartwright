@@ -5,7 +5,7 @@
  * eleven places across five files — the gate, two HTTP-shaped schema spots, two
  * tool descriptions, a prompt rule, a test's pinned string and three documents.
  * Adding a type meant finding all of them, and missing one failed in a different
- * way each time (`docs/spec-extension-plan.md` 搂Evidence). The declaration is now
+ * way each time (`docs/spec-extension-plan.md` §Evidence). The declaration is now
  * the source, and these tests are what keep it the source.
  *
  * The last two tests are the interesting ones:
@@ -76,7 +76,12 @@ async function runSubmissions(submissions: unknown[]) {
 }
 
 test('the declaration is the source of the supported set', () => {
-  assert.deepEqual([...CHART_TYPE_NAMES], ['bar', 'line', 'pie']);
+  // The list is the declaration's keys, so this asserts the *relationship* rather than a
+  // hand-written copy of it — a copy is the thing that used to drift.
+  assert.deepEqual([...CHART_TYPE_NAMES], Object.keys(CHART_TYPES));
+  for (const original of ['bar', 'line', 'pie']) {
+    assert.ok(CHART_TYPE_NAMES.includes(original as never), `${original} is still declared`);
+  }
   assert.equal(isChartType('bar'), true);
   assert.equal(isChartType('sankey'), false, 'a type nobody declared is not supported');
 
@@ -84,6 +89,7 @@ test('the declaration is the source of the supported set', () => {
     const declaration = CHART_TYPES[name];
     assert.ok(declaration.kind, `${name} declares which model shape builds it`);
     assert.ok(declaration.required.length > 0, `${name} declares which channels are required`);
+    assert.ok(Array.isArray(declaration.modifiers), `${name} declares its modifiers, even if the list is empty`);
     assert.equal(typeof declaration.allowsDuplicateCategories, 'boolean', `${name} declares its collision policy`);
   }
 });
@@ -173,6 +179,24 @@ const MAPPING: Array<{ declared: string; why: string; spec: ChartSpec; want: str
     spec: { chart: { type: 'pie' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
     want: 'pie',
   },
+  {
+    declared: 'area',
+    why: 'a filled line: the library calls it area too',
+    spec: { chart: { type: 'area' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    want: 'area',
+  },
+  {
+    declared: 'spline',
+    why: 'a smoothed line, same name',
+    spec: { chart: { type: 'spline' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    want: 'spline',
+  },
+  {
+    declared: 'areaspline',
+    why: 'smoothed and filled, same name',
+    spec: { chart: { type: 'areaspline' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    want: 'areaspline',
+  },
 ];
 
 test('every declared type has a decided Highcharts type', () => {
@@ -192,38 +216,130 @@ test('each mapping decision is what the compiler actually emits', () => {
 });
 
 /**
- * The silent-drop trap (`docs/spec-extension-plan.md` 搂5.3, risk R2).
+ * The silent-drop trap (`docs/spec-extension-plan.md` §5.3, risk R2).
  *
- * `validateSpec` assembles the spec from the fields it reads, so a property the
- * schema offers but the assembler does not read is dropped without an error: the
- * model submits successfully and the chart quietly lacks the feature. The first
- * assertion is the guard; the second documents the whitelist so that a change to it
- * is a deliberate change.
+ * `validateSpec` assembles the spec from the fields it reads, so a property the schema offers
+ * but the assembler does not read is dropped without an error: the model submits successfully
+ * and the chart quietly lacks the feature.
+ *
+ * The samples below are the gate. They are keyed exactly like the schema, and the test asserts
+ * that correspondence, so **adding a property to the schema without adding a sample fails here**.
+ * That is the only version of this check that keeps working as types are added: a test that
+ * submitted the properties someone remembered to list would keep passing while the trap opened.
  */
-test('every property the submit schema declares survives into the compiled spec', async () => {
-  const outcome = await runSubmissions([{
-    chart: { type: 'bar', title: 'Revenue', orientation: 'horizontal' },
-    encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
-    emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
-  }]);
+const SCHEMA_SAMPLES = {
+  encodings: {
+    x: { field: 'region' },
+    y: { field: 'revenue' },
+    // The rows are never touched by this test: it is about the assembler keeping what the schema
+    // offered, and the loop accepts a spec without compiling it (only `ask()` adds that check).
+    series: { field: 'currency' },
+  },
+  emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
+  axes: { y: { min: 0, max: 100 } },
+} as const;
 
-  assert.equal(outcome.spec.chart.title, 'Revenue');
-  assert.equal(outcome.spec.chart.orientation, 'horizontal');
-  assert.deepEqual(outcome.spec.encodings.y, { field: 'revenue' });
-  assert.equal(outcome.spec.emphasis?.length, 1);
+/**
+ * Chart-level samples, grouped by a type that can actually mean them.
+ *
+ * Two groups rather than one because a modifier is declared per type: a bar honours stacking and
+ * a pie honours the hole, and neither honours the other — so a single submission cannot cover
+ * them all, and pretending otherwise would mean shipping a spec the validator is right to refuse.
+ * The coverage assertion below still requires the union to cover the schema exactly.
+ */
+const CHART_SAMPLES: Array<{ type: string; chart: Record<string, unknown>; why: string }> = [
+  {
+    type: 'bar',
+    chart: { title: 'Revenue', orientation: 'horizontal', stacking: 'percent', polar: true, compact: true },
+    why: 'a categorical type honours stacking, polar and compact',
+  },
+  {
+    type: 'pie',
+    chart: { hole: 0.4 },
+    why: 'a part-to-whole type honours the hole — and cannot mean stacking, which the validator refuses',
+  },
+];
+
+function submitPropertiesOf(mode: 'ask' | 'present' = 'ask'): Record<string, { properties?: Record<string, unknown> }> {
+  const submit = buildToolDefs(mode).find((tool) => tool.name === 'submit_spec');
+  return (submit?.parameters as { properties: Record<string, { properties?: Record<string, unknown> }> }).properties;
+}
+
+test('the samples cover the schema exactly, at both levels', () => {
+  const properties = submitPropertiesOf();
+  assert.deepEqual(
+    Object.keys(properties).sort(),
+    ['axes', 'chart', 'emphasis', 'encodings'],
+    'every top-level schema property needs a sample added below, and no sample may outlive its property',
+  );
+  assert.deepEqual(
+    Object.keys(properties.chart?.properties ?? {}).sort(),
+    [...new Set(['type', ...CHART_SAMPLES.flatMap((sample) => Object.keys(sample.chart))])].sort(),
+    'chart.* needs samples too: this is where a new modifier lands, and where it would silently vanish',
+  );
+  assert.deepEqual(
+    Object.keys(properties.encodings?.properties ?? {}).sort(),
+    Object.keys(SCHEMA_SAMPLES.encodings).sort(),
+    'and the channels',
+  );
 });
 
-test('a property the schema does not declare does not survive — and does not warn either', async () => {
-  const outcome = await runSubmissions([{
-    chart: { type: 'bar', stacking: 'percent' },
-    axes: { x: { kind: 'linear' } },
-    encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
-  }]);
+test('every property the submit schema declares survives into the compiled spec', async () => {
+  for (const sample of CHART_SAMPLES) {
+    const outcome = await runSubmissions([
+      {
+        chart: { type: sample.type, ...sample.chart },
+        encodings: SCHEMA_SAMPLES.encodings,
+        emphasis: SCHEMA_SAMPLES.emphasis,
+        axes: SCHEMA_SAMPLES.axes,
+      },
+    ]);
 
-  const spec = outcome.spec as unknown as Record<string, unknown>;
-  assert.equal(spec.axes, undefined, 'an undeclared property is dropped, not carried');
-  assert.equal((outcome.spec.chart as unknown as Record<string, unknown>).stacking, undefined);
-  assert.deepEqual(outcome.warnings, [], 'and nothing warns about it — which is why this needs a test');
+    const spec = outcome.spec as unknown as {
+      chart: Record<string, unknown>;
+      encodings: Record<string, unknown>;
+      emphasis?: unknown[];
+      axes?: unknown;
+    };
+    for (const [key, value] of Object.entries(sample.chart)) {
+      assert.deepEqual(spec.chart[key], value, `chart.${key} must survive the assembler (${sample.why})`);
+    }
+    for (const [channel, value] of Object.entries(SCHEMA_SAMPLES.encodings)) {
+      assert.deepEqual(spec.encodings[channel], value, `encodings.${channel} must survive the assembler`);
+    }
+    assert.equal(spec.emphasis?.length, 1);
+    assert.deepEqual(spec.axes, SCHEMA_SAMPLES.axes);
+  }
+});
+
+test('a modifier the declared type cannot mean is refused, not ignored', async () => {
+  // Roadmap item 3: a request the pipeline can see is unsatisfiable must make a sound. A pie has
+  // no axis to stack along, so accepting this would draw an unstacked pie and say nothing.
+  const outcome = await runSubmissions([
+    { chart: { type: 'pie', stacking: 'percent' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+    { chart: { type: 'pie' }, encodings: { x: { field: 'region' }, y: { field: 'revenue' } } },
+  ]);
+
+  const firstToolMessage = outcome.messages.find((message) => message.role === 'tool');
+  const reported = JSON.parse(firstToolMessage?.content ?? '{}') as { accepted: boolean; errors: string[] };
+  assert.equal(reported.accepted, false);
+  assert.match(reported.errors.join(' '), /chart\.stacking is not something a 'pie' can mean/);
+  assert.equal(outcome.spec.chart.type, 'pie', 'and the model repairs it in the same run');
+});
+
+test('a property the schema does not declare is dropped, silently — which is why samples exist', async () => {
+  const outcome = await runSubmissions([
+    {
+      chart: { type: 'bar', legend: 'off' },
+      axes: { x: { kind: 'linear' } },
+      encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
+    },
+  ]);
+
+  const spec = outcome.spec as unknown as { chart: Record<string, unknown>; axes?: unknown };
+  assert.equal(spec.axes, undefined, 'axes.x is not declared, so not even the axes object survives');
+  assert.equal(spec.chart.legend, undefined, 'and an invented chart property is dropped');
+  assert.deepEqual(outcome.warnings, [], 'nothing warns about it — the reason the sample test above exists');
 });
 
 /**

@@ -38,6 +38,19 @@ type Base = {
   xField: string;
   yField: string;
   seriesField?: string;
+  /**
+   * Chart-level properties, carried through from the spec untouched.
+   *
+   * The model layer does not interpret them: whether they make sense is decided where the spec
+   * is validated (against what the type declares it can mean) and what they look like is
+   * decided in the backend. Here they are only facts about the chart.
+   */
+  stacking?: 'normal' | 'percent';
+  polar?: boolean;
+  hole?: number;
+  compact?: boolean;
+  /** A fixed y range, when the measure's scale is a fact about the measure. */
+  yRange?: { min?: number; max?: number };
 };
 
 export type CategoricalModel = Base & {
@@ -217,6 +230,11 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     xField: x.field,
     yField: y.field,
     ...(seriesField ? { seriesField } : {}),
+    ...(spec.chart.stacking ? { stacking: spec.chart.stacking } : {}),
+    ...(spec.chart.polar !== undefined ? { polar: spec.chart.polar } : {}),
+    ...(spec.chart.hole !== undefined ? { hole: spec.chart.hole } : {}),
+    ...(spec.chart.compact !== undefined ? { compact: spec.chart.compact } : {}),
+    ...(spec.axes?.y ? { yRange: spec.axes.y } : {}),
   };
 
   if (kind === 'part-to-whole') {

@@ -3,15 +3,21 @@
   "types": [
     "bar",
     "line",
+    "spline",
+    "area",
+    "areaspline",
     "pie"
   ],
   "counts": {
-    "supported": 12,
+    "supported": 21,
     "boundary": 6,
     "byType": {
-      "bar": 7,
-      "pie": 1,
-      "line": 4
+      "bar": 10,
+      "pie": 2,
+      "line": 5,
+      "area": 2,
+      "spline": 1,
+      "areaspline": 1
     }
   },
   "supported": [
@@ -1514,6 +1520,949 @@
             "name": "revenue",
             "data": [
               250
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "area",
+      "chartType": "area",
+      "query": "How has notional developed over the months?",
+      "mode": "ask",
+      "modeWhy": "one row per month, a measure, and a question about a quantity over time",
+      "expects": "The same five points as a line, filled down to the axis — which reads as a quantity accumulating rather than as a path.",
+      "data": {
+        "name": "months-in-order",
+        "why": "a complete series: what a date-column-as-category is supposed to look like",
+        "rows": [
+          {
+            "month": "2026-01",
+            "notional_usd": 412
+          },
+          {
+            "month": "2026-02",
+            "notional_usd": 508
+          },
+          {
+            "month": "2026-03",
+            "notional_usd": 466
+          },
+          {
+            "month": "2026-04",
+            "notional_usd": 731
+          },
+          {
+            "month": "2026-05",
+            "notional_usd": 690
+          }
+        ],
+        "shapes": [
+          "categorical (time)",
+          "line",
+          "area"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "area",
+          "title": "Notional by month"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "area",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "Notional by month",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+            "2026-04",
+            "2026-05"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "notional_usd",
+            "data": [
+              412,
+              508,
+              466,
+              731,
+              690
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "spline",
+      "chartType": "spline",
+      "query": "Smooth the monthly notional line",
+      "mode": "ask",
+      "modeWhy": "the request is about the shape of the line, not the data",
+      "expects": "The same five points, drawn through curved segments. Nothing about the data changes: a spline is how the line is interpolated between them.",
+      "data": {
+        "name": "months-in-order",
+        "why": "a complete series: what a date-column-as-category is supposed to look like",
+        "rows": [
+          {
+            "month": "2026-01",
+            "notional_usd": 412
+          },
+          {
+            "month": "2026-02",
+            "notional_usd": 508
+          },
+          {
+            "month": "2026-03",
+            "notional_usd": 466
+          },
+          {
+            "month": "2026-04",
+            "notional_usd": 731
+          },
+          {
+            "month": "2026-05",
+            "notional_usd": 690
+          }
+        ],
+        "shapes": [
+          "categorical (time)",
+          "line",
+          "area"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "spline"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "spline",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+            "2026-04",
+            "2026-05"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "notional_usd",
+            "data": [
+              412,
+              508,
+              466,
+              731,
+              690
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "areaspline",
+      "chartType": "areaspline",
+      "query": "Smoothed and filled",
+      "mode": "ask",
+      "modeWhy": "both of the above at once",
+      "expects": "Curved segments and a filled region — the two modifiers of the mark, not two marks.",
+      "data": {
+        "name": "months-in-order",
+        "why": "a complete series: what a date-column-as-category is supposed to look like",
+        "rows": [
+          {
+            "month": "2026-01",
+            "notional_usd": 412
+          },
+          {
+            "month": "2026-02",
+            "notional_usd": 508
+          },
+          {
+            "month": "2026-03",
+            "notional_usd": 466
+          },
+          {
+            "month": "2026-04",
+            "notional_usd": 731
+          },
+          {
+            "month": "2026-05",
+            "notional_usd": 690
+          }
+        ],
+        "shapes": [
+          "categorical (time)",
+          "line",
+          "area"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "areaspline"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "areaspline",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+            "2026-04",
+            "2026-05"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "notional_usd",
+            "data": [
+              412,
+              508,
+              466,
+              731,
+              690
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "stacked-area",
+      "chartType": "area",
+      "query": "Notional by region over the months, stacked",
+      "mode": "ask",
+      "modeWhy": "two categorical columns and a measure — the long shape the collision rule demands",
+      "expects": "Two filled bands, one per region, stacked so each month reaches their total. Compare it with the same data as grouped bars: same numbers, different question.",
+      "data": {
+        "name": "matrix-two-categories",
+        "why": "one row per (month, region) — exactly the shape the collision rule already enforces, which is why a heatmap needs no new channel (§2.2)",
+        "rows": [
+          {
+            "month": "2026-01",
+            "region": "EMEA",
+            "notional_usd": 250
+          },
+          {
+            "month": "2026-01",
+            "region": "AMER",
+            "notional_usd": 180
+          },
+          {
+            "month": "2026-02",
+            "region": "EMEA",
+            "notional_usd": 310
+          },
+          {
+            "month": "2026-02",
+            "region": "AMER",
+            "notional_usd": 205
+          },
+          {
+            "month": "2026-03",
+            "region": "EMEA",
+            "notional_usd": 288
+          },
+          {
+            "month": "2026-03",
+            "region": "AMER",
+            "notional_usd": 240
+          }
+        ],
+        "shapes": [
+          "matrix",
+          "heatmap"
+        ]
+      },
+      "expected": {
+        "series": 2,
+        "points": 3
+      },
+      "spec": {
+        "chart": {
+          "type": "area",
+          "stacking": "normal",
+          "title": "Stacked notional by region"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          },
+          "series": {
+            "field": "region"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "area",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "Stacked notional by region",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": true
+        },
+        "plotOptions": {
+          "series": {
+            "stacking": "normal"
+          }
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "EMEA",
+            "data": [
+              250,
+              310,
+              288
+            ]
+          },
+          {
+            "name": "AMER",
+            "data": [
+              180,
+              205,
+              240
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "percent-stacked-bar",
+      "chartType": "bar",
+      "query": "How does the regional split change month to month?",
+      "mode": "ask",
+      "modeWhy": "the question is about proportions of a whole, per month",
+      "expects": "Two bars per month totalling 100%. This is the one modifier that rescales the data, so the compiler only applies it because the spec asked: the shape of the mix is the answer, not the size.",
+      "data": {
+        "name": "matrix-two-categories",
+        "why": "one row per (month, region) — exactly the shape the collision rule already enforces, which is why a heatmap needs no new channel (§2.2)",
+        "rows": [
+          {
+            "month": "2026-01",
+            "region": "EMEA",
+            "notional_usd": 250
+          },
+          {
+            "month": "2026-01",
+            "region": "AMER",
+            "notional_usd": 180
+          },
+          {
+            "month": "2026-02",
+            "region": "EMEA",
+            "notional_usd": 310
+          },
+          {
+            "month": "2026-02",
+            "region": "AMER",
+            "notional_usd": 205
+          },
+          {
+            "month": "2026-03",
+            "region": "EMEA",
+            "notional_usd": 288
+          },
+          {
+            "month": "2026-03",
+            "region": "AMER",
+            "notional_usd": 240
+          }
+        ],
+        "shapes": [
+          "matrix",
+          "heatmap"
+        ]
+      },
+      "expected": {
+        "series": 2,
+        "points": 3
+      },
+      "spec": {
+        "chart": {
+          "type": "bar",
+          "stacking": "percent"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          },
+          "series": {
+            "field": "region"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "column",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": true
+        },
+        "plotOptions": {
+          "series": {
+            "stacking": "percent"
+          }
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "EMEA",
+            "data": [
+              250,
+              310,
+              288
+            ]
+          },
+          {
+            "name": "AMER",
+            "data": [
+              180,
+              205,
+              240
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "donut",
+      "chartType": "pie",
+      "query": "Share of notional by desk, as a donut",
+      "mode": "ask",
+      "modeWhy": "a part-to-whole question, with a hole asked for",
+      "expects": "Four arcs with a hole in the middle. The hole changes nothing about the data — it is the same pie, and it is a modifier rather than a type of its own.",
+      "data": {
+        "name": "long-category-labels",
+        "why": "four long labels in a narrow axis: the case that decides rotation, and the one `chart.orientation` alone cannot fix",
+        "rows": [
+          {
+            "desk": "European Investment Grade Credit",
+            "notional_usd": 320
+          },
+          {
+            "desk": "US High Yield Distressed",
+            "notional_usd": 180
+          },
+          {
+            "desk": "Asia-Pacific Rates & FX",
+            "notional_usd": 240
+          },
+          {
+            "desk": "Emerging Market Local Debt",
+            "notional_usd": 95
+          }
+        ],
+        "shapes": [
+          "categorical (labels)"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 4
+      },
+      "spec": {
+        "chart": {
+          "type": "pie",
+          "hole": 0.55,
+          "title": "Notional by desk"
+        },
+        "encodings": {
+          "x": {
+            "field": "desk"
+          },
+          "y": {
+            "field": "notional_usd"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "pie",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "Notional by desk",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "plotOptions": {
+          "pie": {
+            "innerSize": "55%"
+          }
+        },
+        "series": [
+          {
+            "type": "pie",
+            "name": "notional_usd",
+            "data": [
+              {
+                "name": "European Investment Grade Credit",
+                "y": 320
+              },
+              {
+                "name": "US High Yield Distressed",
+                "y": 180
+              },
+              {
+                "name": "Asia-Pacific Rates & FX",
+                "y": 240
+              },
+              {
+                "name": "Emerging Market Local Debt",
+                "y": 95
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rose",
+      "chartType": "bar",
+      "query": "Notional by month, arranged around a circle",
+      "mode": "ask",
+      "modeWhy": "the same bars, with the axes wrapped",
+      "expects": "A rose: five bars around a circle instead of along a line. Only the axes moved.",
+      "data": {
+        "name": "months-in-order",
+        "why": "a complete series: what a date-column-as-category is supposed to look like",
+        "rows": [
+          {
+            "month": "2026-01",
+            "notional_usd": 412
+          },
+          {
+            "month": "2026-02",
+            "notional_usd": 508
+          },
+          {
+            "month": "2026-03",
+            "notional_usd": 466
+          },
+          {
+            "month": "2026-04",
+            "notional_usd": 731
+          },
+          {
+            "month": "2026-05",
+            "notional_usd": 690
+          }
+        ],
+        "shapes": [
+          "categorical (time)",
+          "line",
+          "area"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "bar",
+          "polar": true,
+          "title": "Notional around a circle"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "notional_usd"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "column",
+          "backgroundColor": "transparent",
+          "polar": true
+        },
+        "title": {
+          "text": "Notional around a circle",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+            "2026-04",
+            "2026-05"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "notional_usd"
+          }
+        },
+        "series": [
+          {
+            "name": "notional_usd",
+            "data": [
+              412,
+              508,
+              466,
+              731,
+              690
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "sparkline",
+      "chartType": "line",
+      "query": "A tiny inline trend of revenue",
+      "mode": "ask",
+      "modeWhy": "a chart for a table cell rather than for a page",
+      "expects": "Three points as a bare line: no title, no axes, no legend. A sparkline is the same chart with nothing around it, which is why it is a modifier and not a type.",
+      "data": {
+        "name": "categories-one-measure",
+        "why": "the tidy case every other case is a deviation from: unique categories, one positive measure",
+        "rows": [
+          {
+            "region": "East",
+            "revenue": 250
+          },
+          {
+            "region": "West",
+            "revenue": 80
+          },
+          {
+            "region": "North",
+            "revenue": 120
+          }
+        ],
+        "shapes": [
+          "categorical",
+          "part-to-whole"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 3
+      },
+      "spec": {
+        "chart": {
+          "type": "line",
+          "compact": true
+        },
+        "encodings": {
+          "x": {
+            "field": "region"
+          },
+          "y": {
+            "field": "revenue"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "line",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": ""
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "series": [
+          {
+            "name": "revenue",
+            "data": [
+              250,
+              80,
+              120
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fixed-y-range",
+      "chartType": "bar",
+      "query": "Trades per month, on a fixed 0 to 40 scale",
+      "mode": "ask",
+      "modeWhy": "the scale is a fact about the measure, not about these four rows",
+      "expects": "Four bars on a 0–40 axis although the largest value is 31. The spec said so; the compiler did not decide it.",
+      "data": {
+        "name": "nulls-and-zeros",
+        "why": "a null measure and a real zero, which must not be drawn the same way — a null is a gap, a zero is a value",
+        "rows": [
+          {
+            "month": "2026-01",
+            "trades": 12
+          },
+          {
+            "month": "2026-02",
+            "trades": 0
+          },
+          {
+            "month": "2026-03",
+            "trades": null
+          },
+          {
+            "month": "2026-04",
+            "trades": 31
+          }
+        ],
+        "shapes": [
+          "categorical (nulls)",
+          "line (nulls)"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 4
+      },
+      "spec": {
+        "chart": {
+          "type": "bar"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "y": {
+            "field": "trades"
+          }
+        },
+        "axes": {
+          "y": {
+            "min": 0,
+            "max": 40
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "column",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false
+        },
+        "xAxis": {
+          "categories": [
+            "2026-01",
+            "2026-02",
+            "2026-03",
+            "2026-04"
+          ],
+          "title": {
+            "text": "month"
+          }
+        },
+        "yAxis": {
+          "title": {
+            "text": "trades"
+          },
+          "min": 0,
+          "max": 40
+        },
+        "series": [
+          {
+            "name": "trades",
+            "data": [
+              12,
+              0,
+              0,
+              31
             ]
           }
         ]

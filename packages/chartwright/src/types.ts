@@ -147,6 +147,21 @@ export type ChartSpec = {
      * labels are long or numerous (a top-N-by-name chart, for instance).
      */
     orientation?: 'vertical' | 'horizontal';
+    /**
+     * Stack the series on top of each other rather than side by side. `'normal'` keeps absolute
+     * values, `'percent'` makes every category total 100 — which is a claim about the data, so
+     * the compiler passes it through rather than deciding it.
+     */
+    stacking?: 'normal' | 'percent';
+    /** Wrap the axes around a circle: a radar, or a rose when combined with vertical bars. */
+    polar?: boolean;
+    /** The hole in a pie, 0 to 1: 0.5 is a donut. Ignored by types that are not pies. */
+    hole?: number;
+    /**
+     * Drop the chrome — title, axes, legend — and keep the marks. A sparkline is not a chart
+     * type; it is the same chart with nothing around it.
+     */
+    compact?: boolean;
   };
   /** Omit to chart the raw rows. */
   transform_plan?: { steps: TransformStep[] };
@@ -155,6 +170,14 @@ export type ChartSpec = {
     y?: Encoding;
     /** Optional channel that splits the data into multiple series. */
     series?: Encoding;
+  };
+  /**
+   * Axis overrides. Omitted, every axis is inferred: a category channel wants a band axis and a
+   * measure wants a linear one. `y.range` exists because some measures have a scale the data
+   * does not reveal — a percentage that should start at 0 and end at 100 whatever the rows say.
+   */
+  axes?: {
+    y?: { min?: number; max?: number };
   };
   /**
    * Condition-based emphasis: "highlight the largest bar", "grey out everything

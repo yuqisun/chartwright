@@ -30,14 +30,24 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
-import { CORPUS } from '../packages/chartwright/test/fixtures/corpus.ts';
+import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
 import type { Row } from '../packages/chartwright/src/types.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDir = join(root, 'render-out');
 
 /** The cases worth drawing: those a declared type can express today. */
-const cases = CORPUS.filter((entry) => entry.spec !== undefined && entry.today.outcome === 'compiles');
+const cases = CORPUS.filter(isDrawnCase);
+
+// Two cases with one name means one screenshot silently overwrites the other, and the log stops
+// being able to tell them apart — which is exactly what happened when this script built its own
+// label instead of asking the corpus. Checked before a browser is launched, so it fails cheaply.
+const names = new Set<string>();
+for (const entry of cases) {
+  const name = caseId(entry);
+  if (names.has(name)) throw new Error(`two render cases are called '${name}' — give one an explicit id in the corpus`);
+  names.add(name);
+}
 
 type Rendered = { series: number; points: number; marks: number; error?: string };
 
@@ -82,7 +92,7 @@ async function main(): Promise<number> {
   let drawn = 0;
 
   for (const entry of cases) {
-    const label = `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}`;
+    const label = caseId(entry);
     const { options } = compileToHighcharts(entry.spec as never, entry.dataset.rows as Row[]);
 
     // Rendered in the page, with the container cleared first: without that, a second chart

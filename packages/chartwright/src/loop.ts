@@ -24,7 +24,7 @@ import {
   DEFAULT_REQUIRED_CHANNELS,
   isChartType,
 } from './compile/index.ts';
-import type { ChannelName } from './compile/index.ts';
+import type { ChannelName, ChartTypeSpec, Modifier } from './compile/index.ts';
 import type {
   AgentEvent,
   AskResult,
@@ -187,7 +187,8 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
   // The declaration, when the type is one: it decides both the refusal below and which
   // channels are required further down, so a type that needs something else (or nothing)
   // says so where it is declared instead of here.
-  const declaration = typeof type === 'string' && isChartType(type) ? CHART_TYPES[type] : undefined;
+  const declaration: ChartTypeSpec | undefined =
+    typeof type === 'string' && isChartType(type) ? CHART_TYPES[type] : undefined;
   if (typeof type !== 'string') errors.push('chart.type is required');
   else if (!declaration) {
     errors.push(`chart.type '${type}' is not supported yet; supported types are ${CHART_TYPE_NAMES.join(', ')}`);
@@ -215,6 +216,42 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
   const { rules: emphasis, errors: emphasisErrors } = validateEmphasis(candidate.emphasis);
   errors.push(...emphasisErrors);
 
+  // A modifier the declared type cannot mean is refused rather than ignored. "A stacked pie" is a
+  // request the pipeline can see is unsatisfiable, and accepting it silently is the failure mode
+  // roadmap item 3 exists to prevent — the user asked for something and got something else.
+  const chart = candidate.chart;
+  if (declaration) {
+    const asked: Array<[Modifier, unknown]> = [
+      ['stacking', chart?.stacking],
+      ['polar', chart?.polar],
+      ['hole', chart?.hole],
+      ['compact', chart?.compact],
+    ];
+    for (const [modifier, value] of asked) {
+      if (value !== undefined && !declaration.modifiers.includes(modifier)) {
+        errors.push(
+          `chart.${modifier} is not something a '${type}' can mean; it honours ${
+            declaration.modifiers.length > 0 ? declaration.modifiers.join(', ') : 'no modifiers'
+          }`,
+        );
+      }
+    }
+  }
+  if (chart?.stacking !== undefined && chart.stacking !== 'normal' && chart.stacking !== 'percent') {
+    errors.push("chart.stacking must be 'normal' or 'percent'");
+  }
+  if (chart?.hole !== undefined && !(typeof chart.hole === 'number' && chart.hole >= 0 && chart.hole <= 1)) {
+    errors.push('chart.hole must be a number between 0 and 1');
+  }
+
+  const range: { min?: number; max?: number } = {};
+  for (const bound of ['min', 'max'] as const) {
+    const value = candidate.axes?.y?.[bound];
+    if (value === undefined) continue;
+    if (typeof value !== 'number' || !Number.isFinite(value)) errors.push(`axes.y.${bound} must be a finite number`);
+    else range[bound] = value;
+  }
+
   // `errors` being empty already means every required channel is a non-empty string; the
   // explicit check is what lets the compiler see that when the spec is assembled below.
   if (errors.length > 0) return { errors };
@@ -236,7 +273,12 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
         type: type as string,
         ...(candidate.chart?.title ? { title: candidate.chart.title } : {}),
         ...(candidate.chart?.orientation ? { orientation: candidate.chart.orientation } : {}),
+        ...(chart?.stacking ? { stacking: chart.stacking } : {}),
+        ...(chart?.polar !== undefined ? { polar: chart.polar } : {}),
+        ...(chart?.hole !== undefined ? { hole: chart.hole } : {}),
+        ...(chart?.compact !== undefined ? { compact: chart.compact } : {}),
       },
+      ...(range.min !== undefined || range.max !== undefined ? { axes: { y: range } } : {}),
       // The plan comes from the tool call, never from the model's prose.
       transform_plan: { steps },
       encodings,

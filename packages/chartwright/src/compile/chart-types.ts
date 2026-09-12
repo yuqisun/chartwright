@@ -15,9 +15,10 @@
  *
  * Deliberately absent for now, because nothing reads them yet and a field no test can
  * reach is the mistake this project already deleted once (`value_type`, see
- * `compile/model.ts`): `modifiers` (stacking, polar, hole), `key` (how emphasis
- * addresses a mark — `datumKey` still derives it) and `forbidden` (channels a type
- * must not carry). P1 adds each when a type needs it.
+ * `compile/model.ts`): `key` (how emphasis addresses a mark — `datumKey` still derives
+ * it), `forbidden` (channels a type must not carry) and `module` (which Highcharts
+ * module a consumer must load, which the support matrix will surface when the first
+ * module-dependent type lands). P1 adds each when a type needs it.
  */
 import type { CapabilitySource } from '../types.ts';
 
@@ -36,6 +37,15 @@ export const CHANNEL_NAMES = Object.keys(CHANNEL_SET) as readonly ChannelName[];
 /** What a channel *means* for one type — the same `y` is a height for a bar and a colour for a heatmap. */
 export type ChannelRole = 'category' | 'measure' | 'series';
 
+/**
+ * A chart-level property a type may or may not honour.
+ *
+ * Declared per type because "stacked" is a fact about a bar or an area, not about a pie: a spec
+ * that asks a pie to stack is asking for something the type cannot mean, and the validator says
+ * so rather than quietly drawing an unstacked pie.
+ */
+export type Modifier = 'stacking' | 'polar' | 'hole' | 'compact';
+
 /** The neutral model shape that builds a type. A new kind is a project; a new type inside one is not. */
 export type ChartKind = 'categorical' | 'part-to-whole';
 
@@ -44,27 +54,34 @@ export type ChartTypeSpec = {
   channels: Partial<Record<ChannelName, ChannelRole>>;
   /** Channels the spec must carry. The validator reads this, and the message it emits names the channel. */
   required: readonly ChannelName[];
+  /** Chart-level properties this type honours, and refuses when asked for one it does not. */
+  modifiers: readonly Modifier[];
   /** Two rows competing for one category is an error for most types and the point of others. */
   allowsDuplicateCategories: boolean;
 };
 
+/** Every type so far is banded on x and measured on y, split optionally by a third column. */
+const categorical = {
+  kind: 'categorical',
+  channels: { x: 'category', y: 'measure', series: 'series' },
+  required: ['x', 'y'],
+  modifiers: ['stacking', 'polar', 'compact'],
+  allowsDuplicateCategories: false,
+} as const;
+
 export const CHART_TYPES = {
-  bar: {
-    kind: 'categorical',
-    channels: { x: 'category', y: 'measure', series: 'series' },
-    required: ['x', 'y'],
-    allowsDuplicateCategories: false,
-  },
-  line: {
-    kind: 'categorical',
-    channels: { x: 'category', y: 'measure', series: 'series' },
-    required: ['x', 'y'],
-    allowsDuplicateCategories: false,
-  },
+  bar: categorical,
+  line: categorical,
+  spline: categorical,
+  area: categorical,
+  areaspline: categorical,
   pie: {
     kind: 'part-to-whole',
     channels: { x: 'category', y: 'measure' },
     required: ['x', 'y'],
+    // A pie has no axis to stack along and nothing to wrap around a circle; `hole` is the
+    // modifier that makes it a donut, and a small pie is a legitimate sparkline.
+    modifiers: ['hole', 'compact'],
     allowsDuplicateCategories: false,
   },
 } as const satisfies Record<string, ChartTypeSpec>;

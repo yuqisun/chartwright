@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 
 import { CHART_TYPE_NAMES } from '../packages/chartwright/src/compile/index.ts';
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
-import { CORPUS } from '../packages/chartwright/test/fixtures/corpus.ts';
+import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const output = join(root, 'examples', 'react-highcharts', 'data', 'showcase.json');
@@ -118,6 +118,62 @@ const COPY: Record<string, Copy> = {
     expects: 'One column. The degenerate case, kept because axis arithmetic breaks here first.',
   },
 
+  // P1's additions: three more marks for the same categorical model, then the modifiers.
+  area: {
+    query: 'How has notional developed over the months?',
+    mode: 'ask',
+    modeWhy: 'one row per month, a measure, and a question about a quantity over time',
+    expects: 'The same five points as a line, filled down to the axis — which reads as a quantity accumulating rather than as a path.',
+  },
+  spline: {
+    query: 'Smooth the monthly notional line',
+    mode: 'ask',
+    modeWhy: 'the request is about the shape of the line, not the data',
+    expects: 'The same five points, drawn through curved segments. Nothing about the data changes: a spline is how the line is interpolated between them.',
+  },
+  areaspline: {
+    query: 'Smoothed and filled',
+    mode: 'ask',
+    modeWhy: 'both of the above at once',
+    expects: 'Curved segments and a filled region — the two modifiers of the mark, not two marks.',
+  },
+  'stacked-area': {
+    query: 'Notional by region over the months, stacked',
+    mode: 'ask',
+    modeWhy: 'two categorical columns and a measure — the long shape the collision rule demands',
+    expects: 'Two filled bands, one per region, stacked so each month reaches their total. Compare it with the same data as grouped bars: same numbers, different question.',
+  },
+  'percent-stacked-bar': {
+    query: 'How does the regional split change month to month?',
+    mode: 'ask',
+    modeWhy: 'the question is about proportions of a whole, per month',
+    expects: 'Two bars per month totalling 100%. This is the one modifier that rescales the data, so the compiler only applies it because the spec asked: the shape of the mix is the answer, not the size.',
+  },
+  donut: {
+    query: 'Share of notional by desk, as a donut',
+    mode: 'ask',
+    modeWhy: 'a part-to-whole question, with a hole asked for',
+    expects: 'Four arcs with a hole in the middle. The hole changes nothing about the data — it is the same pie, and it is a modifier rather than a type of its own.',
+  },
+  rose: {
+    query: 'Notional by month, arranged around a circle',
+    mode: 'ask',
+    modeWhy: 'the same bars, with the axes wrapped',
+    expects: 'A rose: five bars around a circle instead of along a line. Only the axes moved.',
+  },
+  sparkline: {
+    query: 'A tiny inline trend of revenue',
+    mode: 'ask',
+    modeWhy: 'a chart for a table cell rather than for a page',
+    expects: 'Three points as a bare line: no title, no axes, no legend. A sparkline is the same chart with nothing around it, which is why it is a modifier and not a type.',
+  },
+  'fixed-y-range': {
+    query: 'Trades per month, on a fixed 0 to 40 scale',
+    mode: 'ask',
+    modeWhy: 'the scale is a fact about the measure, not about these four rows',
+    expects: 'Four bars on a 0–40 axis although the largest value is 31. The spec said so; the compiler did not decide it.',
+  },
+
   // The boundary zone: nothing below is drawn above, and each says why.
   'two-measures-different-units': {
     query: 'Show traded notional and average commission by counterparty',
@@ -157,18 +213,6 @@ const COPY: Record<string, Copy> = {
   },
 };
 
-/**
- * The id of a case on the page.
- *
- * Drawn cases carry their type, because one dataset can demonstrate two types (`categories-
- * one-measure` shows a bar and a pie). Anything at the boundary is identified by its dataset
- * alone — the type suffix would suggest a type it is not drawn with, and for the shapes with
- * no type at all there is nothing to suffix.
- */
-const isDrawn = (entry: (typeof CORPUS)[number]) => Boolean(entry.spec) && entry.today.outcome === 'compiles';
-const caseId = (entry: (typeof CORPUS)[number]) =>
-  isDrawn(entry) ? `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}` : entry.dataset.name;
-
 const supported = [];
 const boundary = [];
 const seen = new Set<string>();
@@ -183,7 +227,7 @@ for (const entry of CORPUS) {
 
   const data = { name: entry.dataset.name, why: entry.dataset.why, rows: entry.dataset.rows, shapes: entry.dataset.shapes };
 
-  if (isDrawn(entry)) {
+  if (isDrawnCase(entry)) {
     const { options } = compileToHighcharts(entry.spec, entry.dataset.rows);
     supported.push({
       id,

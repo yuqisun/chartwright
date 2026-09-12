@@ -55,5 +55,5 @@ export {
   resolveCapabilities,
 } from './chart-types.ts';
 export type { CategoryCollision, ChartModel, SupportedChartType } from './model.ts';
-export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec } from './chart-types.ts';
+export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec, Modifier } from './chart-types.ts';
 export type { ChartOptions } from './backends/highcharts.ts';

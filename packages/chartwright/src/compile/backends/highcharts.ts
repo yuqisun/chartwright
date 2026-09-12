@@ -45,31 +45,53 @@ function withTone(point: Point, style: ResolvedTone | undefined): Point {
 }
 
 function baseOptions(model: ChartModel): ChartOptions {
+  const compact = model.compact === true;
   return {
     chart: { backgroundColor: 'transparent' },
-    title: { text: model.title ?? '', style: { fontSize: '15px' } },
+    // A sparkline is the same chart with nothing around it: no title, no legend. The marks and
+    // the data are untouched — the chart is not simplified, it is undressed.
+    title: compact ? { text: '' } : { text: model.title ?? '', style: { fontSize: '15px' } },
     credits: { enabled: false },
-    legend: { enabled: model.kind !== 'part-to-whole' && model.series.length > 1 },
+    legend: { enabled: !compact && model.kind !== 'part-to-whole' && model.series.length > 1 },
   };
 }
 
 function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolution): ChartOptions {
   const vertical = model.chartType === 'bar' && model.orientation !== 'horizontal';
   const horizontal = model.chartType === 'bar' && model.orientation === 'horizontal';
+  const compact = model.compact === true;
 
   return {
     ...baseOptions(model),
-    chart: { type: vertical ? 'column' : horizontal ? 'bar' : model.chartType, backgroundColor: 'transparent' },
-    xAxis: { categories: model.categories, title: { text: model.xField } },
-    yAxis: {
-      title: { text: model.yField },
-      // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
-      // the table would land at the bottom and a descending sort would read as
-      // ascending. Reversing the category axis puts row 0 on top, which is what
-      // "top 10" means to a reader. Vertical columns run left-to-right, so they
-      // need nothing.
-      ...(horizontal ? { reversed: true } : {}),
+    chart: {
+      type: vertical ? 'column' : horizontal ? 'bar' : model.chartType,
+      backgroundColor: 'transparent',
+      // Wrapping the axes around a circle turns a line into a radar and bars into a rose: the
+      // series are unchanged, only the axes move.
+      ...(model.polar ? { polar: true } : {}),
     },
+    // Stacking belongs to the series collection rather than to the axis, so it lives in
+    // plotOptions. `percent` is the one that rescales, which is why it is passed through only
+    // when the spec asked for it — the compiler does not decide that a comparison is a share.
+    ...(model.stacking ? { plotOptions: { series: { stacking: model.stacking } } } : {}),
+    // Compact drops the axes rather than shortening them: a sparkline has no ruler.
+    ...(compact
+      ? {}
+      : {
+          xAxis: { categories: model.categories, title: { text: model.xField } },
+          yAxis: {
+            title: { text: model.yField },
+            // A fixed range is a claim about the measure, so it overrides whatever the rows say.
+            ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
+            ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
+            // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
+            // the table would land at the bottom and a descending sort would read as
+            // ascending. Reversing the category axis puts row 0 on top, which is what
+            // "top 10" means to a reader. Vertical columns run left-to-right, so they
+            // need nothing.
+            ...(horizontal ? { reversed: true } : {}),
+          },
+        }),
     series: model.series.map((series) => ({
       name: series.name,
       // Plain numbers unless a point needs styling: keeping the unstyled shape
@@ -88,6 +110,9 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
   return {
     ...baseOptions(model),
     chart: { type: 'pie', backgroundColor: 'transparent' },
+    // The hole is what makes a donut, and it belongs to the pie rather than to a type of its
+    // own: the same slices, the same data, a different middle.
+    ...(model.hole !== undefined ? { plotOptions: { pie: { innerSize: `${Math.round(model.hole * 100)}%` } } } : {}),
     series: [
       {
         type: 'pie',

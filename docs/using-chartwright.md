@@ -14,7 +14,7 @@ around them.
 | | Why |
 |---|---|
 | Rows in memory | chartwright compiles *your* data in *your* process; it never fetches anything |
-| A chart library to render with | Today the compiler emits Highcharts options (bar / line / pie) |
+| A chart library to render with | Today the compiler emits Highcharts options (bar / line / spline / area / areaspline / pie, plus stacking, polar, donut holes and sparklines) |
 | An LLM that supports **tool calling** | The agent loop uses `tools` / `tool_calls` (function calling). Any OpenAI-compatible endpoint works — if it does not implement tool calling, the loop cannot run |
 | Somewhere safe for the API key | **Not the browser.** A page holding a provider key leaks it to anyone with DevTools, and most providers disallow browser calls outright. Use your own backend endpoint (a ~60-line proxy; see step 4) |
 
@@ -285,10 +285,26 @@ That is what makes golden tests, diffs and audit possible.
 
 ## 8. Supported today
 
-`chart.type` accepts **`bar`**, **`line`**, **`pie`**. Anything else is rejected
-with a clear error — and because the rejected spec goes back to the model inside
-the loop, it usually retries with a supported type rather than failing. A wrong
-chart is never produced silently.
+`chart.type` accepts **`bar`**, **`line`**, **`spline`**, **`area`**, **`areaspline`** and
+**`pie`**. Anything else is rejected with a clear error — and because the rejected spec
+goes back to the model inside the loop, it usually retries with a supported type rather
+than failing. A wrong chart is never produced silently.
+
+Five chart-level modifiers change how one of those is drawn rather than what it is:
+
+| Modifier | What it does | Honoured by |
+|---|---|---|
+| `chart.stacking: 'normal' \| 'percent'` | stack the series; `percent` rescales each category to 100 | bar, line, spline, area, areaspline |
+| `chart.polar: true` | wrap the axes around a circle — a radar with a line, a rose with bars | the same five |
+| `chart.hole: 0..1` | the hole that makes a pie a donut | pie |
+| `chart.compact: true` | drop title, axes and legend, keeping the marks: a sparkline | any type |
+| `axes.y.range: { min?, max? }` | a fixed scale, when it is a fact about the measure rather than about these rows | any banded type |
+
+A modifier a type cannot mean is **refused, not ignored**: `stacking` on a pie comes back
+as an error naming what the type does honour, because a stacked pie would draw an unstacked
+one and say nothing. The set is declared per type in `packages/chartwright/src/compile/chart-types.ts`,
+which is also where the list above comes from — every other list in the library and these
+docs is derived from it.
 
 Known expressiveness boundaries (they return a warning rather than a lie):
 
