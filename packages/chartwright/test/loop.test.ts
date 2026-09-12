@@ -72,6 +72,7 @@ test('a scripted run_query then submit_spec produces a spec with the adopted pla
   assert.deepEqual(outcome.spec.encodings.x, { field: 'region' });
   assert.equal(outcome.trace.length, 2);
   assert.deepEqual(outcome.trace[1]?.result, { accepted: true }, 'the submission records its own outcome');
+  assert.equal(typeof outcome.trace[1]?.ms, 'number', 'and how long it took, like every other entry');
   assert.equal(outcome.rounds, 2);
 });
 
@@ -235,11 +236,21 @@ test('progress events describe every hop', async () => {
   const events: AgentEvent[] = [];
   const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }, { content: 'done', toolCalls: [SUBMIT] }]);
 
-  await runAgentLoop(loopOptions(llm, (e) => events.push(e)));
+  const outcome = await runAgentLoop(loopOptions(llm, (e) => events.push(e)));
 
   assert.deepEqual(
     events.map((e) => e.type),
     ['round_start', 'tool_call', 'tool_result', 'round_start', 'assistant_text', 'tool_call', 'tool_result'],
+  );
+
+  // The event and the trace entry describe the same hop, so they must not disagree:
+  // the loop reads the clock once per call precisely so the two agree.
+  const lastEvent = events[events.length - 1];
+  assert.equal(lastEvent?.type, 'tool_result');
+  assert.equal(
+    (lastEvent as { ms?: number }).ms,
+    outcome.trace[1]?.ms,
+    'the reported duration is the one the trace records',
   );
 });
 
@@ -343,6 +354,7 @@ test('an undeclared call is traced as refused, not as having run', async () => {
   // The accepted submission records its outcome as well, so a reader of the trace
   // can tell the run finished rather than inferring it from a missing field.
   assert.deepEqual(outcome.trace[1]?.result, { accepted: true });
+  assert.equal(typeof outcome.trace[1]?.ms, 'number');
   assert.equal(outcome.spec.chart.type, 'bar', 'and the run still finished');
 });
 

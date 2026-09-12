@@ -260,7 +260,11 @@ Assert:
 - `dataset` is exactly the input rows (no aggregation happened);
 - `spec.transform_plan.steps` is `[]` — nothing was planned, because nothing may be;
 - the `GB` bar carries the highlight colour and the others do not;
-- the trace contains **no** `run_query` call.
+- the trace contains **no successful** `run_query` call. Assert it the precise way:
+  every `run_query` entry, if the scripted model tries one, carries an error result
+  rather than a summary. "No `run_query` in the trace at all" would pass for the
+  wrong reason — the loop traces refusals on purpose, so a model that tries and is
+  turned away leaves an entry, and that entry is the evidence.
 
 **Step 2.** A second test: the same rows in `'ask'` mode with a plan that aggregates
 anyway is *still* possible — proving the guarantee is the mode's, not a global rule.

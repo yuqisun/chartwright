@@ -315,10 +315,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           payload = { accepted: false, errors };
         } else {
           payload = { accepted: true };
+          // Read the clock once: the event and the trace entry describe the same
+          // hop, so they must not disagree by a millisecond.
+          const elapsed = Date.now() - started;
           // The acceptance is recorded too: a trace where refusals carry a result
-          // and the successful finish does not reads as if nothing happened.
-          trace.push({ round, toolCallId: call.id, tool: call.name, args: call.args, result: payload });
-          onEvent?.({ type: 'tool_result', id: call.id, name: call.name, summary: payload, ms: Date.now() - started });
+          // and the successful finish does not reads as if nothing happened. `ms` is
+          // the same figure as everywhere else — the time spent handling this call —
+          // and so does not include the compile that happens after the loop returns.
+          trace.push({ round, toolCallId: call.id, tool: call.name, args: call.args, result: payload, ms: elapsed });
+          onEvent?.({ type: 'tool_result', id: call.id, name: call.name, summary: payload, ms: elapsed });
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(payload) });
           return { spec: spec as ChartSpec, steps: lastRunQuerySteps ?? [], messages, warnings, trace, rounds: round };
         }
