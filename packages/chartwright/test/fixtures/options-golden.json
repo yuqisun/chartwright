@@ -1843,6 +1843,188 @@
     ],
     "warnings": []
   },
+  "scatter-basic": {
+    "options": {
+      "chart": {
+        "type": "scatter",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "title": {
+          "text": "tenure_months",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "nps",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "type": "scatter",
+          "name": "nps",
+          "data": [
+            [
+              3,
+              12
+            ],
+            [
+              9,
+              47
+            ],
+            [
+              14,
+              31
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "tenure_months": 3,
+        "nps": 12
+      },
+      {
+        "tenure_months": 9,
+        "nps": 47
+      },
+      {
+        "tenure_months": 14,
+        "nps": 31
+      }
+    ],
+    "warnings": []
+  },
+  "bubble-basic": {
+    "options": {
+      "chart": {
+        "type": "bubble",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "title": {
+          "text": "gdp",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "life_exp",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "type": "bubble",
+          "name": "life_exp",
+          "data": [
+            {
+              "x": 1000,
+              "y": 72,
+              "z": 50
+            },
+            {
+              "x": 2000,
+              "y": 80,
+              "z": 100
+            }
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "gdp": 1000,
+        "life_exp": 72,
+        "pop": 50
+      },
+      {
+        "gdp": 2000,
+        "life_exp": 80,
+        "pop": 100
+      }
+    ],
+    "warnings": []
+  },
   "dual-axis-combo": {
     "options": {
       "chart": {

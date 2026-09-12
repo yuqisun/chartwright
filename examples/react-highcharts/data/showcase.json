@@ -7,15 +7,19 @@
     "area",
     "areaspline",
     "pie",
-    "heatmap"
+    "heatmap",
+    "scatter",
+    "bubble"
   ],
   "counts": {
-    "supported": 23,
+    "supported": 25,
     "boundary": 5,
     "byType": {
       "bar": 11,
       "pie": 2,
       "line": 5,
+      "scatter": 1,
+      "bubble": 1,
       "area": 2,
       "spline": 1,
       "areaspline": 1,
@@ -644,6 +648,145 @@
       }
     },
     {
+      "id": "numeric-pair-with-duplicate-x-scatter",
+      "chartType": "scatter",
+      "query": "Plot NPS against tenure for every customer",
+      "mode": "ask",
+      "modeWhy": "one row per customer, two numeric columns — duplicate x values are normal for a point cloud",
+      "expects": "A scatter: five points on linear axes, two of them sharing 9 months. No categories, no aggregation.",
+      "data": {
+        "name": "numeric-pair-with-duplicate-x",
+        "why": "two points share an x, which is normal for a cloud and is refused today — plus the emphasis key that cannot tell them apart (§2.1)",
+        "rows": [
+          {
+            "tenure_months": 3,
+            "nps": 12
+          },
+          {
+            "tenure_months": 9,
+            "nps": 47
+          },
+          {
+            "tenure_months": 9,
+            "nps": 55
+          },
+          {
+            "tenure_months": 14,
+            "nps": 31
+          },
+          {
+            "tenure_months": 21,
+            "nps": 38
+          }
+        ],
+        "shapes": [
+          "point cloud",
+          "bubble"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "scatter"
+        },
+        "encodings": {
+          "x": {
+            "field": "tenure_months"
+          },
+          "y": {
+            "field": "nps"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "scatter",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "title": {
+            "text": "tenure_months",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "nps",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "type": "scatter",
+            "name": "nps",
+            "data": [
+              [
+                3,
+                12
+              ],
+              [
+                9,
+                47
+              ],
+              [
+                9,
+                55
+              ],
+              [
+                14,
+                31
+              ],
+              [
+                21,
+                38
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "numeric-pair-unique-x-line",
       "chartType": "line",
       "query": "Plot NPS against tenure",
@@ -762,6 +905,146 @@
               47,
               31,
               38
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "five-number-summary-bubble",
+      "chartType": "bubble",
+      "query": "Show low vs high latency with bubble size as median",
+      "mode": "present",
+      "modeWhy": "three numeric channels from a pre-computed summary — the caller owns the percentiles",
+      "expects": "Three bubbles on linear axes, sized by median latency. The object data format {x, y, z} is what makes a bubble.",
+      "data": {
+        "name": "five-number-summary",
+        "why": "the same data already reduced to low/q1/median/q3/high, which is the only way a boxplot can be drawn today: the caller own SQL has the percentiles",
+        "rows": [
+          {
+            "day": "Mon",
+            "low": 120,
+            "q1": 150,
+            "median": 190,
+            "q3": 260,
+            "high": 380
+          },
+          {
+            "day": "Tue",
+            "low": 90,
+            "q1": 130,
+            "median": 210,
+            "q3": 300,
+            "high": 410
+          },
+          {
+            "day": "Wed",
+            "low": 150,
+            "q1": 180,
+            "median": 240,
+            "q3": 330,
+            "high": 500
+          }
+        ],
+        "shapes": [
+          "boxplot (present mode)"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 3
+      },
+      "spec": {
+        "chart": {
+          "type": "bubble"
+        },
+        "encodings": {
+          "x": {
+            "field": "low"
+          },
+          "y": {
+            "field": "high"
+          },
+          "size": {
+            "field": "median"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "bubble",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "high",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "type": "bubble",
+            "name": "high",
+            "data": [
+              {
+                "x": 120,
+                "y": 380,
+                "z": 190
+              },
+              {
+                "x": 90,
+                "y": 410,
+                "z": 210
+              },
+              {
+                "x": 150,
+                "y": 500,
+                "z": 240
+              }
             ]
           }
         ]

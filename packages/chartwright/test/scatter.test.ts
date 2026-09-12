@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildChartModel } from '../src/compile/model.ts';
 import type { PointCloudModel } from '../src/compile/model.ts';
+import { compileToHighcharts } from '../src/compile/index.ts';
 import type { ChartSpec, Row } from '../src/types.ts';
 
 test('scatter compiles with two numeric columns', () => {
@@ -76,4 +77,56 @@ test('scatter with series encoding produces seriesName on points', () => {
   assert.equal(pc.points[0].seriesName, 'A');
   assert.equal(pc.points[1].seriesName, 'B');
   assert.equal(pc.points[2].seriesName, 'A');
+});
+
+test('scatter emits linear axes without categories', () => {
+  const rows: Row[] = [
+    { x: 1, y: 10 },
+    { x: 2, y: 20 },
+  ];
+  const { options } = compileToHighcharts(
+    { chart: { type: 'scatter' }, encodings: { x: { field: 'x' }, y: { field: 'y' } } },
+    rows,
+  );
+  const xAxis = options.xAxis as Record<string, unknown>;
+  const yAxis = options.yAxis as Record<string, unknown>;
+  assert.equal(xAxis.categories, undefined, 'scatter x axis has no categories');
+  assert.equal(yAxis.categories, undefined, 'scatter y axis has no categories');
+  assert.equal((xAxis.title as Record<string, string>).text, 'x');
+  assert.equal((yAxis.title as Record<string, string>).text, 'y');
+});
+
+test('scatter data is [x, y] pairs in table order', () => {
+  const rows: Row[] = [
+    { tenure_months: 3, nps: 12 },
+    { tenure_months: 9, nps: 47 },
+    { tenure_months: 14, nps: 31 },
+  ];
+  const { options } = compileToHighcharts(
+    { chart: { type: 'scatter' }, encodings: { x: { field: 'tenure_months' }, y: { field: 'nps' } } },
+    rows,
+  );
+  const series = options.series as Array<{ data: Array<[number, number]> }>;
+  assert.equal(series.length, 1);
+  assert.deepEqual(series[0].data[0], [3, 12]);
+  assert.deepEqual(series[0].data[1], [9, 47]);
+  assert.deepEqual(series[0].data[2], [14, 31]);
+});
+
+test('bubble emits [x, y, z] data', () => {
+  const rows: Row[] = [
+    { x: 1, y: 10, size: 100 },
+    { x: 2, y: 20, size: 200 },
+  ];
+  const { options } = compileToHighcharts(
+    { chart: { type: 'bubble' }, encodings: { x: { field: 'x' }, y: { field: 'y' }, size: { field: 'size' } } },
+    rows,
+  );
+  assert.equal((options.chart as Record<string, string>).type, 'bubble');
+  const series = options.series as Array<{ data: Array<{ x: number; y: number; z: number }> }>;
+  assert.equal(series[0].data.length, 2);
+  // Bubble data uses object format with x/y/z
+  assert.equal((series[0].data[0] as { x: number }).x, 1);
+  assert.equal((series[0].data[0] as { y: number }).y, 10);
+  assert.equal((series[0].data[0] as { z: number }).z, 100);
 });

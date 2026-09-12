@@ -192,6 +192,19 @@ const COPY: Record<string, Copy> = {
       'A grid of coloured cells — months along the bottom, regions up the side, notional as the colour. The same three channels as a bar chart, read differently. And note the emphasis: on a heatmap the fill *is* the value, so highlighting a cell draws a border instead of recolouring it.',
   },
 
+  'numeric-pair-with-duplicate-x-scatter': {
+    query: 'Plot NPS against tenure for every customer',
+    mode: 'ask',
+    modeWhy: 'one row per customer, two numeric columns — duplicate x values are normal for a point cloud',
+    expects: 'A scatter: five points on linear axes, two of them sharing 9 months. No categories, no aggregation.',
+  },
+  'five-number-summary-bubble': {
+    query: 'Show low vs high latency with bubble size as median',
+    mode: 'present',
+    modeWhy: 'three numeric channels from a pre-computed summary — the caller owns the percentiles',
+    expects: 'Three bubbles on linear axes, sized by median latency. The object data format {x, y, z} is what makes a bubble.',
+  },
+
   // The boundary zone: nothing below is drawn above, and each says why.
   'numeric-pair-with-duplicate-x': {
     query: 'Plot NPS against tenure for every customer',

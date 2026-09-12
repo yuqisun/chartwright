@@ -288,10 +288,18 @@ export const CORPUS: CorpusCase[] = [
   { dataset: byName('months-in-order'), spec: spec('line', 'month', 'notional_usd'), today: { outcome: 'compiles', series: 1, points: 5 } },
   { dataset: byName('months-with-a-gap'), spec: spec('line', 'month', 'notional_usd'), today: { outcome: 'compiles', series: 1, points: 4 } },
 
-  // A cloud today: refused, and the refusal advises aggregating, which is the opposite of
-  // what a scatter wants (§2.1). The unique-x variant compiles, on a category axis.
+  // A cloud today: refused as a line (the refusal advises aggregating, which is the opposite of
+  // what a scatter wants), but compiles as a scatter — duplicate x values are normal (§2.1).
   { dataset: byName('numeric-pair-with-duplicate-x'), spec: spec('line', 'tenure_months', 'nps'), today: { outcome: 'refused', matches: "more than one row for category '9'" } },
+  { dataset: byName('numeric-pair-with-duplicate-x'), spec: spec('scatter', 'tenure_months', 'nps'), today: { outcome: 'compiles', series: 1, points: 5 } },
   { dataset: byName('numeric-pair-unique-x'), spec: spec('line', 'tenure_months', 'nps'), today: { outcome: 'compiles', series: 1, points: 4 } },
+
+  // Bubble: three numeric channels from the five-number summary dataset.
+  {
+    dataset: byName('five-number-summary'),
+    spec: spec('bubble', 'low', 'high', { encodings: { x: { field: 'low' }, y: { field: 'high' }, size: { field: 'median' } } }),
+    today: { outcome: 'compiles', series: 1, points: 3 },
+  },
 
   // A heatmap's shape is already legal: it is the shape the collision rule enforces, and
   // compiling it as a bar proves the table is accepted (§2.2).

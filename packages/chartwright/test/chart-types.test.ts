@@ -223,6 +223,21 @@ const MAPPING: Array<{ declared: string; why: string; spec: ChartSpec; want: str
     },
     want: 'heatmap',
   },
+  {
+    declared: 'scatter',
+    why: 'a point cloud with linear axes: the neutral name and the library name coincide',
+    spec: { chart: { type: 'scatter' }, encodings: { x: { field: 'revenue' }, y: { field: 'commission_bps' } } },
+    want: 'scatter',
+  },
+  {
+    declared: 'bubble',
+    why: 'a point cloud with size: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'bubble' },
+      encodings: { x: { field: 'revenue' }, y: { field: 'commission_bps' }, size: { field: 'revenue' } },
+    },
+    want: 'bubble',
+  },
 ];
 
 test('every declared type has a decided Highcharts type', () => {

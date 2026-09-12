@@ -210,6 +210,31 @@ export const GOLDEN_CASES: GoldenCase[] = [
     rows: flat,
   },
   {
+    name: 'scatter-basic',
+    why: 'point-cloud with linear axes and positional data — the foundation for scatter/bubble',
+    spec: {
+      chart: { type: 'scatter' },
+      encodings: { x: { field: 'tenure_months' }, y: { field: 'nps' } },
+    },
+    rows: [
+      { tenure_months: 3, nps: 12 },
+      { tenure_months: 9, nps: 47 },
+      { tenure_months: 14, nps: 31 },
+    ],
+  },
+  {
+    name: 'bubble-basic',
+    why: 'point-cloud with size channel — object data format {x, y, z} and the bubble type passed through',
+    spec: {
+      chart: { type: 'bubble' },
+      encodings: { x: { field: 'gdp' }, y: { field: 'life_exp' }, size: { field: 'pop' } },
+    },
+    rows: [
+      { gdp: 1000, life_exp: 72, pop: 50 },
+      { gdp: 2000, life_exp: 80, pop: 100 },
+    ],
+  },
+  {
     name: 'dual-axis-combo',
     why: 'two measures of different units on one chart (§3.4): both axes titled, series named after measures, secondary on axis 1 as line',
     spec: {

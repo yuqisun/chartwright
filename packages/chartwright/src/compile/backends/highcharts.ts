@@ -16,7 +16,7 @@
  * See the note on `ChartModel` in `../model.ts`.
  */
 import type { EmphasisResolution, ResolvedTone } from '../emphasis.ts';
-import type { CategoricalModel, ChartModel, MatrixModel, PartToWholeModel } from '../model.ts';
+import type { CategoricalModel, ChartModel, MatrixModel, PartToWholeModel, PointCloudModel } from '../model.ts';
 import { keyForCategory } from '../model.ts';
 import { CHART_TYPES } from '../chart-types.ts';
 import type { ChartType } from '../chart-types.ts';
@@ -357,6 +357,45 @@ function matrixOptions(
   return { options, warnings };
 }
 
+/**
+ * A point cloud: each row is one mark, positioned by numeric x and y values.
+ *
+ * Unlike categorical charts, there are no bands and no category axis. Both axes are
+ * linear, and the data is emitted as [x, y] pairs (or objects with x/y/z for bubble)
+ * in table order. The positional index is the datum key (§2.1), so emphasis can
+ * distinguish two points that share an x value.
+ */
+function pointCloudOptions(
+  model: PointCloudModel,
+  emphasis: EmphasisResolution,
+  theme: Theme,
+): { options: ChartOptions; warnings: string[] } {
+  const palette = paletteFor(theme, model.chartType, 1);
+  const hasSize = model.valueFields.length === 3;
+
+  const options: ChartOptions = {
+    ...baseOptions(model, { legend: false, theme }),
+    chart: { type: model.chartType, backgroundColor: theme.roles.surface.canvas },
+    ...(palette ? { colors: palette } : {}),
+    xAxis: themedAxis(theme, { title: { text: model.xField } }, { grid: false }),
+    yAxis: themedAxis(theme, { title: { text: model.yField } }, { grid: true }),
+    series: [{
+      type: model.chartType,
+      name: model.yField,
+      data: model.points.map((point, index) => {
+        const style = emphasis.styles.get(String(index));
+        const values = point.values;
+        // Bubble needs object format {x, y, z}; scatter uses [x, y] arrays.
+        const base = hasSize
+          ? { x: values[0], y: values[1], z: values[2] }
+          : [values[0], values[1]];
+        return style ? withTone(base as Record<string, unknown>, style, theme) : base;
+      }),
+    }],
+  };
+  return { options, warnings: [] };
+}
+
 export function toHighchartsOptions(
   model: ChartModel,
   emphasis: EmphasisResolution,
@@ -371,10 +410,6 @@ export function toHighchartsOptions(
     case 'categorical':
       return categoricalOptions(model, emphasis, theme, layout);
     case 'point-cloud':
-      // Backend support for point-cloud types (scatter, bubble) is added in Task 3.
-      throw new Error(
-        `the Highcharts backend does not yet render '${model.chartType}' charts. ` +
-          `The model built successfully (kind: point-cloud); the backend case is next.`,
-      );
+      return pointCloudOptions(model, emphasis, theme);
   }
 }
