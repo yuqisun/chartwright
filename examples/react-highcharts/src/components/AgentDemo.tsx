@@ -17,15 +17,17 @@ import { createChartwright } from 'chartwright';
 
 import { DEMOS } from '../demos.ts';
 import type { Demo } from '../demos.ts';
+import { showcaseCapabilities } from '../showcase-modules.ts';
 import { Badge, Disclosure, Field, Pre, Stat, Table } from '../ui.tsx';
 import { createBrowserClient } from '../llm/browserClient.ts';
 import { ChartView } from './ChartView.tsx';
 
 const chartwright = createChartwright({
   llm: createBrowserClient(),
-  // Neutral names, never Highcharts'. Omitted, every declared type is offered; listed, the
-  // model sees exactly this set and a refusal names it.
-  capabilities: ['bar', 'line', 'pie'],
+  // Neutral names, never Highcharts'. This list is generated from the same declaration that decides
+  // which Highcharts modules this app imports (`showcase-modules.ts`), because the two must agree:
+  // offering the model a type the bundle cannot render is a chart that fails at render time.
+  capabilities: showcaseCapabilities,
 });
 
 /** One line of human-readable progress per agent event. */

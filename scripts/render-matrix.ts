@@ -29,9 +29,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CHART_TYPES } from '../packages/chartwright/src/compile/index.ts';
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
 import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
+import { highchartsModuleFile, modulesForCases } from './highcharts-modules.ts';
 import type { Row } from '../packages/chartwright/src/types.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -91,24 +91,12 @@ async function main(): Promise<number> {
 
   // The modules the declared types need, loaded the way a consumer would have to load them.
   //
-  // This is the capability story with teeth: a type whose module is missing does not fail here —
-  // it fails in the consumer's browser, which is the one place this repository cannot look. So the
-  // matrix loads exactly what each declaration says it needs, from the same paths a consumer is
-  // told to use, and refuses to run if one of them is not there.
-  const neededModules = new Set<string>();
-  for (const entry of cases) {
-    const type = entry.spec?.chart.type;
-    if (!type) continue;
-    const declaration = (CHART_TYPES as Record<string, { modules?: readonly string[] } | undefined>)[type];
-    for (const modulePath of declaration?.modules ?? []) neededModules.add(modulePath);
-  }
-  for (const modulePath of neededModules) {
-    const file = join(root, 'node_modules', `${modulePath}.js`);
-    if (!existsSync(file)) {
-      console.error(`a declared module is missing: ${modulePath} (looked for ${file})`);
-      return 1;
-    }
-    await page.addScriptTag({ content: readFileSync(file, 'utf8') });
+  // This is the capability story with teeth: a type whose module is missing does not fail here — it
+  // fails in the consumer's browser, which is the one place this repository cannot look. The list
+  // comes from the declaration, and the same helper feeds the gallery and the example, so a new
+  // module-dependent type is wired everywhere by declaring it once.
+  for (const modulePath of modulesForCases(cases)) {
+    await page.addScriptTag({ content: readFileSync(highchartsModuleFile(root, modulePath), 'utf8') });
     console.log(`loaded module ${modulePath}`);
   }
 

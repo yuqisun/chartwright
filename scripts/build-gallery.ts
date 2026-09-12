@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
 import { CORPUS, caseId, isDrawnCase } from '../packages/chartwright/test/fixtures/corpus.ts';
+import { highchartsModuleFile, modulesForCases } from './highcharts-modules.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const output = join(root, 'render-out', 'gallery.html');
@@ -41,6 +42,10 @@ const cases = CORPUS.filter(isDrawnCase).map((entry) => {
   };
 });
 
+const highchartsModules = modulesForCases(CORPUS.filter(isDrawnCase)).map((modulePath) => ({
+  path: modulePath,
+  source: readFileSync(highchartsModuleFile(root, modulePath), 'utf8'),
+}));
 const highcharts = readFileSync(join(root, 'node_modules', 'highcharts', 'highcharts.js'), 'utf8');
 
 // `<` escaped so that no value in the data can close the script tag early. The JSON is
@@ -77,6 +82,7 @@ const html = `<!doctype html>
 </p>
 
 <script>${highcharts}</script>
+${highchartsModules.map((module) => `<!-- ${module.path} -->\n<script>${module.source}</script>`).join('\n')}
 <script id="cases" type="application/json">${payload}</script>
 <script>
   const cases = JSON.parse(document.getElementById('cases').textContent);
