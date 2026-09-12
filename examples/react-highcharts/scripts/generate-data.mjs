@@ -70,19 +70,35 @@ function weighted(pairs) {
   return pairs[pairs.length - 1][0];
 }
 
+/**
+ * Counterparty flow is deliberately *not* uniform.
+ *
+ * Real post-trade volume is dominated by a handful of dealers with a long tail
+ * behind them. It also matters to this example: if every counterparty held an
+ * equal share, each group's average would be a near-restatement of the whole
+ * table's, and a bad re-aggregation would be numerically invisible — the exact
+ * failure the "present" mode exists to prevent. Skewed groups make the difference
+ * real and measurable.
+ *
+ * Weights, not percentages: the top three hold about 55% of the flow, the last
+ * three about 7%.
+ *
+ * `weighted` draws exactly one random number per row, the same as `pick` did, so
+ * swapping them changes the `counterparty` column and nothing else.
+ */
 const COUNTERPARTIES = [
-  'Northgate Capital Markets',
-  'Aldermere Securities',
-  'Blue Harbour Trading',
-  'Cedar Point Brokers',
-  'Dunmore Financial',
-  'Eastvale Markets',
-  'Fairhaven Securities',
-  'Granite Row Capital',
-  'Halloway Partners',
-  'Ironbridge Trading',
-  'Kingsmere Securities',
-  'Larkspur Markets',
+  ['Northgate Capital Markets', 22],
+  ['Halloway Partners', 16],
+  ['Fairhaven Securities', 12],
+  ['Eastvale Markets', 9],
+  ['Blue Harbour Trading', 7],
+  ['Granite Row Capital', 6],
+  ['Aldermere Securities', 5],
+  ['Kingsmere Securities', 4],
+  ['Ironbridge Trading', 3],
+  ['Larkspur Markets', 3],
+  ['Dunmore Financial', 2],
+  ['Cedar Point Brokers', 1],
 ];
 
 const VENUES = ['XETRA', 'LSE', 'Euronext Paris', 'SIX', 'Nasdaq', 'Turquoise', 'Cboe Europe', 'OTC'];
@@ -171,7 +187,7 @@ for (let i = 0; i < ROW_COUNT; i++) {
       ['RFP', 6],
     ]),
     venue: pick(VENUES),
-    counterparty: pick(COUNTERPARTIES),
+    counterparty: weighted(COUNTERPARTIES),
     desk: pick(DESKS),
     clearing_house: pick(CLEARERS),
     commission_bps: commissionBps,
@@ -263,30 +279,41 @@ console.log(`wrote ${counterpartySummary.length} rows to ${COUNTERPARTY_OUT}`);
 console.log(`wrote ${monthlyActivity.length} rows to ${MONTHLY_OUT}`);
 
 // What re-aggregating each table would do to it, printed rather than asserted in
-// prose. Two different kinds of damage, and the second is the more dangerous:
+// prose. Three kinds of damage, in increasing order of danger:
 //
-//   * structural — a distinct count or a maximum does not survive re-aggregation
-//     at all, and the wrong number is obviously wrong once you compare it;
-//   * silent — the averages and ratios here are drawn from the same distributions
-//     in every group, so re-weighting them moves the answer by less than the
-//     precision the file stores. Nobody could tell by looking.
-//
-// The silent column is the argument for present mode: the caller's numbers are
-// the only ones that are certainly right.
-const overallAvg = mean(rows.map((r) => r.commission_bps), 4);
-const averageOfAverages = mean(counterpartySummary.map((r) => r.avg_commission_bps), 4);
+//   by a mile — a distinct count or a maximum does not survive re-aggregation at
+//               all, and the result is nonsense on its face;
+//   visibly   — an average or a ratio shifts by more than the precision the file
+//               stores, so a careful reader could catch it — if they still had the
+//               true number to compare against, which a finished chart does not
+//               give them;
+//   silently  — a figure moves by less than the precision stored. Nobody can see
+//               it. This is the case that argues for present mode: the caller's own
+//               numbers are the only ones certainly right.
+const report = (label, wrong, right, dp) => {
+  const identical = wrong.toFixed(dp) === right.toFixed(dp);
+  console.log(
+    `    ${label.padEnd(24)} ${wrong.toFixed(dp)} vs a true ${right.toFixed(dp)}` +
+      (identical ? '   <- identical at the precision stored' : ''),
+  );
+};
+
 const trueVenues = new Set(rows.map((r) => r.venue)).size;
 const summedVenues = sum(counterpartySummary.map((r) => r.distinct_venues));
 const trueLargest = Math.max(...rows.map((r) => r.notional_usd));
 const summedLargest = sum(counterpartySummary.map((r) => r.largest_trade_usd));
 
-console.log('  re-aggregating the summary would give:');
-console.log(`    distinct_venues  sum=${summedVenues} vs a true ${trueVenues}`);
+console.log('  re-aggregating these tables would give:');
+console.log(`    ${'distinct_venues'.padEnd(24)} sum=${summedVenues} vs a true ${trueVenues}`);
 console.log(
-  `    largest_trade    sum=${round(summedLargest, 0)} vs a true ${round(trueLargest, 0)} ` +
-    `(${round(summedLargest / trueLargest, 1)}x)`,
+  `    ${'largest_trade_usd'.padEnd(24)} sum=${Math.round(summedLargest)} vs a true ${Math.round(trueLargest)} ` +
+    `(${(summedLargest / trueLargest).toFixed(1)}x)`,
 );
-console.log(
-  `    avg_commission   ${averageOfAverages} vs a true ${overallAvg} — off by ` +
-    `${round(averageOfAverages - overallAvg, 4)} bps, which neither value shows at 2dp`,
+report('avg_commission_bps', mean(counterpartySummary.map((r) => r.avg_commission_bps), 4), mean(rows.map((r) => r.commission_bps), 4), 2);
+report(
+  'settled_share_pct',
+  mean(counterpartySummary.map((r) => r.settled_share_pct), 4),
+  (count(rows, (r) => r.status === 'Settled') / rows.length) * 100,
+  1,
 );
+report('avg_settlement_lag_days', mean(monthlyActivity.map((r) => r.avg_settlement_lag_days), 4), mean(rows.map((r) => r.settlement_lag_days), 4), 2);

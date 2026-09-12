@@ -76,3 +76,9 @@ stateless, so the app carries the conversation.
 Real post-trade data is proprietary and often carries regulated identifiers, so
 this example ships a **generated** dataset with a fixed seed. The ISIN-like codes
 are random and are not real securities identifiers.
+
+One modelling choice is worth knowing about, because a chart can make it visible:
+counterparty flow is **not** uniform. A few dealers dominate and the rest are a long
+tail (the top three hold about 57% of the trades, the smallest has nine), which is
+what the real thing looks like and what makes a grouped table's averages differ from
+the whole table's.

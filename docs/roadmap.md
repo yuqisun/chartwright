@@ -4,7 +4,7 @@ Everything that is known to be missing, planned, or deliberately refused. Writte
 so that a decision made in a review does not have to be re-derived later.
 
 **Current size** — library: 12 source files / 1,973 lines, 7 test files / 70 tests,
-zero runtime dependencies. Example: 943 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
+zero runtime dependencies. Example: 989 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
 
