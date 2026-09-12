@@ -91,12 +91,27 @@ function isBlank(value: unknown): boolean {
   return value === null || value === undefined || value === '';
 }
 
-/** Deterministic profile of the whole table: the model's view of "what is in here". */
-export function describeTable(rows: Row[], options: ProfileOptions = {}): TableProfile {
+/**
+ * Deterministic profile of the whole table: the model's view of "what is in here".
+ *
+ * `declared` is the caller's own column list, when it supplied one. It wins over
+ * inference, and it is a separate parameter rather than a field of `options` on
+ * purpose: `options` is reachable from the model — a tool call's arguments are spread
+ * over it — whereas a declared type is the caller's statement about its own data. The
+ * two channels have to agree, or the model is told one thing in the prompt and the
+ * opposite as soon as it asks.
+ *
+ * A declaration that contradicts the values costs the caller a thinner profile, never
+ * a wrong one: declaring `number` over text yields no numeric range at all, because
+ * no value survives `Number()`.
+ */
+export function describeTable(rows: Row[], options: ProfileOptions = {}, declared?: Column[]): TableProfile {
   const { sampleValues, sampleValuesMaxCardinality } = { ...DEFAULT_PROFILE, ...options };
-  const declared = inferColumns(rows);
+  const declaredTypes = new Map((declared ?? []).map((column) => [column.name, column.type]));
 
-  const columns = declared.map((column): ColumnProfile => {
+  const columns = inferColumns(rows).map((column): ColumnProfile => {
+    // Only ever a type the caller stated, and only for a column that is really there.
+    const type = declaredTypes.get(column.name) ?? column.type;
     const values = rows.map((r) => r[column.name]);
     const present = values.filter((v) => !isBlank(v));
     // Keyed by string so 2 and '2' collide (they are the same category), but the
@@ -107,7 +122,7 @@ export function describeTable(rows: Row[], options: ProfileOptions = {}): TableP
 
     const profile: ColumnProfile = {
       name: column.name,
-      type: column.type,
+      type,
       nullRate: values.length === 0 ? 0 : Number(((values.length - present.length) / values.length).toFixed(3)),
       distinctCount: distinctByKey.size,
     };
@@ -116,14 +131,14 @@ export function describeTable(rows: Row[], options: ProfileOptions = {}): TableP
       profile.sampleValues = [...distinctByKey.values()].slice(0, sampleValues);
     }
 
-    if (column.type === 'number') {
+    if (type === 'number') {
       const numbers = present.map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
       if (numbers.length > 0) {
         profile.min = numbers[0];
         profile.max = numbers[numbers.length - 1];
         profile.p50 = percentile(numbers, 0.5);
       }
-    } else if (column.type === 'date') {
+    } else if (type === 'date') {
       const days = present.map(String).sort();
       const distinctMonths = new Set(present.map((v) => binDate(v, 'month')).filter(Boolean)).size;
       if (days.length > 0) {
@@ -219,7 +234,10 @@ const PREVIEW_MAX_ROWS = 20;
  * for rows 10–14 and got rows 0–4 without being told would go on to reason about
  * data it never saw.
  */export function previewRows(rows: Row[], options: { limit?: number } = {}): RowPreview {
-  const limit = options.limit ?? PREVIEW_DEFAULT_ROWS;
+  // `undefined` means "not specified"; anything else — including null — goes to the
+  // check below. Using `??` here would have turned an explicit null into the default
+  // and quietly returned three rows as though that was what was asked for.
+  const limit = options.limit === undefined ? PREVIEW_DEFAULT_ROWS : options.limit;
   if (!Number.isInteger(limit) || limit < 1 || limit > PREVIEW_MAX_ROWS) {
     throw new Error(
       `preview_rows limit must be an integer between 1 and ${PREVIEW_MAX_ROWS}` +
@@ -425,10 +443,16 @@ const PREVIEW_ROWS: ToolDef = {
  * three-row preview from `run_query`'s summary, and keeping that list short is
  * deliberate; adding it to both modes later is a one-line change if the need shows.
  */
+/**
+ * The tool definitions are module-level templates, so `buildToolDefs` hands out deep
+ * copies rather than the templates themselves. A caller that edits what it receives —
+ * to add a field its provider wants, say — cannot then reach into the library's copy,
+ * or into the other mode's tool: without this, `SUBMIT_ASK` and `SUBMIT_PRESENT` share
+ * the same `parameters` object and editing one changes both.
+ */
 export function buildToolDefs(mode: ToolMode = 'ask'): ToolDef[] {
-  return mode === 'present'
-    ? [DESCRIBE_TABLE, PREVIEW_ROWS, SUBMIT_PRESENT]
-    : [DESCRIBE_TABLE, RUN_QUERY, SUBMIT_ASK];
+  const templates = mode === 'present' ? [DESCRIBE_TABLE, PREVIEW_ROWS, SUBMIT_PRESENT] : [DESCRIBE_TABLE, RUN_QUERY, SUBMIT_ASK];
+  return structuredClone(templates);
 }
 
 /** The natural-language tool list, for callers who import it directly. */
@@ -436,35 +460,57 @@ export const TOOL_DEFS: ToolDef[] = buildToolDefs('ask');
 
 export type ToolContext = {
   rows: Row[];
+  /** The caller's policy knobs. Never reachable from a tool call's arguments. */
   profile?: ProfileOptions;
   query?: QueryOptions;
+  /**
+   * The authoritative column list, when the caller declared one. `describe_table`
+   * reports these types rather than re-inferring, so the prompt and the profile
+   * cannot disagree about a column.
+   */
+  columns?: Column[];
 };
 
 export type ToolHandler = (args: unknown) => unknown;
 
+/**
+ * Rejects any argument a tool did not declare.
+ *
+ * The model's arguments are its own; the caller's policy is not. `describe_table`
+ * takes no arguments, and its options include `sampleValues` and
+ * `sampleValuesMaxCardinality` — spreading tool arguments over them, which is what
+ * this used to do, let a model raise its own sample budget above what the caller
+ * allowed, or lift a `sampleValues: 0` quietly. Refusing an undeclared argument is
+ * also what keeps `preview_rows` unable to ask for a window it has no parameter for.
+ */
+function onlyParameters(tool: string, args: unknown, allowed: string[], hint = ''): Record<string, unknown> {
+  const provided = (args ?? {}) as Record<string, unknown>;
+  const names = Object.keys(provided);
+  const unexpected = names.find((name) => !allowed.includes(name));
+  if (unexpected !== undefined) {
+    const takes = allowed.length === 0 ? 'no parameters' : `only ${allowed.map((name) => `'${name}'`).join(', ')}`;
+    throw new Error(`${tool}: '${unexpected}' is not a parameter. It takes ${takes}.${hint ? ` ${hint}` : ''}`);
+  }
+  return provided;
+}
+
 /** Maps tool names to implementations bound to one dataset. */
 export function createToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
   return {
-    describe_table: (args) => describeTable(ctx.rows, { ...ctx.profile, ...(args as ProfileOptions | undefined) }),
+    describe_table: (args) => {
+      onlyParameters('describe_table', args, []);
+      // No tool arguments reach the profile: those knobs are the caller's.
+      return describeTable(ctx.rows, ctx.profile, ctx.columns);
+    },
     preview_rows: (args) => {
-      const provided = (args ?? {}) as Record<string, unknown>;
-      // Strict on purpose. This tool hands over real values, and the one guarantee
-      // that keeps it safe is that it can only ever return the first rows; a
-      // parameter it ignored — an offset, a sort — would break that quietly.
-      for (const key of Object.keys(provided)) {
-        if (key !== 'limit') {
-          throw new Error(
-            `preview_rows: '${key}' is not a parameter. It takes only 'limit' (1-${PREVIEW_MAX_ROWS}), and ` +
-              'always returns the first rows of the table.',
-          );
-        }
-      }
-      // A non-numeric limit is passed through so previewRows can refuse it out loud
-      // rather than falling back to the default and looking like it worked.
+      const provided = onlyParameters('preview_rows', args, ['limit'], 'It always returns the first rows of the table.');
+      // A limit that is not a usable number is passed through so previewRows can
+      // refuse it out loud, rather than falling back to the default and looking like
+      // it worked.
       return previewRows(ctx.rows, { limit: provided.limit as number | undefined });
     },
     run_query: (args) => {
-      const steps = (args as { steps?: TransformStep[] }).steps;
+      const steps = onlyParameters('run_query', args, ['steps']).steps as TransformStep[] | undefined;
       if (!Array.isArray(steps)) throw new Error('run_query needs a "steps" array');
       const { table, summary } = runQuery(ctx.rows, steps, ctx.query);
       // Only the summary is returned to the model; `table` is attached for the

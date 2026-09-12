@@ -3,10 +3,12 @@
 Everything that is known to be missing, planned, or deliberately refused. Written
 so that a decision made in a review does not have to be re-derived later.
 
-**Current size** — library: 12 source files / 1,973 lines, 7 test files / 70 tests,
-zero runtime dependencies. Example: 989 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
+**Current size** — library: 12 source files / 2,346 lines, 8 test files / 106 tests,
+zero runtime dependencies. Example: 991 lines of `.ts`/`.tsx`/`.mjs` source, 124 of
 which are the proxy's 6 tests. Counted over `src/`, `server/` and `scripts/` only — the
 `.json` datasets are generated and `.env` is configuration, so neither is source.
+**These numbers rot**: they were wrong for three commits before anyone noticed. Treat
+them as a rough size, or regenerate them rather than editing them by hand.
 
 Priorities are about *user value*, not effort:
 
@@ -356,3 +358,8 @@ Kept here because the reasoning matters more than the code.
 | Compiler split into neutral model + per-backend conventions | The sorting bug was this knowledge having no home. |
 | `budget.maxToolCalls` now enforced | It was declared in the type and never checked; submissions count toward it, so a model cannot loop on validation errors. |
 | Consumer guide written | `docs/using-chartwright.md`, written for the source-consumption route with the publish-time changes marked. |
+| Present mode: a request that cannot change the data | `ask({ present: true })` offers `describe_table`, `preview_rows` and `submit_spec` — no tool that can aggregate, filter, reorder or limit. The guarantee is the tool list, not the prompt: the loop refuses any call that is not in the list before consulting a handler, and recovers a plan from the transcript only when `run_query` is among the tools. `submit_spec` is therefore compulsory in a tool list; a list without it is refused at the door. |
+| Optional dataset and column descriptions | `dataDescription` and `columns[].description` reach the prompt and nothing else. A declared `type` is the authority for **both** the prompt and `describe_table` — the first cut applied it to the prompt alone, so the same column was described two ways, one of them to the model's face. |
+| `preview_rows` | Present mode only: the first rows, verbatim, at most twenty, no offset, so a run cannot walk the table and repeated calls return the same rows. A bound on a count and not a proportion — a table of twenty rows or fewer can be read whole. That trade is stated in the consumer guide and in the refused-by-design row rather than left to be discovered. |
+| A tool's arguments are not the caller's policy | Every tool now rejects arguments it does not declare. Tool arguments used to be spread over the profiling options, so a model could set `sampleValues` itself, over the top of a caller's `profile: { sampleValues: 0 }`. |
+| Tool definitions are handed out as copies | `buildToolDefs` deep-clones its templates. `SUBMIT_ASK` and `SUBMIT_PRESENT` shared a single `parameters` object, so a caller editing the definition it received was editing both modes. |

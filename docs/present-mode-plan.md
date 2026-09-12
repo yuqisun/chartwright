@@ -240,6 +240,37 @@ The second one is the more useful lesson: the false sentence had been copied int
 places, and nothing tested it. There is now a test that fails if either prompt starts
 claiming the model sees no rows.
 
+**Review pass over tasks 1–3 (after they were committed).** Six findings, all fixed in
+one batch, all of them caused by the work itself rather than by what came before:
+
+1. A declared column `type` reached the prompt but not `describe_table`, so the model was
+   told `string` up front and `number` the moment it asked. The declarations now flow into
+   the profile as well — one authority for a column's type — and `ToolContext.columns`
+   carries them.
+2. The present-mode prohibition said "no tool that could [limit]" while `preview_rows`,
+   the only data tool in that mode, takes a parameter called `limit`. Reworded to be about
+   the data: nothing in this mode can change it.
+3. `submit_spec` was intercepted before the reachability check, so the "the declared list
+   is enforced" rule had an exception. The list is now validated on entry — a run with no
+   terminal tool is a caller's mistake, and it should fail immediately rather than look
+   like a model that gave up.
+4. `options.limit ?? DEFAULT` turned an explicit `limit: null` into three rows, while the
+   adjacent comment promised a non-numeric limit would be refused out loud.
+5. The roadmap's "Current size" was stale in all three numbers within three commits of
+   being written, and an acceptance criterion still said 70 tests.
+6. The tool definitions were shared mutable objects, and the two `submit_spec` variants
+   shared one `parameters` object outright.
+
+Found while fixing 1, and worth its own line: a tool call's **arguments were spread over
+the profiling options**, so a model could set its own `sampleValues` — including over the
+top of a caller's `sampleValues: 0`. No tool argument reaches a caller's policy now, and
+every undeclared argument is refused.
+
+The re-read of the fixes themselves produced one more: refused arguments were reported
+twice over, as `describe_table: describe_table: 'sampleValues' is not a parameter`,
+because the handler named its tool and the loop prefixed the same name. The loop now
+leaves a message alone when it already starts with the tool's name.
+
 ---
 
 ## Task 4 — Making an unchartable table fixable, and a helpful refusal
@@ -377,8 +408,8 @@ left is the part that only becomes true once this mode exists:
    other than the first rows.
 7. A colliding encoding is rejected with guidance the model can act on.
 8. Example demonstrates both modes; docs describe them.
-9. Full suite green: library tests (currently 70) plus the new ones, proxy tests (6),
-   and both typechecks.
+9. Full suite green: library tests (106 at the time of writing) plus the proxy tests
+   (6), and both typechecks.
 
 ## Risks and fallbacks
 

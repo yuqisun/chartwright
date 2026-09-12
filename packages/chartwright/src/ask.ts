@@ -45,8 +45,9 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       if (!llm) throw new Error('no LLM client: pass one to createChartwright() or to ask()');
 
       const sessionId = request.sessionId ?? newSessionId();
-      // The caller's declarations only affect what the model is told, so they are
-      // merged here and never travel any further.
+      // The caller's declarations are the authority on its own columns: they shape the
+      // prompt *and* the profile, so the two cannot describe the same column
+      // differently. They never travel any further than that.
       const columns = applyColumnDescriptions(inferColumns(request.rows), request.columns);
       // One switch, read once. Everything that differs between the two modes —
       // tools, prompt, and (through the tool list) whether a plan can exist at all
@@ -69,7 +70,12 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
         }) },
       ];
 
-      const handlers = createToolHandlers({ rows: request.rows, profile: profileOptions, query: queryOptions });
+      const handlers = createToolHandlers({
+        rows: request.rows,
+        profile: profileOptions,
+        query: queryOptions,
+        columns,
+      });
 
       const outcome = await runAgentLoop({
         llm,

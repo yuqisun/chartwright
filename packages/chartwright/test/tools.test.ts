@@ -179,6 +179,94 @@ test('an unusable limit is refused with a message that says what is allowed', ()
   }
 });
 
+test('an explicit null limit is refused, not quietly swapped for the default', () => {
+  // `options.limit ?? DEFAULT` turned null into the default and returned three rows
+  // as though three had been asked for.
+  assert.throws(
+    () => previewRows(manyRows, { limit: null as unknown as number }),
+    /integer between 1 and 20/,
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The model's arguments versus the caller's policy.
+//
+// A tool call's arguments used to be spread over the profiling options, so a model
+// could set `sampleValues` itself — over the top of `profile: { sampleValues: 0 }`.
+// The arguments and the caller's settings are not the same kind of thing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('describe_table takes no arguments, so the model cannot set the caller policy', () => {
+  const handlers = createToolHandlers({ rows, profile: { sampleValues: 0 } });
+
+  const profile = handlers.describe_table?.({}) as { columns: Array<{ sampleValues?: unknown }> };
+  assert.equal(profile.columns.every((column) => column.sampleValues === undefined), true, 'sampleValues: 0 honoured');
+
+  assert.throws(
+    () => handlers.describe_table?.({ sampleValues: 999 }),
+    /'sampleValues' is not a parameter/,
+    'and it cannot be raised back up from the model side',
+  );
+});
+
+test('describe_table reports the type the caller declared, not the one inference guessed', () => {
+  // Without this, the prompt says one thing about a column and the tool says another.
+  const rowsWithId: Row[] = [
+    { trade_id: 1001, revenue: 10 },
+    { trade_id: 1002, revenue: 20 },
+  ];
+  const inferred = describeTable(rowsWithId);
+  assert.equal(inferred.columns.find((c) => c.name === 'trade_id')?.type, 'number');
+
+  const declared = describeTable(rowsWithId, {}, [
+    { name: 'trade_id', type: 'string' },
+    { name: 'revenue', type: 'number' },
+  ]);
+  const tradeId = declared.columns.find((c) => c.name === 'trade_id');
+  assert.equal(tradeId?.type, 'string', 'the declaration wins');
+  assert.equal(tradeId?.min, '1001', 'and the profile follows the declared type');
+  assert.equal(tradeId?.p50, undefined, 'a string column has no numeric median');
+  assert.equal(declared.columns.find((c) => c.name === 'revenue')?.p50, 15, 'undeclared columns are unaffected');
+
+  // A declaration for a column that does not exist cannot change anything.
+  const ghost = describeTable(rowsWithId, {}, [{ name: 'ghost', type: 'string' }]);
+  assert.deepEqual(ghost.columns, inferred.columns);
+});
+
+test('a declaration that contradicts the values costs a thinner profile, not a wrong one', () => {
+  const rowsWithText: Row[] = [{ code: 'AB', amount: 5 }];
+  const declared = describeTable(rowsWithText, {}, [{ name: 'code', type: 'number' }]);
+  const code = declared.columns.find((c) => c.name === 'code');
+  assert.equal(code?.type, 'number');
+  assert.equal(code?.min, undefined, 'no numeric range, rather than a bogus one');
+});
+
+test('run_query also refuses arguments it did not declare', () => {
+  const handlers = createToolHandlers({ rows });
+  assert.throws(() => handlers.run_query?.({ steps: [], limit: 3 }), /'limit' is not a parameter/);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The exported tool definitions are copies, not the library's own objects.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('editing a tool definition you were handed does not edit the library', () => {
+  const mine = buildToolDefs('present');
+  const submit = mine.find((definition) => definition.name === 'submit_spec');
+  (submit?.parameters.properties as Record<string, unknown>).sneaky = { type: 'string' };
+
+  const fresh = buildToolDefs('present').find((definition) => definition.name === 'submit_spec');
+  assert.equal(
+    (fresh?.parameters.properties as Record<string, unknown>).sneaky,
+    undefined,
+    'the next caller gets a clean definition',
+  );
+
+  // The two submit_spec variants used to share one `properties` object.
+  const ask = buildToolDefs('ask').find((definition) => definition.name === 'submit_spec');
+  assert.equal((ask?.parameters.properties as Record<string, unknown>).sneaky, undefined);
+});
+
 test('the preview always starts at the first row — there is no offset to page with', () => {
   const handlers = createToolHandlers({ rows: manyRows });
   assert.throws(

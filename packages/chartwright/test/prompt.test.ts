@@ -66,7 +66,11 @@ test('the present-mode prompt never names a capability the model does not have',
   for (const identifier of ['run_query', 'group_by', 'measures', 'transform_plan', 'steps']) {
     assert.ok(!prompt.includes(identifier), `the present-mode prompt refers to ${identifier}`);
   }
-  assert.match(prompt, /no tool that could/i, 'and it says why those operations are out of reach');
+  assert.match(prompt, /nothing in this mode can change them/i, 'and it says why those operations are out of reach');
+  // The prohibition must not collide with the tool it is talking about: `preview_rows`
+  // takes a parameter called `limit`, so the old "you have no tool that could [limit]"
+  // told the model that the one data tool it had was impossible.
+  assert.ok(!/no tool that could/i.test(prompt), 'and it does not deny the tool the model is holding');
 });
 
 test('the present-mode prompt states the contract: these rows, this order', () => {

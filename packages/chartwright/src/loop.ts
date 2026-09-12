@@ -144,7 +144,17 @@ function validateEmphasis(raw: unknown): { rules: EmphasisRule[]; errors: string
   return { rules, errors };
 }
 
-/** Validates a submitted spec and attaches the adopted plan. */
+/**
+ * Validates a submitted spec and attaches the adopted plan.
+ *
+ * Unlike the tool *handlers*, this one **ignores** keys it does not recognise instead
+ * of refusing them. That is safe by construction rather than by care: the spec is
+ * assembled from the fields read here, so an unrecognised key cannot reach the plan or
+ * the compiler — a `transform_plan` in a submission, for instance, is simply not the
+ * plan's source. It is also the deliberate exception to the strictness elsewhere: a
+ * refusal at submit time costs a whole extra round for something harmless, and this is
+ * the run's only way to end.
+ */
 function validateSpec(raw: unknown, steps: TransformStep[]): { spec?: ChartSpec; errors: string[] } {
   const errors: string[] = [];
   if (typeof raw !== 'object' || raw === null) return { errors: ['spec must be a JSON object'] };
@@ -226,6 +236,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // anything — including a tool it was never offered, or one from an earlier turn
   // in the transcript — so the list is enforced here rather than trusted.
   const reachable = new Set(tools.map((tool) => tool.name));
+  // `submit_spec` is the only way a run finishes, so it is not optional: a list
+  // without it is a caller's mistake, and the loop would otherwise spin until the
+  // model runs out of patience and the failure looked like the model's fault.
+  if (!reachable.has('submit_spec')) {
+    throw new Error(
+      "the tool list must include 'submit_spec' — it is the only way a run finishes. Got: " +
+        ([...reachable].join(', ') || '(an empty list)'),
+    );
+  }
   // A plan can only come from run_query. If this run has no run_query, it has no
   // plan, whatever an earlier turn left in the transcript: present mode must not
   // inherit a transform from a natural-language turn.
@@ -355,7 +374,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       trace.push({ round, toolCallId: call.id, tool: call.name, args: call.args, result: payload, ms: Date.now() - started });
       onEvent?.({ type: 'tool_result', id: call.id, name: call.name, summary: payload, ms: Date.now() - started });
       messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(payload) });
-      if (problem) warnings.push(`${call.name}: ${problem}`);
+      // A handler's message may name its own tool (useful when someone calls the
+      // handler directly), so do not stutter when it already has.
+      if (problem) warnings.push(problem.startsWith(call.name) ? problem : `${call.name}: ${problem}`);
     }
   }
 }

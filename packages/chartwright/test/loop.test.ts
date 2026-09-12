@@ -290,6 +290,20 @@ test('a follow-up carries prior messages into the next request', async () => {
   assert.ok(thirdCall.messages.some((m) => m.role === 'tool'), 'the previous tool exchange is present');
 });
 
+test('a refused argument is reported once, without stuttering the tool name', async () => {
+  const llm = scriptedLlm([
+    { toolCalls: [{ id: 'd1', name: 'describe_table', args: { sampleValues: 999 } }] },
+    { toolCalls: [SUBMIT] },
+  ]);
+
+  const outcome = await runAgentLoop(loopOptions(llm));
+
+  assert.equal(outcome.warnings.length, 1);
+  const warning = outcome.warnings[0] ?? '';
+  assert.match(warning, /describe_table: '/);
+  assert.ok(!/describe_table: describe_table/.test(warning), `the name is not repeated: ${warning}`);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The tool list is not a suggestion: a call the run never declared cannot reach
 // a handler. Present mode's guarantee is structural rather than advisory, so a
@@ -356,6 +370,22 @@ test('an undeclared call is traced as refused, not as having run', async () => {
   assert.deepEqual(outcome.trace[1]?.result, { accepted: true });
   assert.equal(typeof outcome.trace[1]?.ms, 'number');
   assert.equal(outcome.spec.chart.type, 'bar', 'and the run still finished');
+});
+
+test('a tool list without submit_spec is refused at the door, not left to spin', async () => {
+  const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }]);
+
+  await assert.rejects(
+    () =>
+      runAgentLoop({
+        llm,
+        messages: [{ role: 'user', content: 'chart this' }] as ChatMessage[],
+        tools: TOOL_DEFS.filter((tool) => tool.name !== 'submit_spec'),
+        runTool: () => ({}),
+      }),
+    /must include 'submit_spec'/,
+    'submit_spec is how a run ends; without it the loop cannot finish by design',
+  );
 });
 
 test('a plan in the transcript is not adopted when the run has no run_query', async () => {
