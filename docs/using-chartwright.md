@@ -149,6 +149,45 @@ const result = await chartwright.ask({
 Highcharts.chart(container, result.options);
 ```
 
+### Your colours: the theme
+
+Every colour the compiler emits comes from a **theme**: a set of roles —
+`surface`, `text`, `structure`, `series`, `emphasis` — rather than a palette of
+presets. The default is deliberately plain (neutral greys, one house blue, the
+emphasis orange the examples use), because the point of the layer is that *your*
+brand replaces it without forking the compiler:
+
+```ts
+const chartwright = createChartwright({
+  llm,
+  theme: {
+    id: 'acme',
+    roles: {
+      series: { single: '#0b5cad', categorical: ['#0b5cad', '#f2a13c', '#2f8f5b'] },
+      emphasis: { highlight: '#d92d20' },
+    },
+  },
+});
+```
+
+Groups you omit keep their defaults, so an override can never leave a role
+unresolved; an empty `categorical` palette is refused rather than silently
+greyed.
+
+Two rules worth knowing before you override:
+
+- **Series colours never cycle.** More series than palette entries means the
+  extras take the `overflow` role (grey by default). Two series in one colour is
+  not a shortage of paint, it is a lie about the data.
+- **A heatmap does not take the palette.** Its measure *is* the colour, so it
+  draws the `series.sequential` ramp as the `colorAxis` ends — which role a type
+  consumes is declared per type, and `listChartTypes()` reports it as
+  `colorRoles`. Emphasis on a heatmap is a border rather than a fill, for the
+  same reason: recolouring a cell would destroy the datum.
+
+The theme is fixed at `createChartwright` and a request cannot change it: the
+same spec must always mean the same picture.
+
 ### Follow-up questions
 
 The library is **stateless**. To continue a conversation, hand the transcript

@@ -14,7 +14,9 @@
 import { toHighchartsOptions } from './backends/highcharts.ts';
 import { resolveEmphasis } from './emphasis.ts';
 import { buildChartModel, rowDatumKey } from './model.ts';
+import { resolveTheme } from './theme.ts';
 import type { ChartOptions } from './backends/highcharts.ts';
+import type { ThemeInput } from './theme.ts';
 import type { ChartSpec, Row } from '../types.ts';
 
 export type CompiledChart = {
@@ -24,13 +26,24 @@ export type CompiledChart = {
   warnings: string[];
 };
 
+/**
+ * What a compile can be told, beyond the spec and the rows.
+ *
+ * Only the theme, for now: it is the one input that changes how the same chart looks
+ * without changing what it says, and it is fixed per consumer rather than per request —
+ * which is why `createChartwright` holds it and a request cannot override it.
+ */
+export type CompileOptions = {
+  theme?: ThemeInput;
+};
+
 function keyOf(spec: ChartSpec) {
   const xField = spec.encodings.x?.field ?? '';
   const seriesField = spec.encodings.series?.field;
   return (row: Row) => rowDatumKey(row, xField, seriesField);
 }
 
-export function compileToHighcharts(spec: ChartSpec, rows: Row[]): CompiledChart {
+export function compileToHighcharts(spec: ChartSpec, rows: Row[], options?: CompileOptions): CompiledChart {
   const { model } = buildChartModel(spec, rows);
 
   // Emphasis is evaluated over the materialised table, keyed by category value
@@ -38,13 +51,14 @@ export function compileToHighcharts(spec: ChartSpec, rows: Row[]): CompiledChart
   const emphasis = resolveEmphasis(spec.emphasis, model.dataset, keyOf(spec));
 
   return {
-    options: toHighchartsOptions(model, emphasis),
+    options: toHighchartsOptions(model, emphasis, resolveTheme(options?.theme)),
     dataset: model.dataset,
     warnings: emphasis.warnings,
   };
 }
 
 export { isSupportedChartType, materialize, SUPPORTED_CHART_TYPES, findCategoryCollision } from './model.ts';
+export { defaultTheme, resolveTheme, roleColors, seriesColors } from './theme.ts';
 export {
   CHANNEL_NAMES,
   CHART_TYPES,
@@ -55,5 +69,6 @@ export {
   resolveCapabilities,
 } from './chart-types.ts';
 export type { CategoryCollision, ChartModel, MatrixModel, SupportedChartType } from './model.ts';
+export type { ColorRole, Theme, ThemeInput, ThemeRoles } from './theme.ts';
 export type { CapabilityResolution, ChannelName, ChannelRole, ChartKind, ChartType, ChartTypeSpec, Modifier } from './chart-types.ts';
 export type { ChartOptions } from './backends/highcharts.ts';

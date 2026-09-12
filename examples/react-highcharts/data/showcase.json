@@ -77,15 +77,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "East",
@@ -93,13 +100,34 @@
             "North"
           ],
           "title": {
-            "text": "region"
-          }
+            "text": "region",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "revenue"
-          }
+            "text": "revenue",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -167,15 +195,24 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00",
+          "#009e73"
+        ],
         "series": [
           {
             "type": "pie",
@@ -273,15 +310,23 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": true
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00"
+        ],
         "xAxis": {
           "categories": [
             "East",
@@ -289,13 +334,34 @@
             "North"
           ],
           "title": {
-            "text": "region"
-          }
+            "text": "region",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "revenue"
-          }
+            "text": "revenue",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -380,15 +446,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -398,13 +471,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -479,15 +573,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -496,13 +597,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -574,15 +696,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "3",
@@ -591,13 +720,34 @@
             "21"
           ],
           "title": {
-            "text": "tenure_months"
-          }
+            "text": "tenure_months",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "nps"
-          }
+            "text": "nps",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -687,15 +837,23 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": true
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -703,13 +861,34 @@
             "2026-03"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1013,15 +1192,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "CP-01",
@@ -1086,13 +1272,34 @@
             "CP-60"
           ],
           "title": {
-            "text": "counterparty"
-          }
+            "text": "counterparty",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1220,15 +1427,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "European Investment Grade Credit",
@@ -1237,13 +1451,34 @@
             "Emerging Market Local Debt"
           ],
           "title": {
-            "text": "desk"
-          }
+            "text": "desk",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1316,15 +1551,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "Rates",
@@ -1333,13 +1575,34 @@
             "Equities"
           ],
           "title": {
-            "text": "desk"
-          }
+            "text": "desk",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "pnl_usd"
-          }
+            "text": "pnl_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1412,15 +1675,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -1429,13 +1699,34 @@
             "2026-04"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "trades"
-          }
+            "text": "trades",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1495,27 +1786,55 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "East"
           ],
           "title": {
-            "text": "region"
-          }
+            "text": "region",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "revenue"
-          }
+            "text": "revenue",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1591,15 +1910,22 @@
         "title": {
           "text": "Notional by month",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -1609,13 +1935,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1694,15 +2041,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -1712,13 +2066,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1797,15 +2172,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -1815,13 +2197,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -1914,15 +2317,23 @@
         "title": {
           "text": "Stacked notional by region",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": true
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00"
+        ],
         "plotOptions": {
           "series": {
             "stacking": "normal"
@@ -1935,13 +2346,34 @@
             "2026-03"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -2039,15 +2471,23 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": true
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00"
+        ],
         "plotOptions": {
           "series": {
             "stacking": "percent"
@@ -2060,13 +2500,34 @@
             "2026-03"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -2147,15 +2608,25 @@
         "title": {
           "text": "Notional by desk",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2",
+          "#e69f00",
+          "#009e73",
+          "#cc79a7"
+        ],
         "plotOptions": {
           "pie": {
             "innerSize": "55%"
@@ -2253,15 +2724,22 @@
         "title": {
           "text": "Notional around a circle",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -2271,13 +2749,34 @@
             "2026-05"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "notional_usd"
-          }
+            "text": "notional_usd",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {
@@ -2352,8 +2851,14 @@
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "series": [
           {
             "name": "revenue",
@@ -2442,16 +2947,23 @@
         "title": {
           "text": "Notional by month and region",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": true
+          "enabled": true,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
-        "colorAxis": {},
+        "colorAxis": {
+          "minColor": "#e8eef6",
+          "maxColor": "#0072b2"
+        },
         "xAxis": {
           "categories": [
             "2026-01",
@@ -2459,8 +2971,18 @@
             "2026-03"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "categories": [
@@ -2468,8 +2990,18 @@
             "AMER"
           ],
           "title": {
-            "text": "region"
-          }
+            "text": "region",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "series": [
           {
@@ -2575,15 +3107,22 @@
         "title": {
           "text": "",
           "style": {
-            "fontSize": "15px"
+            "fontSize": "15px",
+            "color": "#24292f"
           }
         },
         "credits": {
           "enabled": false
         },
         "legend": {
-          "enabled": false
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
         },
+        "colors": [
+          "#0072b2"
+        ],
         "xAxis": {
           "categories": [
             "2026-01",
@@ -2592,15 +3131,36 @@
             "2026-04"
           ],
           "title": {
-            "text": "month"
-          }
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
         },
         "yAxis": {
           "title": {
-            "text": "trades"
+            "text": "trades",
+            "style": {
+              "color": "#6e7781"
+            }
           },
           "min": 0,
-          "max": 40
+          "max": 40,
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
         },
         "series": [
           {

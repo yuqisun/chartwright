@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { compileToHighcharts } from '../src/compile/index.ts';
+import { defaultTheme } from '../src/compile/theme.ts';
 import type { ChartSpec, Row } from '../src/types.ts';
 
 const rows: Row[] = [
@@ -101,7 +102,9 @@ test('a series encoding produces one series per group, aligned to the shared cat
   const institutional = series.find((s) => s.name === 'Institutional');
   assert.deepEqual(retail?.data, [100, 80]);
   assert.deepEqual(institutional?.data, [150, null]);
-  assert.deepEqual(options.legend, { enabled: true });
+  // The legend carries its ink from the theme: two series means a legend, and a legend
+  // without a text role would be the one place a theme did not reach.
+  assert.deepEqual(options.legend, { enabled: true, itemStyle: { color: defaultTheme.roles.text.secondary } });
 });
 
 test('a date column is a category, not a time axis', () => {

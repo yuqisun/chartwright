@@ -18,29 +18,52 @@
 import type { EmphasisResolution, ResolvedTone } from '../emphasis.ts';
 import type { CategoricalModel, ChartModel, MatrixModel, PartToWholeModel } from '../model.ts';
 import { keyForCategory } from '../model.ts';
+import { CHART_TYPES } from '../chart-types.ts';
+import type { ChartType } from '../chart-types.ts';
+import { roleColors, seriesColors } from '../theme.ts';
+import type { ColorRole, Theme } from '../theme.ts';
 
 /** Plain options object; the caller renders it. Intentionally not typed against Highcharts. */
 export type ChartOptions = Record<string, unknown>;
 
 /**
- * Semantic tone → concrete colour.
+ * Semantic tone → concrete colour, from the theme.
  *
- * The spec says `tone: 'highlight'`, never a hex value, so this decision belongs
- * to the backend and can later come from a theme instead of a constant.
+ * The spec says `tone: 'highlight'`, never a hex value, so this decision belongs to the
+ * backend; the theme is where a consumer moves it. The default theme carries the two
+ * colours this file always used, so theming is additive rather than a restyle.
  */
-const TONES: Record<ResolvedTone['tone'], string> = {
-  highlight: '#e8590c',
-  muted: '#c9ced6',
-};
+function toneColor(theme: Theme, tone: ResolvedTone['tone']): string {
+  return theme.roles.emphasis[tone];
+}
 
 type Point = Record<string, unknown>;
 
-function withTone(point: Point, style: ResolvedTone | undefined): Point {
+function withTone(point: Point, style: ResolvedTone | undefined, theme: Theme): Point {
   if (!style) return point;
   return {
     ...point,
-    color: TONES[style.tone],
+    color: toneColor(theme, style.tone),
     ...(style.label ? { dataLabels: { enabled: true } } : {}),
+  };
+}
+
+/**
+ * The ruler's own ink: labels in the secondary text role, the axis line and ticks in the
+ * structure role, the axis title in the muted role, and — where Highcharts draws a grid
+ * by default — the grid in the grid role.
+ *
+ * One helper for every axis on every shape, because a theme that restyles one axis and
+ * not the other is a bug, and the alternative is the same four keys pasted per shape.
+ */
+function themedAxis(theme: Theme, axis: ChartOptions, { grid }: { grid: boolean }): ChartOptions {
+  return {
+    ...axis,
+    labels: { style: { color: theme.roles.text.secondary } },
+    lineColor: theme.roles.structure.axis,
+    tickColor: theme.roles.structure.axis,
+    ...(grid ? { gridLineColor: theme.roles.structure.grid } : {}),
+    title: { ...(axis.title as ChartOptions | undefined), style: { color: theme.roles.text.muted } },
   };
 }
 
@@ -52,32 +75,58 @@ function withTone(point: Point, style: ResolvedTone | undefined): Point {
  * a matrix shows the colour scale. Deriving it from the model's series count got the matrix wrong
  * — a heatmap has one series however many rows it draws, and a legend of one is not the point.
  */
-function baseOptions(model: ChartModel, { legend }: { legend: boolean }): ChartOptions {
+function baseOptions(model: ChartModel, { legend, theme }: { legend: boolean; theme: Theme }): ChartOptions {
   const compact = model.compact === true;
   return {
-    chart: { backgroundColor: 'transparent' },
+    chart: { backgroundColor: theme.roles.surface.canvas },
     // A sparkline is the same chart with nothing around it: no title, no legend. The marks and
     // the data are untouched — the chart is not simplified, it is undressed.
-    title: compact ? { text: '' } : { text: model.title ?? '', style: { fontSize: '15px' } },
+    title: compact ? { text: '' } : { text: model.title ?? '', style: { fontSize: '15px', color: theme.roles.text.primary } },
     credits: { enabled: false },
-    legend: { enabled: !compact && legend },
+    legend: { enabled: !compact && legend, itemStyle: { color: theme.roles.text.secondary } },
   };
 }
 
-function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolution): ChartOptions {
+/**
+ * The palette a type's marks draw with, or nothing when the type declares no categorical role.
+ *
+ * Read off the declaration rather than the kind, so the question "does this chart take series
+ * colours?" has one answer in the repository: `chart-types.ts`.
+ */
+function paletteFor(theme: Theme, type: ChartType, count: number): string[] | undefined {
+  const roles: readonly ColorRole[] = CHART_TYPES[type].colorRoles;
+  return roles.includes('series.categorical') ? seriesColors(theme, count) : undefined;
+}
+
+/**
+ * The ramp a measure-as-colour draws with, or nothing when the type declares no sequential role.
+ * `roleColors` widens the tuple to a list, and the theme type is what makes the pair safe to read back.
+ */
+function rampFor(theme: Theme, type: ChartType): readonly [string, string] | undefined {
+  const roles: readonly ColorRole[] = CHART_TYPES[type].colorRoles;
+  return roles.includes('series.sequential')
+    ? (roleColors(theme, 'series.sequential') as readonly [string, string])
+    : undefined;
+}
+
+function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
   const vertical = model.chartType === 'bar' && model.orientation !== 'horizontal';
   const horizontal = model.chartType === 'bar' && model.orientation === 'horizontal';
   const compact = model.compact === true;
+  const palette = paletteFor(theme, model.chartType, model.series.length);
 
   return {
-    ...baseOptions(model, { legend: model.series.length > 1 }),
+    ...baseOptions(model, { legend: model.series.length > 1, theme }),
     chart: {
       type: vertical ? 'column' : horizontal ? 'bar' : model.chartType,
-      backgroundColor: 'transparent',
+      backgroundColor: theme.roles.surface.canvas,
       // Wrapping the axes around a circle turns a line into a radar and bars into a rose: the
       // series are unchanged, only the axes move.
       ...(model.polar ? { polar: true } : {}),
     },
+    // Series colours in series order, from the theme. Absent entirely for a type that declares
+    // no categorical role, so the palette never lands on a chart that reads colour as value.
+    ...(palette ? { colors: palette } : {}),
     // Stacking belongs to the series collection rather than to the axis, so it lives in
     // plotOptions. `percent` is the one that rescales, which is why it is passed through only
     // when the spec asked for it — the compiler does not decide that a comparison is a share.
@@ -86,19 +135,23 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
     ...(compact
       ? {}
       : {
-          xAxis: { categories: model.categories, title: { text: model.xField } },
-          yAxis: {
-            title: { text: model.yField },
-            // A fixed range is a claim about the measure, so it overrides whatever the rows say.
-            ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
-            ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
-            // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
-            // the table would land at the bottom and a descending sort would read as
-            // ascending. Reversing the category axis puts row 0 on top, which is what
-            // "top 10" means to a reader. Vertical columns run left-to-right, so they
-            // need nothing.
-            ...(horizontal ? { reversed: true } : {}),
-          },
+          xAxis: themedAxis(theme, { categories: model.categories, title: { text: model.xField } }, { grid: false }),
+          yAxis: themedAxis(
+            theme,
+            {
+              title: { text: model.yField },
+              // A fixed range is a claim about the measure, so it overrides whatever the rows say.
+              ...(model.yRange?.min !== undefined ? { min: model.yRange.min } : {}),
+              ...(model.yRange?.max !== undefined ? { max: model.yRange.max } : {}),
+              // Highcharts draws a horizontal bar chart from the bottom up, so row 0 of
+              // the table would land at the bottom and a descending sort would read as
+              // ascending. Reversing the category axis puts row 0 on top, which is what
+              // "top 10" means to a reader. Vertical columns run left-to-right, so they
+              // need nothing.
+              ...(horizontal ? { reversed: true } : {}),
+            },
+            { grid: true },
+          ),
         }),
     series: model.series.map((series) => ({
       name: series.name,
@@ -108,17 +161,20 @@ function categoricalOptions(model: CategoricalModel, emphasis: EmphasisResolutio
       data: series.values.map((value, index) => {
         if (value === null) return null;
         const style = emphasis.styles.get(keyForCategory(model, index, series.name));
-        return style ? withTone({ y: value }, style) : value;
+        return style ? withTone({ y: value }, style, theme) : value;
       }),
     })),
   };
 }
 
-function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolution): ChartOptions {
+function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
+  const palette = paletteFor(theme, model.chartType, model.slices.length);
   return {
     // A pie labels its own slices; a legend beside it would only repeat them.
-    ...baseOptions(model, { legend: false }),
-    chart: { type: 'pie', backgroundColor: 'transparent' },
+    ...baseOptions(model, { legend: false, theme }),
+    chart: { type: 'pie', backgroundColor: theme.roles.surface.canvas },
+    // Slices are the things the palette colours here, so they get it in slice order.
+    ...(palette ? { colors: palette } : {}),
     // The hole is what makes a donut, and it belongs to the pie rather than to a type of its
     // own: the same slices, the same data, a different middle.
     ...(model.hole !== undefined ? { plotOptions: { pie: { innerSize: `${Math.round(model.hole * 100)}%` } } } : {}),
@@ -127,7 +183,10 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
         type: 'pie',
         name: model.yField,
         // A pie's data is objects anyway, so styling only adds keys to them.
-        data: model.slices.map((slice) => ({ name: slice.name, ...withTone({ y: slice.value }, emphasis.styles.get(slice.key)) })),
+        data: model.slices.map((slice) => ({
+          name: slice.name,
+          ...withTone({ y: slice.value }, emphasis.styles.get(slice.key), theme),
+        })),
       },
     ],
   };
@@ -145,9 +204,10 @@ function partToWholeOptions(model: PartToWholeModel, emphasis: EmphasisResolutio
  * highlight cannot be a fill without destroying the datum. A highlight is a border; muting
  * recolours the cell, which is the honest reading of "fade this one" when colour carries meaning.
  */
-function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution): ChartOptions {
+function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
   const compact = model.compact === true;
   const rows = model.series.map((series) => series.name);
+  const ramp = rampFor(theme, model.chartType);
 
   const data: Array<Record<string, unknown>> = [];
   model.series.forEach((series, rowIndex) => {
@@ -157,10 +217,10 @@ function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution): ChartO
       const style = emphasis.styles.get(keyForCategory(model, columnIndex, series.name));
       if (style) {
         if (style.tone === 'highlight') {
-          cell.borderColor = TONES.highlight;
+          cell.borderColor = toneColor(theme, 'highlight');
           cell.borderWidth = 2;
         } else {
-          cell.color = TONES.muted;
+          cell.color = toneColor(theme, 'muted');
         }
         if (style.label) cell.dataLabels = { enabled: true };
       }
@@ -170,28 +230,30 @@ function matrixOptions(model: MatrixModel, emphasis: EmphasisResolution): ChartO
 
   return {
     // The legend here is the colour scale, which is why it is on even though there is one series.
-    ...baseOptions(model, { legend: true }),
-    chart: { type: 'heatmap', backgroundColor: 'transparent' },
-    // What turns the measure into a colour scale. The module that supplies it is named in the
-    // declaration, so a consumer knows to load it.
-    colorAxis: {},
+    ...baseOptions(model, { legend: true, theme }),
+    chart: { type: 'heatmap', backgroundColor: theme.roles.surface.canvas },
+    // What turns the measure into a colour scale, and the two ends the theme says that scale
+    // runs between. Left as an empty object only if the type declares no sequential role —
+    // which no matrix type can, so in practice the ramp is always there. The module that
+    // supplies the axis is named in the declaration, so a consumer knows to load it.
+    colorAxis: ramp ? { minColor: ramp[0], maxColor: ramp[1] } : {},
     ...(compact
       ? {}
       : {
-          xAxis: { categories: model.categories, title: { text: model.xField } },
-          yAxis: { categories: rows, title: { text: model.seriesField ?? '' } },
+          xAxis: themedAxis(theme, { categories: model.categories, title: { text: model.xField } }, { grid: false }),
+          yAxis: themedAxis(theme, { categories: rows, title: { text: model.seriesField ?? '' } }, { grid: false }),
         }),
     series: [{ type: 'heatmap', name: model.yField, data }],
   };
 }
 
-export function toHighchartsOptions(model: ChartModel, emphasis: EmphasisResolution): ChartOptions {
+export function toHighchartsOptions(model: ChartModel, emphasis: EmphasisResolution, theme: Theme): ChartOptions {
   switch (model.kind) {
     case 'part-to-whole':
-      return partToWholeOptions(model, emphasis);
+      return partToWholeOptions(model, emphasis, theme);
     case 'matrix':
-      return matrixOptions(model, emphasis);
+      return matrixOptions(model, emphasis, theme);
     case 'categorical':
-      return categoricalOptions(model, emphasis);
+      return categoricalOptions(model, emphasis, theme);
   }
 }

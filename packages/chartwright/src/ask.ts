@@ -13,6 +13,7 @@ import { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './p
 import { buildToolDefs, createToolHandlers, inferColumns } from './tools.ts';
 import { createSubmitValidator } from './submit.ts';
 import type { ProfileOptions, QueryOptions } from './tools.ts';
+import type { ThemeInput } from './compile/index.ts';
 import type { AskRequest, AskResult, Budget, CapabilitySource, ChatMessage, LlmClient, ToolMode } from './types.ts';
 
 export type ChartwrightOptions = {
@@ -32,6 +33,14 @@ export type ChartwrightOptions = {
   profile?: ProfileOptions;
   /** Passed to the query tool (e.g. preview size). */
   query?: QueryOptions;
+  /**
+   * The consumer's brand, as theme-role overrides merged over the default theme.
+   *
+   * Fixed here rather than per request because a brand does not change between two
+   * questions, and a request that could restyle the chart would make the same spec mean
+   * two different pictures. Resolved once per compile; see `compile/theme.ts`.
+   */
+  theme?: ThemeInput;
 };
 
 export type Chartwright = {
@@ -109,8 +118,11 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
         signal: request.signal,
       });
 
-      // Deterministic half: the compiler binds the data, not the model.
-      const { options: chartOptions, dataset, warnings: compileWarnings } = compileToHighcharts(outcome.spec, request.rows);
+      // Deterministic half: the compiler binds the data, not the model. The theme is the
+      // consumer's, fixed at createChartwright, so the same spec always looks the same here.
+      const { options: chartOptions, dataset, warnings: compileWarnings } = compileToHighcharts(outcome.spec, request.rows, {
+        theme: config.theme,
+      });
 
       const result: AskResult = {
         options: chartOptions,

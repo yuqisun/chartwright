@@ -21,6 +21,7 @@
  * module-dependent type lands). P1 adds each when a type needs it.
  */
 import type { CapabilitySource } from '../types.ts';
+import type { ColorRole } from './theme.ts';
 
 /** A channel a spec can carry. Every one is a `{ field }` reference into the one table. */
 export type ChannelName = 'x' | 'y' | 'series';
@@ -68,6 +69,16 @@ export type ChartTypeSpec = {
    * plausible-looking wrong instruction.
    */
   modules?: readonly string[];
+  /**
+   * Which theme roles this type colours itself from.
+   *
+   * A fact about the type, not about its kind: a heatmap's measure is a ramp while a
+   * bar's series are a palette, and the same `y` channel means the two. The backend
+   * reads this instead of branching on the kind a second time, and a test asserts every
+   * declared type names roles the default theme can resolve — so a type cannot declare
+   * a colour need nobody satisfies.
+   */
+  colorRoles: readonly ColorRole[];
 };
 
 /** Every type so far is banded on x and measured on y, split optionally by a third column. */
@@ -77,6 +88,7 @@ const categorical = {
   required: ['x', 'y'],
   modifiers: ['stacking', 'polar', 'compact'],
   allowsDuplicateCategories: false,
+  colorRoles: ['series.categorical'],
 } as const;
 
 export const CHART_TYPES = {
@@ -93,6 +105,7 @@ export const CHART_TYPES = {
     // modifier that makes it a donut, and a small pie is a legitimate sparkline.
     modifiers: ['hole', 'compact'],
     allowsDuplicateCategories: false,
+    colorRoles: ['series.categorical'],
   },
   heatmap: {
     kind: 'matrix',
@@ -108,6 +121,9 @@ export const CHART_TYPES = {
     // what the collision rule already enforces for bars.
     allowsDuplicateCategories: false,
     modules: ['highcharts/modules/heatmap', 'highcharts/modules/coloraxis'],
+    // The measure is the colour here, so the role is the ramp and not the palette: a
+    // categorical palette on a heatmap would turn an ordered measure into unrelated hues.
+    colorRoles: ['series.sequential'],
   },
 } as const satisfies Record<string, ChartTypeSpec>;
 
@@ -123,6 +139,7 @@ export function listChartTypes(): Array<{
   requires: readonly ChannelName[];
   honours: readonly Modifier[];
   modules: readonly string[];
+  colorRoles: readonly ColorRole[];
 }> {
   return CHART_TYPE_NAMES.map((name) => {
     // Typed as the general shape rather than the literal one, so an optional field like `modules`
@@ -134,6 +151,7 @@ export function listChartTypes(): Array<{
       requires: declaration.required,
       honours: declaration.modifiers,
       modules: declaration.modules ?? [],
+      colorRoles: declaration.colorRoles,
     };
   });
 }

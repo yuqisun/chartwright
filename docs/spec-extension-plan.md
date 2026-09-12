@@ -837,7 +837,9 @@ Plan-wide:
 - [ ] Capability is accepted in neutral names, may be lazy, and reports a version
       mismatch as a warning.
 - [ ] Every type listed as supported has a golden snapshot; every family has a render.
-- [ ] A theme is injectable, and golden snapshots are taken under a fixed one.
+- [x] A theme is injectable, and golden snapshots are taken under a fixed one
+      (done 2026-09: `createChartwright({ theme })`, roles resolved in the backend,
+      golden recaptured under the default theme — additions only).
 - [ ] Exported options type narrows by `chart.type`.
 - [ ] The selection set runs in CI with a hit-rate floor.
 - [ ] `docs/using-chartwright.md` §8 and `docs/roadmap.md` item 6 are checked against
