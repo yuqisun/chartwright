@@ -1,0 +1,250 @@
+/**
+ * Generate the showcase the example page renders: `examples/react-highcharts/data/showcase.json`.
+ *
+ * The page has three jobs, and this script is what keeps all three honest:
+ *
+ *   1. **Show every supported chart type**, with the query a person would type, the data it
+ *      runs on, the mode it runs in, and what the result should look like. Written by hand
+ *      in `App.tsx`, that list would be a second source of truth about which types exist —
+ *      the thing this repository keeps deleting. It is generated from the corpus and the
+ *      compiler instead, and the generator *fails* if a declared type is not represented.
+ *   2. **Draw it**, which the page does from the compiled options in this file, so the
+ *      showcase needs no API key, no network and no model: open the page and the charts are
+ *      there. The agent demo is the other zone of the page and is the only part that calls
+ *      out.
+ *   3. **Show the boundary** — the shapes a declared type cannot express, or that the
+ *      compiler refuses today — with what each one is waiting for. "Can I adopt this?"
+ *      deserves an answer on the page, not only in `docs/`.
+ *
+ * `--check` regenerates in memory and fails if the committed file differs, so `npm run
+ * verify` catches a corpus or compiler change that the page has not been rebuilt for.
+ *
+ * Run: npm run showcase          (writes the file)
+ *      npm run showcase -- --check
+ */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { CHART_TYPE_NAMES } from '../packages/chartwright/src/compile/index.ts';
+import { compileToHighcharts } from '../packages/chartwright/src/compile/index.ts';
+import { CORPUS } from '../packages/chartwright/test/fixtures/corpus.ts';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const output = join(root, 'examples', 'react-highcharts', 'data', 'showcase.json');
+
+/**
+ * The words a person needs, per corpus case.
+ *
+ * Prose lives here rather than in the corpus because the corpus is a test fixture: what it
+ * carries is the *shape* and the machine-checkable expectation, and this file adds the
+ * sentence you would say out loud. Keyed by case id, and the generator refuses to run if any
+ * case is missing an entry, so a new corpus case cannot quietly appear on the page without
+ * someone writing down what it is for.
+ */
+type Copy = { query: string; mode: 'ask' | 'present'; expects: string; modeWhy: string };
+
+const COPY: Record<string, Copy> = {
+  'categories-one-measure-bar': {
+    query: 'Chart revenue by region',
+    mode: 'ask',
+    modeWhy: 'the raw table is two columns of numbers; the model shapes it itself',
+    expects: 'Three columns, East tallest at 250, then North 120 and West 80.',
+  },
+  'categories-one-measure-pie': {
+    query: 'What share of revenue does each region contribute?',
+    mode: 'ask',
+    modeWhy: 'a part-to-whole question, so the same table is read as slices',
+    expects: 'Three slices named after the regions, sized by revenue. No legend: a pie labels its own slices.',
+  },
+  'categories-split-by-series-bar': {
+    query: 'Break revenue down by region and currency',
+    mode: 'ask',
+    modeWhy: 'one categorical column and a second column to split by',
+    expects: 'Two grouped columns per region — one USD, one EUR — and a legend, because there is more than one series.',
+  },
+  'months-in-order-line': {
+    query: 'How has traded notional developed over the five months?',
+    mode: 'present',
+    modeWhy: 'one row per month, already aggregated: the numbers are the caller\'s and must not be re-derived',
+    expects: 'One line, five points, left to right in the order the rows were given.',
+  },
+  'months-with-a-gap-line': {
+    query: 'Chart the monthly notional',
+    mode: 'present',
+    modeWhy: 'the same shape as above, and the caller still owns the order',
+    expects: 'Four points, spaced evenly — and that is the honest cost: 2026-03 is absent from the data, and a category axis draws the gap as though it were not there (roadmap item 21).',
+  },
+  'numeric-pair-unique-x-line': {
+    query: 'Plot NPS against tenure',
+    mode: 'ask',
+    modeWhy: 'two numeric columns, so this is the shape a scatter would want',
+    expects: 'It compiles — but as four evenly spaced categories, not as a cloud. The axis has no numeric type yet, so the spacing is a lie that looks plausible. Compare the refused case below.',
+  },
+  'matrix-two-categories-bar': {
+    query: 'Traded notional by month and region',
+    mode: 'ask',
+    modeWhy: 'two categorical columns and a measure',
+    expects: 'Two series of three points. This is exactly the table a heatmap needs — one value per cell — which is why a heatmap would need no new channel.',
+  },
+  'sixty-categories-bar': {
+    query: 'Rank all 60 counterparties by traded notional',
+    mode: 'ask',
+    modeWhy: 'one row per counterparty, no aggregation needed',
+    expects: 'Sixty columns. Dense but not yet crowded: the axis stretches to about 1.5x before labels have to rotate.',
+  },
+  'long-category-labels-bar': {
+    query: 'Revenue by desk',
+    mode: 'ask',
+    modeWhy: 'four rows, one per desk',
+    expects: 'Four columns whose labels are far wider than their bands. This is the case layout work has to survive, and the one `chart.orientation` alone cannot fix.',
+  },
+  'signed-values-bar': {
+    query: 'Show profit and loss by desk',
+    mode: 'ask',
+    modeWhy: 'a measure that can be negative',
+    expects: 'Four columns around a zero baseline, two of them below it.',
+  },
+  'nulls-and-zeros-line': {
+    query: 'How many trades per month?',
+    mode: 'ask',
+    modeWhy: 'the table has a null and a real zero, and they are different things',
+    expects: 'Four points where 2026-02 is a real zero and 2026-03 is a gap: a null is missing data, and drawing it as zero would be a claim the data does not make.',
+  },
+  'degenerate-bar': {
+    query: 'Chart this single row',
+    mode: 'ask',
+    modeWhy: 'the smallest table that can still be charted',
+    expects: 'One column. The degenerate case, kept because axis arithmetic breaks here first.',
+  },
+
+  // The boundary zone: nothing below is drawn above, and each says why.
+  'two-measures-different-units': {
+    query: 'Show traded notional and average commission by counterparty',
+    mode: 'ask',
+    modeWhy: 'two measures of different units — the request that needs a second axis',
+    expects: 'Columns for notional, a line for commission, on two labelled axes.',
+  },
+  'numeric-pair-with-duplicate-x': {
+    query: 'Plot NPS against tenure for every customer',
+    mode: 'ask',
+    modeWhy: 'one row per customer, two numeric columns',
+    expects: 'A cloud, with two points sharing 9 months.',
+  },
+  'raw-observations-per-group': {
+    query: 'Show the spread of latency per day',
+    mode: 'ask',
+    modeWhy: 'many observations per group',
+    expects: 'A range band or a box per day rather than a single value.',
+  },
+  'five-number-summary': {
+    query: 'Box plot of latency by day',
+    mode: 'present',
+    modeWhy: 'the caller already computed low, q1, median, q3 and high — the transform DSL has no percentile',
+    expects: 'One box per day, drawn from the five numbers as given.',
+  },
+  'flow-edges': {
+    query: 'Where does notional flow between venues?',
+    mode: 'ask',
+    modeWhy: 'the rows are edges, not points',
+    expects: 'A flow diagram from LSE to XETRA and XNYS.',
+  },
+  'hierarchy-two-levels': {
+    query: 'Break notional down by region, then by product',
+    mode: 'ask',
+    modeWhy: 'two grouping levels in one table',
+    expects: 'Nested rectangles: regions containing products.',
+  },
+};
+
+/**
+ * The id of a case on the page.
+ *
+ * Drawn cases carry their type, because one dataset can demonstrate two types (`categories-
+ * one-measure` shows a bar and a pie). Anything at the boundary is identified by its dataset
+ * alone — the type suffix would suggest a type it is not drawn with, and for the shapes with
+ * no type at all there is nothing to suffix.
+ */
+const isDrawn = (entry: (typeof CORPUS)[number]) => Boolean(entry.spec) && entry.today.outcome === 'compiles';
+const caseId = (entry: (typeof CORPUS)[number]) =>
+  isDrawn(entry) ? `${entry.dataset.name}-${entry.spec?.chart.type ?? 'none'}` : entry.dataset.name;
+
+const supported = [];
+const boundary = [];
+const seen = new Set<string>();
+
+for (const entry of CORPUS) {
+  const id = caseId(entry);
+  if (seen.has(id)) throw new Error(`two corpus cases share the page id '${id}' — the page would show one twice`);
+  seen.add(id);
+
+  const copy = COPY[id];
+  if (!copy) throw new Error(`no page copy for corpus case '${id}' — add an entry to COPY in this script`);
+
+  const data = { name: entry.dataset.name, why: entry.dataset.why, rows: entry.dataset.rows, shapes: entry.dataset.shapes };
+
+  if (isDrawn(entry)) {
+    const { options } = compileToHighcharts(entry.spec, entry.dataset.rows);
+    supported.push({
+      id,
+      chartType: entry.spec.chart.type,
+      ...copy,
+      data,
+      expected: { series: entry.today.series, points: entry.today.points },
+      spec: entry.spec,
+      options,
+    });
+  } else {
+    boundary.push({
+      id,
+      ...copy,
+      data,
+      // Why it is not drawn above, in the compiler's own words where there are words for it.
+      reason:
+        entry.today.outcome === 'refused'
+          ? { kind: 'refused', detail: entry.today.matches }
+          : { kind: 'no-type-yet', detail: entry.today.needs },
+      ...(entry.nearlyWorks ? { nearlyWorks: { loses: entry.nearlyWorks.loses, spec: entry.nearlyWorks.spec } } : {}),
+    });
+  }
+}
+
+// "Show every supported type" has to be a property of the data, not a hope. If a type is
+// declared and no case exercises it, the page would claim support it does not demonstrate.
+const shownByType = new Map<string, number>();
+for (const one of supported) shownByType.set(one.chartType, (shownByType.get(one.chartType) ?? 0) + 1);
+const missing = CHART_TYPE_NAMES.filter((name) => !shownByType.has(name));
+if (missing.length > 0) {
+  throw new Error(`the showcase does not demonstrate every declared type: ${missing.join(', ')} — add a corpus case for it`);
+}
+
+const showcase = {
+  note: 'Generated by scripts/build-showcase.ts from the corpus and the compiler. Do not edit by hand.',
+  types: CHART_TYPE_NAMES,
+  counts: { supported: supported.length, boundary: boundary.length, byType: Object.fromEntries(shownByType) },
+  supported,
+  boundary,
+};
+
+const serialised = `${JSON.stringify(showcase, null, 2)}\n`;
+
+if (process.argv.includes('--check')) {
+  let committed: string;
+  try {
+    committed = readFileSync(output, 'utf8');
+  } catch {
+    console.error(`showcase: ${output} is missing — run: npm run showcase`);
+    process.exit(1);
+  }
+  if (committed !== serialised) {
+    console.error('showcase: the committed file differs from a fresh generation — run: npm run showcase');
+    process.exit(1);
+  }
+  console.log(`showcase: up to date (${supported.length} drawn, ${boundary.length} at the boundary)`);
+  process.exit(0);
+}
+
+writeFileSync(output, serialised, 'utf8');
+console.log(`showcase: ${supported.length} cases drawn, ${boundary.length} at the boundary`);
+console.log(`types shown: ${[...shownByType].map(([name, count]) => `${name}×${count}`).join(', ')}`);
+console.log(`written: ${output}`);

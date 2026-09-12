@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
  * `highcharts-react-official`: chartwright returns a plain options object, and
  * this shows exactly that — one object in, one chart out, no adapter layer.
  */
-export function ChartView({ options }: { options: Highcharts.Options }) {
+export function ChartView({ options, height = 460 }: { options: Highcharts.Options; height?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -20,5 +20,5 @@ export function ChartView({ options }: { options: Highcharts.Options }) {
     return () => chart.destroy();
   }, [options]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: 460 }} />;
+  return <div ref={containerRef} style={{ width: '100%', height }} />;
 }
