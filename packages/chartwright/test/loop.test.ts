@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { createChartwright } from '../src/ask.ts';
 import { AgentGaveUpError, runAgentLoop } from '../src/loop.ts';
-import { createToolHandlers, TOOL_DEFS } from '../src/tools.ts';
+import { buildToolDefs, createToolHandlers, TOOL_DEFS } from '../src/tools.ts';
 import type { AgentEvent, ChatMessage, LlmClient, LlmCompleteRequest, LlmCompleteResult, Row } from '../src/types.ts';
 
 const rows: Row[] = [
@@ -277,3 +277,110 @@ test('a follow-up carries prior messages into the next request', async () => {
   );
   assert.ok(thirdCall.messages.some((m) => m.role === 'tool'), 'the previous tool exchange is present');
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The tool list is not a suggestion: a call the run never declared cannot reach
+// a handler. Present mode's guarantee is structural rather than advisory, so a
+// model that hallucinates `run_query` must not get one.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Rows with distinct regions, so a chart of them is legal. */
+const distinctRows: Row[] = [
+  { region: 'East', revenue: 100 },
+  { region: 'West', revenue: 80 },
+  { region: 'North', revenue: 300 },
+];
+
+test('a tool call the run did not declare is refused, not executed', async () => {
+  const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }, { toolCalls: [SUBMIT] }]);
+  const executed: string[] = [];
+  const handlers = createToolHandlers({ rows });
+
+  const outcome = await runAgentLoop({
+    llm,
+    messages: [{ role: 'user', content: 'chart this table' }] as ChatMessage[],
+    tools: buildToolDefs('present'),
+    runTool: (name: string, args: unknown) => {
+      executed.push(name);
+      const handler = handlers[name];
+      if (!handler) throw new Error(`unknown tool '${name}'`);
+      return handler(args);
+    },
+  });
+
+  assert.deepEqual(executed, [], 'no handler was reached');
+  assert.deepEqual(outcome.steps, [], 'nothing was adopted as the plan');
+  const refusal = outcome.messages.find((m) => m.role === 'tool' && m.toolCallId === RUN_QUERY.id);
+  assert.match(refusal?.content ?? '', /run_query.*not available/s);
+  assert.match(refusal?.content ?? '', /describe_table/, 'the refusal says what is available');
+  assert.ok(
+    outcome.warnings.some((w) => w.includes('run_query')),
+    'the caller is told the model tried',
+  );
+  assert.equal(outcome.spec.chart.type, 'bar', 'the run still finished');
+});
+
+test('an undeclared call is traced as refused, not as having run', async () => {
+  const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }, { toolCalls: [SUBMIT] }]);
+
+  const outcome = await runAgentLoop({
+    llm,
+    messages: [{ role: 'user', content: 'chart this table' }] as ChatMessage[],
+    tools: buildToolDefs('present'),
+    runTool: () => {
+      throw new Error('this handler must never run');
+    },
+  });
+
+  // The attempt belongs in the trace — the caller should be able to see what the
+  // model tried. What it must not do is look like a successful query.
+  assert.deepEqual(
+    outcome.trace.map((entry) => entry.tool),
+    ['run_query', 'submit_spec'],
+  );
+  assert.match((outcome.trace[0]?.result as { error?: string }).error ?? '', /not available/);
+  assert.equal(outcome.spec.chart.type, 'bar', 'and the run still finished');
+});
+
+test('a plan in the transcript is not adopted when the run has no run_query', async () => {
+  // A transcript from an earlier ask-mode turn, handed back to a present-mode run.
+  const priorTurns: ChatMessage[] = [
+    { role: 'user', content: 'revenue per region' },
+    { role: 'assistant', toolCalls: [RUN_QUERY] },
+    { role: 'tool', toolCallId: RUN_QUERY.id, name: 'run_query', content: '{"rowCount":2}' },
+  ];
+  const llm = scriptedLlm([{ toolCalls: [SUBMIT] }]);
+
+  const outcome = await runAgentLoop({
+    llm,
+    messages: priorTurns,
+    tools: buildToolDefs('present'),
+    runTool: () => {
+      throw new Error('this handler must never run');
+    },
+  });
+
+  assert.deepEqual(outcome.steps, [], 'the old plan must not come back through the transcript');
+  assert.deepEqual(outcome.spec.transform_plan?.steps, []);
+});
+
+test('ask({ present: true }) charts the caller rows, in the caller order, unchanged', async () => {
+  const llm = scriptedLlm([{ toolCalls: [RUN_QUERY] }, { toolCalls: [SUBMIT] }]);
+  const chartwright = createChartwright({ llm });
+
+  const result = await chartwright.ask({ query: 'revenue by region', rows: distinctRows, present: true });
+
+  assert.deepEqual(
+    (llm.calls[0]?.tools ?? []).map((t) => t.name),
+    ['describe_table', 'submit_spec'],
+    'the model was offered no way to change the table',
+  );
+  assert.deepEqual(result.spec.transform_plan?.steps, []);
+  assert.deepEqual(result.dataset, distinctRows, 'the dataset is the caller rows, untouched');
+  assert.deepEqual(
+    (result.options.xAxis as { categories: string[] }).categories,
+    ['East', 'West', 'North'],
+    'categories keep the order they arrived in',
+  );
+});
+

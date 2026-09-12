@@ -10,9 +10,9 @@
 import { compileToHighcharts } from './compile/index.ts';
 import { runAgentLoop } from './loop.ts';
 import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
-import { createToolHandlers, inferColumns, TOOL_DEFS } from './tools.ts';
+import { buildToolDefs, createToolHandlers, inferColumns } from './tools.ts';
 import type { ProfileOptions, QueryOptions } from './tools.ts';
-import type { AskRequest, AskResult, Budget, ChatMessage, LlmClient } from './types.ts';
+import type { AskRequest, AskResult, Budget, ChatMessage, LlmClient, ToolMode } from './types.ts';
 
 export type ChartwrightOptions = {
   /** Default LLM client. A request may override it. */
@@ -46,6 +46,10 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
 
       const sessionId = request.sessionId ?? newSessionId();
       const columns = inferColumns(request.rows);
+      // One switch, read once. Everything that differs between the two modes —
+      // tools, prompt, and (through the tool list) whether a plan can exist at all
+      // — is derived from it, so the modes cannot drift apart.
+      const mode: ToolMode = request.present === true ? 'present' : 'ask';
 
       const priorTurns = request.messages ?? [];
       // A follow-up already carries the system prompt inside its transcript;
@@ -53,7 +57,7 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       const hasSystemPrompt = priorTurns.some((m) => m.role === 'system');
 
       const messages: ChatMessage[] = [
-        ...(hasSystemPrompt ? [] : [{ role: 'system' as const, content: buildSystemPrompt() }]),
+        ...(hasSystemPrompt ? [] : [{ role: 'system' as const, content: buildSystemPrompt(mode) }]),
         // Prior turns, when this is a follow-up.
         ...priorTurns,
         { role: 'user', content: buildUserPrompt(request.query, { rowCount: request.rows.length, columns }) },
@@ -64,7 +68,7 @@ export function createChartwright(config: ChartwrightOptions): Chartwright {
       const outcome = await runAgentLoop({
         llm,
         messages,
-        tools: TOOL_DEFS,
+        tools: buildToolDefs(mode),
         runTool: (name, args) => {
           const handler = handlers[name];
           if (!handler) throw new Error(`unknown tool '${name}'`);

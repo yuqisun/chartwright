@@ -56,8 +56,8 @@ ratio, an average or a `distinct_count`, the numbers change invisibly.
 
 ## Task 1 — Mode and tool surface
 
-**Files:** `src/types.ts`, `src/tools.ts`, `src/prompt.ts`, `src/ask.ts`,
-`test/prompt.test.ts` (new)
+**Files:** `src/types.ts`, `src/tools.ts`, `src/prompt.ts`, `src/loop.ts`,
+`src/ask.ts`, `test/prompt.test.ts` (new), `test/loop.test.ts`
 
 **Step 1 (test first).** A test asserting that the tool list for each mode is
 exactly:
@@ -65,30 +65,67 @@ exactly:
 | mode | tools |
 |---|---|
 | `'ask'` (default) | `describe_table`, `run_query`, `submit_spec` |
-| `'present'` | `describe_table`, `preview_rows` *(task 3)*, `submit_spec` |
+| `'present'` | `describe_table`, `submit_spec` — plus `preview_rows` in task 3 |
 
-and that no present-mode tool schema mentions `group_by`, `measures` or `steps`.
+and that no present-mode tool *definition* mentions the transform DSL. Assert on the
+whole serialized definition (schema and description), because a tool the model cannot
+call is one thing and a tool it has been *told about* is another. Two deliberate
+exceptions: check quoted strings only (`"aggregate"`, not "aggregates", which
+`describe_table` says about its own summary), and leave `"limit"` out of the list,
+since a preview tool bounds its own preview with one and that cannot change the
+charted data.
 
 **Step 2.** Add `ToolMode = 'ask' | 'present'` and replace the `TOOL_DEFS` constant
 with `buildToolDefs(mode: ToolMode): ToolDef[]` (keep `TOOL_DEFS` exported as the
-`'ask'` list for compatibility).
+`'ask'` list for compatibility). `submit_spec` needs a second wording: the ask-mode
+description says "after run_query has produced the table" and "do not include a
+transform_plan", both of which are wrong here.
 
 **Step 3.** Make the system prompt mode-aware:
-`buildSystemPrompt(mode: ToolMode = 'ask'): string`. In present mode the "how to
-work" steps must not tell the model to call `run_query`; instead:
+`buildSystemPrompt(mode: ToolMode = 'ask'): string`. The shared rules stay shared; the
+mode supplies the intro, the "how to work" steps, and the one rule that differs in
+kind (`encodings` name columns produced by your last `run_query` / columns of the
+table you were given). In present mode the intro must not mention `run_query` or the
+transform vocabulary, and must say what the model is *still* free to decide —
+otherwise the prompt reads as a list of prohibitions and the charts get timid:
 
 > The rows are final. Do not aggregate, filter, limit, reorder or derive anything —
-> you have no tool that could, and the order they are in is the order to show. Look
-> at the data, then choose the chart type, the two axes, the orientation, the title
-> and any emphasis that best show what the user asked about.
+> you have no tool that could, and the order they are in is the order to show. Do not
+> ask for different rows, and do not recompute a column: every figure you need is
+> already there, and several of them are averages, ratios, distinct counts or maxima,
+> which is exactly why they are not yours to redo.
+>
+> What you decide: the chart type, which column is the x axis and which is the
+> measure, the orientation, the title, and any emphasis.
 
-**Step 4.** `ask()` passes `present ?? false` through to `buildToolDefs`,
-`buildSystemPrompt` and the loop's `mode`.
+**Step 4 — the part the plan originally missed.** `runAgentLoop` dispatches a tool
+call by name straight to `runTool`, whatever `tools` says. A model that emits
+`run_query` anyway — or that inherits one from an earlier ask-mode turn in the
+transcript — would have executed it, and the loop would even have adopted its steps
+as the plan. So the loop enforces its own contract:
 
-**Step 5.** Verify: `node --experimental-strip-types test/prompt.test.ts`, plus the
-whole suite (no behaviour change for the default mode).
+- a call whose name is not in `tools` is refused before any handler is consulted,
+  with the available tool names in the message (a bare "no" invites a retry);
+- a plan is recovered from the transcript only when `run_query` is among the tools,
+  so present mode cannot inherit a transform from a previous natural-language turn.
+
+This needs **no `mode` parameter on the loop**: everything follows from the tool list,
+which is the thing actually handed to the model. Fewer knobs, and the guarantee cannot
+drift away from the list that defines it.
+
+**Step 5.** `ask()` derives `mode` once (`request.present === true ? 'present' : 'ask'`)
+and passes it to `buildToolDefs` and `buildSystemPrompt`. Nothing else in `ask()`
+changes.
+
+**Step 6.** Verify: `test/prompt.test.ts`, `test/loop.test.ts` (including: an
+undeclared call reaches no handler, is traced as refused rather than as having run,
+and a plan in the transcript is not adopted), plus the whole suite — the default mode
+must be byte-identical in behaviour.
 
 **Commit:** `feat(agent): present mode — a request mode with no data-changing tools`
+
+**Status: done.** `buildToolDefs`, the mode-aware prompt and the loop's tool-list
+enforcement are in; 82 library tests pass. Tasks 2–6 remain.
 
 ---
 

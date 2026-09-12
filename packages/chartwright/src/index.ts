@@ -10,7 +10,7 @@
  * provider policy stay with you.
  */
 export { applyTransform, binDate } from './transform.ts';
-export { createToolHandlers, describeTable, inferColumns, runQuery, TOOL_DEFS } from './tools.ts';
+export { buildToolDefs, createToolHandlers, describeTable, inferColumns, runQuery, TOOL_DEFS } from './tools.ts';
 export { compileToHighcharts, isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './compile/index.ts';
 export { AgentGaveUpError, runAgentLoop } from './loop.ts';
 export { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
@@ -62,6 +62,7 @@ export type {
   SortStep,
   ToolCall,
   ToolDef,
+  ToolMode,
   TraceEntry,
   TransformStep,
   ValueType,

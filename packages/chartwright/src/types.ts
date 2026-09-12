@@ -182,6 +182,21 @@ export type ToolDef = {
   parameters: JsonSchema;
 };
 
+/**
+ * How much the model may do to the caller's rows.
+ *
+ * `'ask'` is the natural-language mode: the model investigates the table with
+ * `run_query` and shapes it into the table the chart needs.
+ *
+ * `'present'` is for a table the caller has already produced — grouped, ranked,
+ * final. The model decides how to draw it and nothing else, so its tool list
+ * simply has no way to change the data.
+ *
+ * The guarantee is the tool list, not the prompt: a mode cannot be talked out of
+ * a capability it was never given.
+ */
+export type ToolMode = 'ask' | 'present';
+
 export type LlmCompleteRequest = {
   messages: ChatMessage[];
   /** Absent when the caller only wants a final answer (no tool loop). */
@@ -245,6 +260,17 @@ export type Budget = {
 export type AskRequest = {
   query: string;
   rows: Row[];
+  /**
+   * `true` when the rows are a result the caller has already produced — its own
+   * `GROUP BY`, its own `ORDER BY`. The model still chooses the chart type, the
+   * axes, the orientation, the title and any emphasis, but it has no tool that can
+   * aggregate, filter, reorder, limit or derive, so the numbers it charts are the
+   * numbers it was given, in the order it was given them.
+   *
+   * Leave unset for the natural-language mode, where the model investigates the
+   * table itself.
+   */
+  present?: boolean;
   /**
    * The caller's LLM client. chartwright never sees an API key.
    * Optional when the client was already supplied to `createChartwright()`.

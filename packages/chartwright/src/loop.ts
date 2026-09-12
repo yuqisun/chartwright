@@ -222,10 +222,19 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const trace: TraceEntry[] = [];
   const warnings: string[] = [];
 
+  // The declared tool list is a contract, not a hint. A model can emit a call for
+  // anything — including a tool it was never offered, or one from an earlier turn
+  // in the transcript — so the list is enforced here rather than trusted.
+  const reachable = new Set(tools.map((tool) => tool.name));
+  // A plan can only come from run_query. If this run has no run_query, it has no
+  // plan, whatever an earlier turn left in the transcript: present mode must not
+  // inherit a transform from a natural-language turn.
+  const mayPlan = reachable.has('run_query');
+
   let round = 0;
   let toolCallsUsed = 0;
   // A follow-up may already contain the plan from an earlier turn.
-  let lastRunQuerySteps: TransformStep[] | undefined = recoverPlanFrom(messages);
+  let lastRunQuerySteps: TransformStep[] | undefined = mayPlan ? recoverPlanFrom(messages) : undefined;
   let textOnlyRounds = 0;
 
   for (;;) {
@@ -311,6 +320,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           messages.push({ role: 'tool', toolCallId: call.id, name: call.name, content: JSON.stringify(payload) });
           return { spec: spec as ChartSpec, steps: lastRunQuerySteps ?? [], messages, warnings, trace, rounds: round };
         }
+      } else if (!reachable.has(call.name)) {
+        // Refused before any handler is consulted, so the capability is absent
+        // rather than merely discouraged. The message names what *is* available,
+        // because a model that gets a bare "no" tends to try again.
+        problem =
+          `tool '${call.name}' is not available in this run; available tools: ` + [...reachable].join(', ');
+        payload = { error: problem };
       } else {
         try {
           const result = runTool(call.name, call.args);

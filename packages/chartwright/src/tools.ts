@@ -17,7 +17,7 @@
  */
 import { applyTransform, binDate } from './transform.ts';
 import { validateChartPlan } from './plans.ts';
-import type { Column, ColumnType, Row, ToolDef, TransformStep } from './types.ts';
+import type { Column, ColumnType, Row, ToolDef, ToolMode, TransformStep } from './types.ts';
 
 const DATE_LIKE = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/;
 
@@ -225,108 +225,136 @@ const STEP_SCHEMA = {
   additionalProperties: false,
 };
 
-export const TOOL_DEFS: ToolDef[] = [
-  {
-    name: 'describe_table',
-    description:
-      'Profile the dataset before deciding anything: row count, and per column its type, null rate, ' +
-      'distinct-value count, numeric range/median, and time span. Returns aggregates only — never rows. ' +
-      'Call this first.',
-    parameters: { type: 'object', properties: {}, additionalProperties: false },
+const DESCRIBE_TABLE: ToolDef = {
+  name: 'describe_table',
+  description:
+    'Profile the dataset before deciding anything: row count, and per column its type, null rate, ' +
+    'distinct-value count, numeric range/median, and time span. Returns aggregates only — never rows. ' +
+    'Call this first.',
+  parameters: { type: 'object', properties: {}, additionalProperties: false },
+};
+
+const RUN_QUERY: ToolDef = {
+  name: 'run_query',
+  description:
+    'Run a declarative transformation over the FULL dataset. The complete result becomes the chart dataset ' +
+    'and is NOT sent to you; you receive only a summary (row count, columns, and a few preview rows). ' +
+    'The steps you pass here are adopted as the chart spec transform_plan, so do not write a plan yourself. ' +
+    'Steps: filter | aggregate | sort | limit | derive | binTime. aggregate replaces the table with ' +
+    'group_by columns plus each measure\'s "as" column. For "largest/smallest/best/worst N" requests you MUST ' +
+    'put a sort before the limit — a limit straight after an aggregate keeps an arbitrary subset and is ' +
+    'rejected.',
+  parameters: {
+    type: 'object',
+    required: ['steps'],
+    properties: { steps: { type: 'array', maxItems: 20, items: STEP_SCHEMA } },
+    additionalProperties: false,
   },
-  {
-    name: 'run_query',
-    description:
-      'Run a declarative transformation over the FULL dataset. The complete result becomes the chart dataset ' +
-      'and is NOT sent to you; you receive only a summary (row count, columns, and a few preview rows). ' +
-      'The steps you pass here are adopted as the chart spec transform_plan, so do not write a plan yourself. ' +
-      'Steps: filter | aggregate | sort | limit | derive | binTime. aggregate replaces the table with ' +
-      'group_by columns plus each measure\'s "as" column. For "largest/smallest/best/worst N" requests you MUST ' +
-      'put a sort before the limit — a limit straight after an aggregate keeps an arbitrary subset and is ' +
-      'rejected.',
-    parameters: {
-      type: 'object',
-      required: ['steps'],
-      properties: { steps: { type: 'array', maxItems: 20, items: STEP_SCHEMA } },
-      additionalProperties: false,
+};
+
+/** Shared by both modes: the model finishes in the same way either way. */
+const SUBMIT_PROPERTIES = {
+  chart: {
+    type: 'object',
+    required: ['type'],
+    properties: {
+      type: { type: 'string', enum: ['bar', 'line', 'pie'] },
+      title: { type: 'string' },
+      orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
     },
+    additionalProperties: false,
   },
-  {
-    name: 'submit_spec',
+  encodings: {
+    type: 'object',
+    required: ['x', 'y'],
+    properties: {
+      x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+      y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+      series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
+    },
+    additionalProperties: false,
+  },
+  emphasis: {
+    type: 'array',
     description:
-      'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
-      'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
-      'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category or date ' +
-      'column, encodings.y the measure column, and the optional encodings.series splits the data into series.',
-    parameters: {
+      'Optional. Condition-based emphasis, applied in order (later rules win). Declare the CONDITION, ' +
+      'never a data value you looked up: for "highlight the largest" use top_k with k=1 and the measure ' +
+      'field, and the compiler finds it in the full data.',
+    items: {
       type: 'object',
-      required: ['chart', 'encodings'],
+      required: ['when', 'style'],
       properties: {
-        chart: {
+        when: {
           type: 'object',
-          required: ['type'],
+          required: ['op', 'field'],
           properties: {
-            type: { type: 'string', enum: ['bar', 'line', 'pie'] },
-            title: { type: 'string' },
-            orientation: { type: 'string', enum: ['vertical', 'horizontal'] },
+            op: { type: 'string', enum: ['top_k', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between'] },
+            field: { type: 'string' },
+            k: { type: 'integer', minimum: 1 },
+            direction: { type: 'string', enum: ['max', 'min'] },
+            value: {},
+            values: { type: 'array' },
           },
           additionalProperties: false,
         },
-        encodings: {
+        style: {
           type: 'object',
-          required: ['x', 'y'],
+          required: ['tone'],
           properties: {
-            x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
-            y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
-            series: { type: 'object', required: ['field'], properties: { field: { type: 'string' } } },
-          },
-          additionalProperties: false,
-        },
-        emphasis: {
-          type: 'array',
-          description:
-            'Optional. Condition-based emphasis, applied in order (later rules win). Declare the CONDITION, ' +
-            'never a data value you looked up: for "highlight the largest" use top_k with k=1 and the measure ' +
-            'field, and the compiler finds it in the full data.',
-          items: {
-            type: 'object',
-            required: ['when', 'style'],
-            properties: {
-              when: {
-                type: 'object',
-                required: ['op', 'field'],
-                properties: {
-                  op: { type: 'string', enum: ['top_k', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between'] },
-                  field: { type: 'string' },
-                  k: { type: 'integer', minimum: 1 },
-                  direction: { type: 'string', enum: ['max', 'min'] },
-                  value: {},
-                  values: { type: 'array' },
-                },
-                additionalProperties: false,
-              },
-              style: {
-                type: 'object',
-                required: ['tone'],
-                properties: {
-                  tone: {
-                    type: 'string',
-                    enum: ['highlight', 'muted'],
-                    description: 'Semantic: "highlight" stands out, "muted" recedes. Not a colour.',
-                  },
-                  label: { type: 'boolean', description: 'Also show a data label on the emphasised marks.' },
-                },
-                additionalProperties: false,
-              },
+            tone: {
+              type: 'string',
+              enum: ['highlight', 'muted'],
+              description: 'Semantic: "highlight" stands out, "muted" recedes. Not a colour.',
             },
-            additionalProperties: false,
+            label: { type: 'boolean', description: 'Also show a data label on the emphasised marks.' },
           },
+          additionalProperties: false,
         },
       },
       additionalProperties: false,
     },
   },
-];
+};
+
+const SUBMIT_ASK: ToolDef = {
+  name: 'submit_spec',
+  description:
+    'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
+    'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
+    'automatically. chart.type is a neutral name (bar | line | pie); encodings.x is the category or date ' +
+    'column, encodings.y the measure column, and the optional encodings.series splits the data into series.',
+  parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
+};
+
+/**
+ * The present-mode wording differs where the ask-mode wording would be a lie: it
+ * must not refer to a query the model cannot run, or to a plan it cannot write.
+ */
+const SUBMIT_PRESENT: ToolDef = {
+  name: 'submit_spec',
+  description:
+    'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
+    'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (bar | line | pie); ' +
+    'encodings.x is the category or date column, encodings.y the measure column, and the optional ' +
+    'encodings.series splits the data into series.',
+  parameters: { type: 'object', required: ['chart', 'encodings'], properties: SUBMIT_PROPERTIES, additionalProperties: false },
+};
+
+/**
+ * The tool surface of a run.
+ *
+ * Present mode's list is shorter for one reason: every tool that could change the
+ * caller's rows is absent, so the capability is not there to be argued into. `ask`
+ * is the default everywhere, so an existing caller sees no change.
+ */
+export function buildToolDefs(mode: ToolMode = 'ask'): ToolDef[] {
+  return mode === 'present'
+    ? [DESCRIBE_TABLE, SUBMIT_PRESENT]
+    : [DESCRIBE_TABLE, RUN_QUERY, SUBMIT_ASK];
+}
+
+/** The natural-language tool list, for callers who import it directly. */
+export const TOOL_DEFS: ToolDef[] = buildToolDefs('ask');
 
 export type ToolContext = {
   rows: Row[];
