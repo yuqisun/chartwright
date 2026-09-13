@@ -18,7 +18,8 @@
     "showcase": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-showcase.ts",
     "render": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/render-matrix.ts",
     "gallery": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/build-gallery.ts",
-    "pack:check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-package.ts"
+    "pack:check": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/check-package.ts",
+    "smoke:live": "node --experimental-strip-types --disable-warning=ExperimentalWarning scripts/smoke-live.ts"
   },
   "license": "MIT",
   "devDependencies": {

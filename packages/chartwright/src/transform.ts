@@ -177,13 +177,94 @@ export function binDate(value: unknown, granularity: 'month' | 'quarter' | 'year
 }
 
 /**
+ * A step must carry the parameters its op needs, and the message must name the missing one.
+ *
+ * The schema cannot do this job. `STEP_SCHEMA` requires only `op`, and a provider is free to
+ * send whatever it likes regardless — so a malformed step arrives here, and what happened next
+ * depended on which op it was. Measured, before this existed:
+ *
+ *   - `filter` with no `field` returned `[]`: the whole table, gone, with no error at all.
+ *     (With `eq` and no value either, `undefined === undefined` matched *every* row, so it
+ *     silently did nothing. Both directions are silent, and both are wrong.)
+ *   - `binTime` with no `granularity`, and `derive` with no `as`, produced a column literally
+ *     named `"undefined"`.
+ *   - `aggregate` with no `group_by` threw `Cannot read properties of undefined (reading 'map')`,
+ *     and with no `measures`, `step.measures is not iterable`.
+ *
+ * The thrown message is handed back to the model as the tool result, so it is a repair
+ * instruction: it names the op, the parameter, and what the parameter should be — in the same
+ * vocabulary the schema used to ask for it.
+ */
+const FILTER_OPERATORS: readonly string[] = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'between', 'in', 'contains'];
+
+function validateStepShape(step: TransformStep, index: number): void {
+  const at = `step ${index + 1} ('${String((step as { op?: unknown }).op)}')`;
+  const needs = (name: string, ok: boolean, expected: string): void => {
+    if (!ok) throw new Error(`${at} needs '${name}': ${expected}`);
+  };
+
+  switch (step.op) {
+    case 'filter': {
+      // Read through an unknown view: the declared type says these are present, but the value
+      // arrives as JSON from a model, so the runtime check is the one doing the work. Checking
+      // membership rather than "is a non-empty string" also catches a misspelled operator
+      // before it reaches the switch in applyFilter, where the message would be less useful.
+      const { field, operator } = step as { field?: unknown; operator?: unknown };
+      needs('field', typeof field === 'string' && field !== '', 'the column to test');
+      needs(
+        'operator',
+        typeof operator === 'string' && FILTER_OPERATORS.includes(operator),
+        'one of eq, neq, gt, gte, lt, lte, between, in, contains',
+      );
+      break;
+    }
+    case 'aggregate':
+      needs(
+        'group_by',
+        Array.isArray(step.group_by),
+        'an array of columns to group by — use [] to aggregate the whole table',
+      );
+      // `measures: []` is legal and meaningful — it projects the group_by columns and computes
+      // nothing, which is how a caller asks for one row per group. Only a *missing* measures
+      // array is the bug: `step.measures is not iterable`.
+      needs('measures', Array.isArray(step.measures), 'an array of { agg, as } — [] to project the group columns only');
+      break;
+    case 'sort':
+      // A named field that is not in the table is a different error, reported by applySort
+      // with the list of columns that do exist. This only catches "you did not say which".
+      needs('by', typeof step.by === 'string' && step.by !== '', 'the column to sort on');
+      break;
+    case 'limit':
+      needs('n', Number.isInteger(step.n) && step.n >= 0, `a non-negative integer, got ${JSON.stringify(step.n)}`);
+      break;
+    case 'derive':
+      needs('as', typeof step.as === 'string' && step.as !== '', 'the name of the column to produce');
+      needs('left', step.left !== undefined, 'the left operand: { field } or { value }');
+      needs('operator', typeof step.operator === 'string', 'one of add, subtract, multiply, divide');
+      needs('right', step.right !== undefined, 'the right operand: { field } or { value }');
+      break;
+    case 'binTime':
+      needs('field', typeof step.field === 'string' && step.field !== '', 'the column holding the date');
+      needs('granularity', typeof step.granularity === 'string', 'one of month, quarter, year');
+      needs('as', typeof step.as === 'string' && step.as !== '', 'the name of the column to produce');
+      break;
+    default:
+      // An unknown op is reported by the dispatch switch below, with its own message.
+      break;
+  }
+}
+
+/**
  * Executes a transform plan over the given rows.
  *
  * Rows are never mutated; each step produces a new array.
  */
 export function applyTransform(rows: Row[], steps: TransformStep[]): Row[] {
   let table = rows;
-  for (const step of steps) {
+  for (const [index, step] of steps.entries()) {
+    // Refused before the op runs, because a step missing its parameters does not fail — it
+    // does something plausible-looking and wrong. See validateStepShape.
+    validateStepShape(step, index);
     switch (step.op) {
       case 'filter':
         table = applyFilter(table, step);
@@ -194,13 +275,9 @@ export function applyTransform(rows: Row[], steps: TransformStep[]): Row[] {
       case 'sort':
         table = applySort(table, step);
         break;
-      case 'limit': {
-        if (!Number.isInteger(step.n) || step.n < 0) {
-          throw new Error(`limit needs a non-negative integer, got ${JSON.stringify(step.n)}`);
-        }
+      case 'limit':
         table = table.slice(0, step.n);
         break;
-      }
       case 'derive':
         table = applyDerive(table, step);
         break;

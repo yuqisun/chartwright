@@ -31,7 +31,23 @@ npm run verify        # the whole gate: build, typecheck, all tests, showcase ch
 npm test --workspace chartwright          # unit tests (node:test, no test framework dependency)
 npm run dev                               # the example app: http://localhost:5173
 npm run render                            # draw every corpus case in a real browser
+npm run smoke:live                        # the real-provider path (needs a key; see below)
 ```
+
+`smoke:live` is the one check that is **not** part of `npm run verify`, and the reason is
+worth knowing: every test in the suite scripts the LLM, which is what makes them fast and
+deterministic — but it also means "a user asks a question, a model inspects the data, a spec
+comes back, options come out" is only ever exercised against canned replies. That path found
+a real defect the first time it was run against a provider (a malformed-plan message that
+leaked `undefined` into the model's repair instruction, costing it an extra round). To run it:
+
+```bash
+npm --workspace examples/react-highcharts run dev:api   # proxy on 8787, in another shell
+npm run smoke:live
+```
+
+Point it elsewhere with `LLM_SMOKE_URL`. It is manual on purpose: it needs credentials, a
+network, and it is not deterministic, so it cannot be a gate.
 
 Node 22.6+ is required. Two things are worth knowing about how this repository runs
 TypeScript:

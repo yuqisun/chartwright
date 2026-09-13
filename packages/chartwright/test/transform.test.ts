@@ -105,6 +105,62 @@ test('limit slices and rejects nonsense', () => {
   assert.throws(() => applyTransform(rows, [{ op: 'limit', n: 1.5 }]), /non-negative integer/);
 });
 
+/**
+ * A step missing a parameter it needs used to reach its implementation, and what happened
+ * there ranged from unhelpful to silently wrong. Three of the failure modes were genuinely
+ * silent, which is the failure this library exists not to have:
+ *
+ *   - `filter` with no `field` matched nothing (or, with no value either, everything);
+ *   - `binTime` with no `granularity` and `derive` with no `as` invented a column named
+ *     "undefined".
+ *
+ * The message has to name the parameter, because the model reads it as the repair.
+ */
+test('a step missing a parameter is refused by name, not left to the op', () => {
+  const cases: Array<[string, Record<string, unknown>, RegExp]> = [
+    ['filter without field', { op: 'filter', operator: 'eq', value: 'x' }, /needs 'field'/],
+    ['filter without operator', { op: 'filter', field: 'region' }, /needs 'operator'/],
+    ['aggregate without group_by', { op: 'aggregate', measures: [{ agg: 'sum', field: 'revenue', as: 't' }] }, /needs 'group_by'/],
+    ['aggregate without measures', { op: 'aggregate', group_by: ['region'] }, /needs 'measures'/],
+    ['sort without by', { op: 'sort', order: 'desc' }, /needs 'by'/],
+    ['sort with an empty by', { op: 'sort', by: '' }, /needs 'by'/],
+    ['limit without n', { op: 'limit' }, /non-negative integer/],
+    ['derive without as', { op: 'derive', left: { field: 'revenue' }, operator: 'add', right: { value: 1 } }, /needs 'as'/],
+    ['derive without an operand', { op: 'derive', as: 'x', operator: 'add', right: { value: 1 } }, /needs 'left'/],
+    ['binTime without granularity', { op: 'binTime', field: 'month', as: 'm' }, /needs 'granularity'/],
+    ['binTime without as', { op: 'binTime', field: 'month', granularity: 'month' }, /needs 'as'/],
+  ];
+
+  for (const [label, step, pattern] of cases) {
+    assert.throws(
+      () => applyTransform(rows, [step as never]),
+      pattern,
+      `${label} should be refused with a message naming the parameter`,
+    );
+  }
+});
+
+test('the refusal names which step, so a multi-step plan is repairable', () => {
+  assert.throws(
+    () => applyTransform(rows, [{ op: 'limit', n: 2 }, { op: 'sort', order: 'asc' }] as never),
+    /step 2 \('sort'\) needs 'by'/,
+  );
+});
+
+test('a well-formed plan is untouched by the parameter check', () => {
+  const out = applyTransform(rows, [
+    { op: 'aggregate', group_by: ['region'], measures: [{ agg: 'sum', field: 'revenue', as: 't' }] },
+    { op: 'sort', by: 't', order: 'desc' },
+    { op: 'limit', n: 2 },
+  ]);
+  assert.equal(out.length, 2);
+  // `group_by: []` aggregates the whole table, and `measures: []` projects the group columns
+  // and computes nothing. Both are legal and used, so the parameter check must not reject them.
+  assert.equal(applyTransform(rows, [{ op: 'aggregate', group_by: [], measures: [{ agg: 'count', as: 'n' }] }]).length, 1);
+  const regions = new Set(rows.map((row) => row.region)).size;
+  assert.equal(applyTransform(rows, [{ op: 'aggregate', group_by: ['region'], measures: [] }]).length, regions);
+});
+
 test('derive chains two steps and nulls division by zero', () => {
   const out = applyTransform(rows, [
     { op: 'derive', as: 'margin', left: { field: 'revenue' }, operator: 'subtract', right: { field: 'cost' } },
