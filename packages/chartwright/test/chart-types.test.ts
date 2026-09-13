@@ -238,6 +238,51 @@ const MAPPING: Array<{ declared: string; why: string; spec: ChartSpec; want: str
     },
     want: 'bubble',
   },
+  {
+    declared: 'columnrange',
+    why: 'a range type: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'columnrange' },
+      encodings: { x: { field: 'region' }, low: { field: 'revenue' }, high: { field: 'commission_bps' } },
+    },
+    want: 'columnrange',
+  },
+  {
+    declared: 'arearange',
+    why: 'a range type: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'arearange' },
+      encodings: { x: { field: 'region' }, low: { field: 'revenue' }, high: { field: 'commission_bps' } },
+    },
+    want: 'arearange',
+  },
+  {
+    declared: 'areasplinerange',
+    why: 'a range type: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'areasplinerange' },
+      encodings: { x: { field: 'region' }, low: { field: 'revenue' }, high: { field: 'commission_bps' } },
+    },
+    want: 'areasplinerange',
+  },
+  {
+    declared: 'errorbar',
+    why: 'a range type: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'errorbar' },
+      encodings: { x: { field: 'region' }, low: { field: 'revenue' }, high: { field: 'commission_bps' } },
+    },
+    want: 'errorbar',
+  },
+  {
+    declared: 'dumbbell',
+    why: 'a range type: the neutral name and the library name coincide',
+    spec: {
+      chart: { type: 'dumbbell' },
+      encodings: { x: { field: 'region' }, low: { field: 'revenue' }, high: { field: 'commission_bps' } },
+    },
+    want: 'dumbbell',
+  },
 ];
 
 test('every declared type has a decided Highcharts type', () => {
@@ -456,6 +501,6 @@ test('listChartTypes reports the declaration, not a second copy of it', () => {
   // module, this assertion is where that becomes visible.
   assert.deepEqual(
     listed.filter((entry) => entry.modules.length > 0).map((entry) => entry.name),
-    ['heatmap', 'bubble'],
+    ['heatmap', 'bubble', 'columnrange', 'arearange', 'areasplinerange', 'errorbar', 'dumbbell'],
   );
 });

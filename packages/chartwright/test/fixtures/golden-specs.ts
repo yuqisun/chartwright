@@ -247,4 +247,65 @@ export const GOLDEN_CASES: GoldenCase[] = [
       { counterparty: 'Kestrel', notional_usd: 512_004_220, avg_commission_bps: 3.05 },
     ],
   },
+  {
+    name: 'arearange-basic',
+    why: 'range family with low/high channels — the data shape that distinguishes ranges from ordinary bars',
+    spec: {
+      chart: { type: 'arearange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+      { month: 'Mar', low: 15, high: 30 },
+    ],
+  },
+  {
+    name: 'columnrange-basic',
+    why: 'columnrange: same data shape as arearange, different mark',
+    spec: {
+      chart: { type: 'columnrange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+    ],
+  },
+  {
+    name: 'areasplinerange-basic',
+    why: 'areasplinerange: smoothed range band',
+    spec: {
+      chart: { type: 'areasplinerange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+    ],
+  },
+  {
+    name: 'errorbar-basic',
+    why: 'errorbar: range type for uncertainty bounds',
+    spec: {
+      chart: { type: 'errorbar' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+    ],
+  },
+  {
+    name: 'dumbbell-basic',
+    why: 'dumbbell: range type connecting two values with a line',
+    spec: {
+      chart: { type: 'dumbbell' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+    ],
+  },
 ];

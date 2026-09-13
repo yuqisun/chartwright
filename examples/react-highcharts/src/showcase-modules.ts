@@ -14,4 +14,4 @@ import 'highcharts/esm/highcharts-more.js';
 import 'highcharts/esm/modules/heatmap.js';
 import 'highcharts/esm/modules/coloraxis.js';
 
-export const showcaseCapabilities: readonly string[] = ['bar', 'line', 'spline', 'area', 'areaspline', 'pie', 'heatmap', 'scatter', 'bubble'];
+export const showcaseCapabilities: readonly string[] = ['bar', 'line', 'spline', 'area', 'areaspline', 'pie', 'heatmap', 'scatter', 'bubble', 'columnrange', 'arearange', 'areasplinerange', 'errorbar', 'dumbbell'];

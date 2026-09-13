@@ -226,19 +226,26 @@ function categoricalOptions(
         }),
     series: model.series.map((series, seriesIndex) => {
       const isY2 = model.y2SeriesFrom !== undefined && seriesIndex >= model.y2SeriesFrom;
+      const isRange = model.lowField !== undefined;
       return {
         name: series.name,
         // The secondary measure lives on the right axis and is drawn as whatever type2
         // says (line by default). The primary measure keeps the chart's own type.
         ...(isY2 ? { yAxis: 1, type: model.type2 ?? 'line' } : {}),
-        // Plain numbers unless a point needs styling: keeping the unstyled shape
-        // unchanged means an emphasis-free spec compiles to exactly what it did
-        // before, which is what makes the feature additive rather than a rewrite.
-        data: series.values.map((value, index) => {
-          if (value === null) return null;
-          const style = emphasis.styles.get(keyForCategory(model, index, series.name));
-          return style ? withTone({ y: value }, style, theme) : value;
-        }),
+        // Range data: each stored value is a [low, high] pair. Emit as
+        // [categoryIndex, low, high] which is what Highcharts range types expect.
+        // Normal categorical data: single values with optional emphasis styling.
+        data: isRange
+          ? series.values.map((value, index) => {
+              if (value === null) return null;
+              const pair = value as unknown as [number, number];
+              return [index, pair[0], pair[1]];
+            })
+          : series.values.map((value, index) => {
+              if (value === null) return null;
+              const style = emphasis.styles.get(keyForCategory(model, index, series.name));
+              return style ? withTone({ y: value }, style, theme) : value;
+            }),
       };
     }),
   };

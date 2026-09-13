@@ -9,10 +9,15 @@
     "pie",
     "heatmap",
     "scatter",
-    "bubble"
+    "bubble",
+    "columnrange",
+    "arearange",
+    "areasplinerange",
+    "errorbar",
+    "dumbbell"
   ],
   "counts": {
-    "supported": 25,
+    "supported": 30,
     "boundary": 5,
     "byType": {
       "bar": 11,
@@ -23,7 +28,12 @@
       "area": 2,
       "spline": 1,
       "areaspline": 1,
-      "heatmap": 1
+      "heatmap": 1,
+      "arearange": 1,
+      "columnrange": 1,
+      "areasplinerange": 1,
+      "errorbar": 1,
+      "dumbbell": 1
     }
   },
   "supported": [
@@ -3636,6 +3646,807 @@
               6.1,
               3.05,
               8.9
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "arearange",
+      "chartType": "arearange",
+      "query": "Show the temperature range by month",
+      "mode": "present",
+      "modeWhy": "pre-computed low/high bounds per category — the caller owns the aggregation",
+      "expects": "A filled band between the low and high values for each month. The data shape is [categoryIndex, low, high], which is what distinguishes range types from ordinary bars.",
+      "data": {
+        "name": "monthly-range",
+        "why": "pre-computed low/high bounds per category — the shape range types draw directly without aggregation",
+        "rows": [
+          {
+            "month": "Jan",
+            "low": 10,
+            "high": 25
+          },
+          {
+            "month": "Feb",
+            "low": 12,
+            "high": 28
+          },
+          {
+            "month": "Mar",
+            "low": 15,
+            "high": 30
+          },
+          {
+            "month": "Apr",
+            "low": 18,
+            "high": 35
+          },
+          {
+            "month": "May",
+            "low": 20,
+            "high": 38
+          }
+        ],
+        "shapes": [
+          "range",
+          "arearange",
+          "columnrange"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "arearange",
+          "title": "Temperature range by month"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "low": {
+            "field": "low"
+          },
+          "high": {
+            "field": "high"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "arearange",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "Temperature range by month",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "categories": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May"
+          ],
+          "title": {
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "name": "low",
+            "data": [
+              [
+                0,
+                10,
+                25
+              ],
+              [
+                1,
+                12,
+                28
+              ],
+              [
+                2,
+                15,
+                30
+              ],
+              [
+                3,
+                18,
+                35
+              ],
+              [
+                4,
+                20,
+                38
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "columnrange",
+      "chartType": "columnrange",
+      "query": "Show temperature range as columns",
+      "mode": "present",
+      "modeWhy": "same data as arearange, different mark — columns instead of filled area",
+      "expects": "Vertical columns spanning from low to high for each month. Same data shape as arearange, just a different visual encoding.",
+      "data": {
+        "name": "monthly-range",
+        "why": "pre-computed low/high bounds per category — the shape range types draw directly without aggregation",
+        "rows": [
+          {
+            "month": "Jan",
+            "low": 10,
+            "high": 25
+          },
+          {
+            "month": "Feb",
+            "low": 12,
+            "high": 28
+          },
+          {
+            "month": "Mar",
+            "low": 15,
+            "high": 30
+          },
+          {
+            "month": "Apr",
+            "low": 18,
+            "high": 35
+          },
+          {
+            "month": "May",
+            "low": 20,
+            "high": 38
+          }
+        ],
+        "shapes": [
+          "range",
+          "arearange",
+          "columnrange"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "columnrange"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "low": {
+            "field": "low"
+          },
+          "high": {
+            "field": "high"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "columnrange",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "categories": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May"
+          ],
+          "title": {
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "name": "low",
+            "data": [
+              [
+                0,
+                10,
+                25
+              ],
+              [
+                1,
+                12,
+                28
+              ],
+              [
+                2,
+                15,
+                30
+              ],
+              [
+                3,
+                18,
+                35
+              ],
+              [
+                4,
+                20,
+                38
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "areasplinerange",
+      "chartType": "areasplinerange",
+      "query": "Smooth temperature range band",
+      "mode": "present",
+      "modeWhy": "spline interpolation applied to the range band",
+      "expects": "A smoothed filled band between low and high. The spline modifier makes the edges curved rather than straight.",
+      "data": {
+        "name": "monthly-range",
+        "why": "pre-computed low/high bounds per category — the shape range types draw directly without aggregation",
+        "rows": [
+          {
+            "month": "Jan",
+            "low": 10,
+            "high": 25
+          },
+          {
+            "month": "Feb",
+            "low": 12,
+            "high": 28
+          },
+          {
+            "month": "Mar",
+            "low": 15,
+            "high": 30
+          },
+          {
+            "month": "Apr",
+            "low": 18,
+            "high": 35
+          },
+          {
+            "month": "May",
+            "low": 20,
+            "high": 38
+          }
+        ],
+        "shapes": [
+          "range",
+          "arearange",
+          "columnrange"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "areasplinerange"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "low": {
+            "field": "low"
+          },
+          "high": {
+            "field": "high"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "areasplinerange",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "categories": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May"
+          ],
+          "title": {
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "name": "low",
+            "data": [
+              [
+                0,
+                10,
+                25
+              ],
+              [
+                1,
+                12,
+                28
+              ],
+              [
+                2,
+                15,
+                30
+              ],
+              [
+                3,
+                18,
+                35
+              ],
+              [
+                4,
+                20,
+                38
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "errorbar",
+      "chartType": "errorbar",
+      "query": "Show error bars for temperature",
+      "mode": "present",
+      "modeWhy": "error bars are a range type — they show uncertainty bounds",
+      "expects": "Error bars spanning from low to high for each month. Typically used to show confidence intervals or measurement uncertainty.",
+      "data": {
+        "name": "monthly-range",
+        "why": "pre-computed low/high bounds per category — the shape range types draw directly without aggregation",
+        "rows": [
+          {
+            "month": "Jan",
+            "low": 10,
+            "high": 25
+          },
+          {
+            "month": "Feb",
+            "low": 12,
+            "high": 28
+          },
+          {
+            "month": "Mar",
+            "low": 15,
+            "high": 30
+          },
+          {
+            "month": "Apr",
+            "low": 18,
+            "high": 35
+          },
+          {
+            "month": "May",
+            "low": 20,
+            "high": 38
+          }
+        ],
+        "shapes": [
+          "range",
+          "arearange",
+          "columnrange"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "errorbar"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "low": {
+            "field": "low"
+          },
+          "high": {
+            "field": "high"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "errorbar",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "categories": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May"
+          ],
+          "title": {
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "name": "low",
+            "data": [
+              [
+                0,
+                10,
+                25
+              ],
+              [
+                1,
+                12,
+                28
+              ],
+              [
+                2,
+                15,
+                30
+              ],
+              [
+                3,
+                18,
+                35
+              ],
+              [
+                4,
+                20,
+                38
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dumbbell",
+      "chartType": "dumbbell",
+      "query": "Show temperature change as dumbbells",
+      "mode": "present",
+      "modeWhy": "dumbbells connect two values with a line and endpoints",
+      "expects": "A line connecting the low and high values for each month, with dots at each end. Useful for showing before/after or min/max comparisons.",
+      "data": {
+        "name": "monthly-range",
+        "why": "pre-computed low/high bounds per category — the shape range types draw directly without aggregation",
+        "rows": [
+          {
+            "month": "Jan",
+            "low": 10,
+            "high": 25
+          },
+          {
+            "month": "Feb",
+            "low": 12,
+            "high": 28
+          },
+          {
+            "month": "Mar",
+            "low": 15,
+            "high": 30
+          },
+          {
+            "month": "Apr",
+            "low": 18,
+            "high": 35
+          },
+          {
+            "month": "May",
+            "low": 20,
+            "high": 38
+          }
+        ],
+        "shapes": [
+          "range",
+          "arearange",
+          "columnrange"
+        ]
+      },
+      "expected": {
+        "series": 1,
+        "points": 5
+      },
+      "spec": {
+        "chart": {
+          "type": "dumbbell"
+        },
+        "encodings": {
+          "x": {
+            "field": "month"
+          },
+          "low": {
+            "field": "low"
+          },
+          "high": {
+            "field": "high"
+          }
+        }
+      },
+      "options": {
+        "chart": {
+          "type": "dumbbell",
+          "backgroundColor": "transparent"
+        },
+        "title": {
+          "text": "",
+          "style": {
+            "fontSize": "15px",
+            "color": "#24292f"
+          }
+        },
+        "credits": {
+          "enabled": false
+        },
+        "legend": {
+          "enabled": false,
+          "itemStyle": {
+            "color": "#57606a"
+          }
+        },
+        "colors": [
+          "#0072b2"
+        ],
+        "xAxis": {
+          "categories": [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May"
+          ],
+          "title": {
+            "text": "month",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a",
+              "fontSize": "10px"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de"
+        },
+        "yAxis": {
+          "title": {
+            "text": "low",
+            "style": {
+              "color": "#6e7781"
+            }
+          },
+          "labels": {
+            "style": {
+              "color": "#57606a"
+            }
+          },
+          "lineColor": "#d0d7de",
+          "tickColor": "#d0d7de",
+          "gridLineColor": "#eaeef2"
+        },
+        "series": [
+          {
+            "name": "low",
+            "data": [
+              [
+                0,
+                10,
+                25
+              ],
+              [
+                1,
+                12,
+                28
+              ],
+              [
+                2,
+                15,
+                30
+              ],
+              [
+                3,
+                18,
+                35
+              ],
+              [
+                4,
+                20,
+                38
+              ]
             ]
           }
         ]

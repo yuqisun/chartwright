@@ -204,6 +204,36 @@ const COPY: Record<string, Copy> = {
     modeWhy: 'three numeric channels from a pre-computed summary — the caller owns the percentiles',
     expects: 'Three bubbles on linear axes, sized by median latency. The object data format {x, y, z} is what makes a bubble.',
   },
+  arearange: {
+    query: 'Show the temperature range by month',
+    mode: 'present',
+    modeWhy: 'pre-computed low/high bounds per category — the caller owns the aggregation',
+    expects: 'A filled band between the low and high values for each month. The data shape is [categoryIndex, low, high], which is what distinguishes range types from ordinary bars.',
+  },
+  columnrange: {
+    query: 'Show temperature range as columns',
+    mode: 'present',
+    modeWhy: 'same data as arearange, different mark — columns instead of filled area',
+    expects: 'Vertical columns spanning from low to high for each month. Same data shape as arearange, just a different visual encoding.',
+  },
+  areasplinerange: {
+    query: 'Smooth temperature range band',
+    mode: 'present',
+    modeWhy: 'spline interpolation applied to the range band',
+    expects: 'A smoothed filled band between low and high. The spline modifier makes the edges curved rather than straight.',
+  },
+  errorbar: {
+    query: 'Show error bars for temperature',
+    mode: 'present',
+    modeWhy: 'error bars are a range type — they show uncertainty bounds',
+    expects: 'Error bars spanning from low to high for each month. Typically used to show confidence intervals or measurement uncertainty.',
+  },
+  dumbbell: {
+    query: 'Show temperature change as dumbbells',
+    mode: 'present',
+    modeWhy: 'dumbbells connect two values with a line and endpoints',
+    expects: 'A line connecting the low and high values for each month, with dots at each end. Useful for showing before/after or min/max comparisons.',
+  },
 
   // The boundary zone: nothing below is drawn above, and each says why.
   'numeric-pair-with-duplicate-x': {

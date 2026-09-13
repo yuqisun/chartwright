@@ -2145,5 +2145,481 @@
       }
     ],
     "warnings": []
+  },
+  "arearange-basic": {
+    "options": {
+      "chart": {
+        "type": "arearange",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "categories": [
+          "Jan",
+          "Feb",
+          "Mar"
+        ],
+        "title": {
+          "text": "month",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "low",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "name": "low",
+          "data": [
+            [
+              0,
+              10,
+              25
+            ],
+            [
+              1,
+              12,
+              28
+            ],
+            [
+              2,
+              15,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "month": "Jan",
+        "low": 10,
+        "high": 25
+      },
+      {
+        "month": "Feb",
+        "low": 12,
+        "high": 28
+      },
+      {
+        "month": "Mar",
+        "low": 15,
+        "high": 30
+      }
+    ],
+    "warnings": []
+  },
+  "columnrange-basic": {
+    "options": {
+      "chart": {
+        "type": "columnrange",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "categories": [
+          "Jan",
+          "Feb"
+        ],
+        "title": {
+          "text": "month",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "low",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "name": "low",
+          "data": [
+            [
+              0,
+              10,
+              25
+            ],
+            [
+              1,
+              12,
+              28
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "month": "Jan",
+        "low": 10,
+        "high": 25
+      },
+      {
+        "month": "Feb",
+        "low": 12,
+        "high": 28
+      }
+    ],
+    "warnings": []
+  },
+  "areasplinerange-basic": {
+    "options": {
+      "chart": {
+        "type": "areasplinerange",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "categories": [
+          "Jan",
+          "Feb"
+        ],
+        "title": {
+          "text": "month",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "low",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "name": "low",
+          "data": [
+            [
+              0,
+              10,
+              25
+            ],
+            [
+              1,
+              12,
+              28
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "month": "Jan",
+        "low": 10,
+        "high": 25
+      },
+      {
+        "month": "Feb",
+        "low": 12,
+        "high": 28
+      }
+    ],
+    "warnings": []
+  },
+  "errorbar-basic": {
+    "options": {
+      "chart": {
+        "type": "errorbar",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "categories": [
+          "Jan",
+          "Feb"
+        ],
+        "title": {
+          "text": "month",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "low",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "name": "low",
+          "data": [
+            [
+              0,
+              10,
+              25
+            ],
+            [
+              1,
+              12,
+              28
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "month": "Jan",
+        "low": 10,
+        "high": 25
+      },
+      {
+        "month": "Feb",
+        "low": 12,
+        "high": 28
+      }
+    ],
+    "warnings": []
+  },
+  "dumbbell-basic": {
+    "options": {
+      "chart": {
+        "type": "dumbbell",
+        "backgroundColor": "transparent"
+      },
+      "title": {
+        "text": "",
+        "style": {
+          "fontSize": "15px",
+          "color": "#24292f"
+        }
+      },
+      "credits": {
+        "enabled": false
+      },
+      "legend": {
+        "enabled": false,
+        "itemStyle": {
+          "color": "#57606a"
+        }
+      },
+      "colors": [
+        "#0072b2"
+      ],
+      "xAxis": {
+        "categories": [
+          "Jan",
+          "Feb"
+        ],
+        "title": {
+          "text": "month",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a",
+            "fontSize": "10px"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de"
+      },
+      "yAxis": {
+        "title": {
+          "text": "low",
+          "style": {
+            "color": "#6e7781"
+          }
+        },
+        "labels": {
+          "style": {
+            "color": "#57606a"
+          }
+        },
+        "lineColor": "#d0d7de",
+        "tickColor": "#d0d7de",
+        "gridLineColor": "#eaeef2"
+      },
+      "series": [
+        {
+          "name": "low",
+          "data": [
+            [
+              0,
+              10,
+              25
+            ],
+            [
+              1,
+              12,
+              28
+            ]
+          ]
+        }
+      ]
+    },
+    "dataset": [
+      {
+        "month": "Jan",
+        "low": 10,
+        "high": 25
+      },
+      {
+        "month": "Feb",
+        "low": 12,
+        "high": 28
+      }
+    ],
+    "warnings": []
   }
 }

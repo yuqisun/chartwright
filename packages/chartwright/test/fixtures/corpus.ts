@@ -151,6 +151,18 @@ export const datasets: Dataset[] = [
     ],
   },
   {
+    name: 'monthly-range',
+    shapes: ['range', 'arearange', 'columnrange'],
+    why: 'pre-computed low/high bounds per category — the shape range types draw directly without aggregation',
+    rows: [
+      { month: 'Jan', low: 10, high: 25 },
+      { month: 'Feb', low: 12, high: 28 },
+      { month: 'Mar', low: 15, high: 30 },
+      { month: 'Apr', low: 18, high: 35 },
+      { month: 'May', low: 20, high: 38 },
+    ],
+  },
+  {
     name: 'flow-edges',
     shapes: ['links', 'sankey'],
     why: 'rows are edges (from, to, weight), not points — the one shape that genuinely needs a new declaration',
@@ -409,6 +421,51 @@ export const CORPUS: CorpusCase[] = [
       },
     },
     today: { outcome: 'compiles', series: 2, points: 4 },
+  },
+  {
+    id: 'arearange',
+    dataset: byName('monthly-range'),
+    spec: {
+      chart: { type: 'arearange', title: 'Temperature range by month' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'columnrange',
+    dataset: byName('monthly-range'),
+    spec: {
+      chart: { type: 'columnrange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'areasplinerange',
+    dataset: byName('monthly-range'),
+    spec: {
+      chart: { type: 'areasplinerange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'errorbar',
+    dataset: byName('monthly-range'),
+    spec: {
+      chart: { type: 'errorbar' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    today: { outcome: 'compiles', series: 1, points: 5 },
+  },
+  {
+    id: 'dumbbell',
+    dataset: byName('monthly-range'),
+    spec: {
+      chart: { type: 'dumbbell' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+    },
+    today: { outcome: 'compiles', series: 1, points: 5 },
   },
 ];
 

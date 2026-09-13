@@ -57,6 +57,9 @@ type Base = {
   type2?: string;
   /** A fixed range for the secondary axis. */
   y2Range?: { min?: number; max?: number };
+  /** Range types: the low and high field names. When present, series values are [low, high] pairs. */
+  lowField?: string;
+  highField?: string;
 };
 
 export type CategoricalModel = Base & {
@@ -239,15 +242,21 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   const { kind } = CHART_TYPES[type];
 
   const dataset = materialize(spec, rows);
-  const { x, y, y2, series } = spec.encodings;
-  if (!x || !y) throw new Error('encodings.x and encodings.y are required');
+  const { x, y, y2, low, high, series } = spec.encodings;
+
+  // Range types use low/high instead of y. They are still categorical (band x axis)
+  // but their data shape is [index, low, high] rather than single values.
+  const isRange = low !== undefined && high !== undefined;
+  if (!x || (!y && !isRange)) throw new Error('encodings.x and encodings.y (or low+high) are required');
 
   const seriesField = series?.field;
   const y2Field = y2?.field;
   const sizeField = spec.encodings.size?.field;
+  const lowField = low?.field;
+  const highField = high?.field;
   if (dataset.length > 0) {
     const columns = Object.keys(dataset[0] as Row);
-    for (const field of [x.field, y.field, y2Field, seriesField, sizeField].filter((f): f is string => typeof f === 'string')) {
+    for (const field of [x.field, y?.field, y2Field, seriesField, sizeField, lowField, highField].filter((f): f is string => typeof f === 'string')) {
       if (!columns.includes(field)) {
         throw new Error(`encoding field '${field}' is not in the produced table (available: ${columns.join(', ')})`);
       }
@@ -259,7 +268,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     ...(spec.chart.title ? { title: spec.chart.title } : {}),
     dataset,
     xField: x.field,
-    yField: y.field,
+    yField: y?.field ?? lowField ?? '',
     ...(seriesField ? { seriesField } : {}),
     ...(spec.chart.stacking ? { stacking: spec.chart.stacking } : {}),
     ...(spec.chart.polar !== undefined ? { polar: spec.chart.polar } : {}),
@@ -269,6 +278,8 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     ...(y2Field ? { y2Field } : {}),
     ...(spec.chart.type2 ? { type2: spec.chart.type2 } : {}),
     ...(spec.axes?.y2 ? { y2Range: spec.axes.y2 } : {}),
+    ...(lowField ? { lowField } : {}),
+    ...(highField ? { highField } : {}),
   };
 
   if (kind === 'part-to-whole') {
@@ -279,7 +290,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
         slices: dataset.map((row) => ({
           key: datumKey(String(row[x.field])),
           name: String(row[x.field]),
-          value: Number(row[y.field]),
+          value: Number(row[y!.field]),
         })),
       },
       warnings: [],
@@ -287,7 +298,7 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   }
 
   if (kind === 'point-cloud') {
-    const pcValueFields = [y.field, ...(sizeField ? [sizeField] : [])];
+    const pcValueFields = [y!.field, ...(sizeField ? [sizeField] : [])];
     // Points are emitted in table order. The positional index is the datum key
     // for point-cloud types (§2.1): two points can share an x value, so the
     // category-value key would conflate them.
@@ -301,12 +312,73 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     };
   }
 
+  // Range types use low/high instead of y. They are still categorical (band x axis)
+  // but their data shape is [index, low, high] rather than single values.
+  if (isRange && kind === 'categorical') {
+    const categories = distinctInOrder(dataset.map((row) => row[x.field]));
+
+    // Collision check uses low field as the distinguishing measure
+    const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: lowField });
+    if (collision) {
+      throw new Error(
+        `the table has more than one row for category '${collision.category}'` +
+          `${collision.series !== undefined ? ` in series '${collision.series}'` : ''}. Add an aggregate step ` +
+          `(group_by '${x.field}') in run_query before charting.`,
+      );
+    }
+
+    // Build series with [low, high] paired values
+    const groups = new Map<string, Row[]>();
+    if (seriesField) {
+      for (const row of dataset) {
+        const key = String(row[seriesField]);
+        const bucket = groups.get(key);
+        if (bucket) bucket.push(row);
+        else groups.set(key, [row]);
+      }
+    } else {
+      groups.set(lowField!, dataset);
+    }
+
+    const seriesValues: SeriesValues[] = [];
+    for (const [name, groupRows] of groups) {
+      const valueMap = new Map<string, [number, number] | null>();
+      for (const row of groupRows) {
+        const lowVal = row[lowField!];
+        const highVal = row[highField!];
+        // A null in either bound means the range is unknown — store null rather than [0, 0].
+        const pair: [number, number] | null = lowVal === null || highVal === null ? null : [Number(lowVal), Number(highVal)];
+        valueMap.set(String(row[x.field]), pair);
+      }
+      // Store [low, high] pairs. The backend detects range types via lowField/highField
+      // and emits [categoryIndex, low, high] format.
+      const values = categories.map((cat) => {
+        const pair = valueMap.get(cat);
+        return pair !== undefined ? pair : null;
+      }) as unknown as (number | null)[];
+      seriesValues.push({ name, values });
+    }
+
+    return {
+      model: {
+        ...base,
+        kind: 'categorical' as const,
+        orientation: spec.chart.orientation === 'horizontal' ? 'horizontal' as const : 'vertical' as const,
+        categories,
+        series: seriesValues,
+        lowField,
+        highField,
+      },
+      warnings: [],
+    };
+  }
+
   const categories = distinctInOrder(dataset.map((row) => row[x.field]));
 
   // Two rows in one category cannot both be drawn on a categorical axis. Picking one
   // (or summing them) would silently change the numbers, so say what is wrong and let
   // the model aggregate in run_query instead.
-  const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: y.field, y2: y2Field });
+  const collision = findCategoryCollision(dataset, { x: x.field, series: seriesField, y: y!.field, y2: y2Field });
   if (collision) {
     throw new Error(
       `the table has more than one row for category '${collision.category}'` +
@@ -322,10 +394,10 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   let y2SeriesFrom: number | undefined;
   const measures: Array<{ field: string; label: string }> = y2Field
     ? [
-        { field: y.field, label: seriesField ? y.field : y.field },
+        { field: y!.field, label: seriesField ? y!.field : y!.field },
         { field: y2Field, label: seriesField ? y2Field : y2Field },
       ]
-    : [{ field: y.field, label: seriesField ?? y.field }];
+    : [{ field: y!.field, label: seriesField ?? y!.field }];
 
   for (let mi = 0; mi < measures.length; mi += 1) {
     const measure = measures[mi];
