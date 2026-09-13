@@ -60,16 +60,29 @@ backend is what would prove it.
 
 ## Releasing
 
+The publish target is declared in `packages/chartwright/package.json` (`publishConfig.registry`),
+not inherited from the machine's npmrc — a mirror such as `registry.npmmirror.com` is read-only
+and cannot accept a publish, so relying on the ambient config means `ENEEDAUTH` against a registry
+that was never going to work.
+
 ```bash
+# Once per machine. Note the explicit registry: `npm login` alone goes to whatever the
+# default is, which on a mirror-configured machine is not where you can publish.
+npm login --registry=https://registry.npmjs.org
+npm whoami  --registry=https://registry.npmjs.org
+
 npm run verify                                     # includes pack:check
-npm publish --tag alpha --workspace chartwright    # alpha until the type set reaches the commitment
-git tag v0.1.0-alpha.0
+npm publish --tag alpha --workspace chartwright    # targets npmjs via publishConfig
+git push origin main --tags
 ```
 
 `pack:check` is the gate that matters most here: it packs the tarball, installs it into a
 scratch project, and imports it with **plain node** — no flags, no bundler, no build step.
 Every other check in this repository imports from source, so that one is the only check that
 sees what a consumer sees.
+
+`--tag alpha` is deliberate: `latest` stays unset, so `npm install chartwright` cannot resolve
+to a pre-release. Consumers opt in with `npm install chartwright@alpha`.
 
 ## Prior art
 

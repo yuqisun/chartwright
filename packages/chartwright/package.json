@@ -37,6 +37,10 @@
     "./package.json": "./package.json"
   },
   "sideEffects": false,
+  "//publish": "Publish target stated here rather than inherited from the machine's npmrc. A mirror such as registry.npmmirror.com is read-only and cannot accept a publish, so a developer whose default registry is a mirror would otherwise get ENEEDAUTH against a registry that was never going to work. This makes the target explicit and machine-independent.",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
   "files": [
     "dist",
     "README.md",
