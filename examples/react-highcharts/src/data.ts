@@ -27,6 +27,7 @@ import cancellationsJson from '../data/cancellations-by-month.json';
 import counterpartySummaryJson from '../data/counterparty-summary.json';
 import monthlyActivityJson from '../data/monthly-activity.json';
 import postTrade from '../data/post-trade.json';
+import tradeSizeBandJson from '../data/trade-size-band.json';
 
 /** A row is whatever the caller passes in: chartwright never assumes a schema. */
 export type Row = Record<string, unknown>;
@@ -41,3 +42,12 @@ export const monthlyActivity = monthlyActivityJson as Row[];
 
 /** `GROUP BY month` again, but only the months that had a cancellation. */
 export const cancellationsByMonth = cancellationsJson as Row[];
+
+/**
+ * `GROUP BY month`, with the middle half of trade sizes as a low and a high.
+ *
+ * The only table here with two measures for one category, and the only one a band can be drawn
+ * from: `arearange`, `areasplinerange`, `columnrange`, `errorbar` and `dumbbell` all need a
+ * `low` and a `high`, so this is what makes five declared types reachable from the example.
+ */
+export const tradeSizeBand = tradeSizeBandJson as Row[];

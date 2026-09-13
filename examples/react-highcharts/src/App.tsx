@@ -43,10 +43,11 @@ export function App() {
         writes Highcharts configuration, and the browser never holds an API key.
       </p>
 
-      <nav style={{ display: 'flex', gap: 16, fontSize: 14, margin: '16px 0 0' }}>
+      <nav style={{ display: 'flex', gap: 16, fontSize: 14, margin: '16px 0 0', flexWrap: 'wrap' }}>
         <a href="#supported">Supported today ({showcase.counts.supported} cases)</a>
         <a href="#boundary">The boundary ({showcase.counts.boundary})</a>
         <a href="#agent">Run the agent</a>
+        <a href="/matrix.html">Test chart selection →</a>
       </nav>
 
       <div id="supported">

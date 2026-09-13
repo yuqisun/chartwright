@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Run every package's tests, one file per process.
+ * Run every package's and example's tests, one file per process.
  *
  * Two measured constraints shape this:
  *
@@ -20,18 +20,32 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Every `test/*.test.ts` under `packages/*`, in a stable order. */
+/**
+ * Every `test/*.test.ts` under `packages/*` and `examples/*`, in a stable order.
+ *
+ * `examples/*` is here because leaving it out meant the example's tests ran nowhere: the
+ * proxy's own test file passes and was invoked by no script in this repository. A test that
+ * never runs is worse than no test, because it implies coverage that does not exist. The
+ * chart-selection catalog's checks live there too, and they cannot live in
+ * `packages/chartwright/test/` — that would make the library's suite import from the example,
+ * and the library's zero example dependencies are load-bearing.
+ *
+ * Both extensions are matched: the library and the catalog are `.test.ts` (run through node's
+ * type stripping), and the proxy's is `.test.mjs` (plain JavaScript).
+ */
 function testFiles() {
   const files = [];
-  for (const entry of readdirSync(join(root, 'packages')).sort()) {
-    const testDir = join(root, 'packages', entry, 'test');
-    try {
-      if (!statSync(testDir).isDirectory()) continue;
-    } catch {
-      continue;
-    }
-    for (const file of readdirSync(testDir).sort()) {
-      if (file.endsWith('.test.ts')) files.push(join(testDir, file));
+  for (const group of ['packages', 'examples']) {
+    for (const entry of readdirSync(join(root, group)).sort()) {
+      const testDir = join(root, group, entry, 'test');
+      try {
+        if (!statSync(testDir).isDirectory()) continue;
+      } catch {
+        continue;
+      }
+      for (const file of readdirSync(testDir).sort()) {
+        if (file.endsWith('.test.ts') || file.endsWith('.test.mjs')) files.push(join(testDir, file));
+      }
     }
   }
   return files;

@@ -3,6 +3,15 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      // Two HTML entries, not a client-side router. The chart-selection page is a separate
+      // instrument from the showcase — it needs a key, it is not something to land on, and it
+      // shares no state with the page a visitor should see first. A second entry is the smallest
+      // thing that is genuinely a separate page, and it costs no dependency.
+      input: { main: 'index.html', matrix: 'matrix.html' },
+    },
+  },
   server: {
     port: 5173,
     // Some tools save by writing a temp file beside the target and renaming it into place — the

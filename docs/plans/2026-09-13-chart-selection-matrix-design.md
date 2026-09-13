@@ -177,7 +177,25 @@ passes.
 
 ### The dataset for the range types
 
-`settlement-lag-band.json`, one row per month of 2026:
+> **Changed during implementation.** This section specifies a *settlement-lag* band
+> (`lag_low_days`/`lag_high_days`). Built and measured, that band was `0–3` in **every one of
+> the six months** — settlement lag is a small bounded integer and the synthetic feed is
+> stationary, so five identical bands would have made the page unable to show whether a range
+> chart was drawing correctly. Min/max of trade size was tried next and had the opposite
+> problem: heavy-tailed, so the band ran from a few thousand dollars to fifty million in every
+> month and filled the plot. The dataset shipped is the **middle half of trade sizes** (p25–p75
+> of `notional_usd` per month), whose edges both move:
+>
+> ```
+> 2026-01  1.1M - 8.3M      2026-04  1.7M - 7.0M
+> 2026-02  1.4M - 9.2M      2026-05  1.7M - 9.3M
+> 2026-03  0.9M - 8.6M      2026-06  1.0M - 7.9M
+> ```
+>
+> The file is `trade-size-band.json` with `notional_low_usd`/`notional_high_usd`. Everything
+> else in this design is unchanged, including why the table exists at all.
+
+`trade-size-band.json`, one row per month of 2026:
 
 ```json
 { "month": "2026-01", "lag_low_days": 1, "lag_high_days": 6, "trades": 128 }

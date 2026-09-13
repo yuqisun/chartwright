@@ -1,0 +1,38 @@
+[
+  {
+    "month": "2026-01",
+    "notional_low_usd": 1107498,
+    "notional_high_usd": 8298286.08,
+    "trades": 135
+  },
+  {
+    "month": "2026-02",
+    "notional_low_usd": 1368957.3,
+    "notional_high_usd": 9227416.15,
+    "trades": 128
+  },
+  {
+    "month": "2026-03",
+    "notional_low_usd": 929818.08,
+    "notional_high_usd": 8550955.01,
+    "trades": 130
+  },
+  {
+    "month": "2026-04",
+    "notional_low_usd": 1678341.39,
+    "notional_high_usd": 6982107.66,
+    "trades": 154
+  },
+  {
+    "month": "2026-05",
+    "notional_low_usd": 1682987.25,
+    "notional_high_usd": 9282042.79,
+    "trades": 117
+  },
+  {
+    "month": "2026-06",
+    "notional_low_usd": 972169.08,
+    "notional_high_usd": 7890939.7,
+    "trades": 136
+  }
+]

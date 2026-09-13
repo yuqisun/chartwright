@@ -113,6 +113,48 @@ const GAPPED_PRESETS: Preset[] = [
   },
 ];
 
+/**
+ * The caller's own words about a pre-aggregated table, and which of its columns must not be
+ * recomputed — lifted out of the `DEMOS` entries below so the chart-selection page can send the
+ * same text. Two copies of "average commission is NOT additive" would eventually disagree, and
+ * the page that sends the weaker copy would produce a worse chart for a reason nobody could see.
+ *
+ * Only the pre-aggregated tables have these. The raw execution feed has none: there is nothing
+ * about one-row-per-trade that a description needs to correct.
+ */
+export const SUMMARY_TABLE = {
+  dataDescription: 'One row per counterparty, already aggregated and ranked by traded notional descending.',
+  columns: [
+    { name: 'notional_usd', description: 'Sum over that counterparty\u2019s trades. Additive.' },
+    { name: 'avg_commission_bps', description: 'Average commission in basis points. NOT additive.' },
+    { name: 'distinct_venues', description: 'How many different venues that counterparty used. NOT additive.' },
+    { name: 'largest_trade_usd', description: 'The largest single trade. A maximum, not a sum.' },
+    { name: 'settled_share_pct', description: 'Settled as a percentage of that counterparty\u2019s trades.' },
+  ],
+};
+
+export const MONTHLY_TABLE = {
+  dataDescription: 'One row per month of 2026, already aggregated from the execution feed.',
+  columns: [
+    { name: 'notional_usd', description: 'Sum of traded notional in that month. Additive.' },
+    {
+      name: 'avg_settlement_lag_days',
+      description:
+        'Average settlement lag in days. NOT additive: averaging these six numbers is not the half-year average.',
+    },
+    { name: 'failed_settlements', description: 'How many settlements failed in that month.' },
+  ],
+};
+
+export const CANCELLATIONS_TABLE = {
+  dataDescription: 'One row per month that had at least one cancellation. Months with none are absent, not zero.',
+  columns: [
+    { name: 'month', description: 'The month. Note that these are not consecutive.' },
+    { name: 'cancellations', description: 'How many trades were cancelled in that month. Additive.' },
+    { name: 'notional_usd', description: 'Sum of the cancelled notional in that month. Additive.' },
+  ],
+};
+
 export const DEMOS: Demo[] = [
   {
     id: 'ask',
@@ -138,14 +180,7 @@ export const DEMOS: Demo[] = [
     // Descriptions are optional, and this is the case they exist for: nothing in the
     // values says that one column is an average and another is a count of distinct
     // venues, and a model that assumes otherwise would recompute them.
-    dataDescription: 'One row per counterparty, already aggregated and ranked by traded notional descending.',
-    columns: [
-      { name: 'notional_usd', description: 'Sum over that counterparty\u2019s trades. Additive.' },
-      { name: 'avg_commission_bps', description: 'Average commission in basis points. NOT additive.' },
-      { name: 'distinct_venues', description: 'How many different venues that counterparty used. NOT additive.' },
-      { name: 'largest_trade_usd', description: 'The largest single trade. A maximum, not a sum.' },
-      { name: 'settled_share_pct', description: 'Settled as a percentage of that counterparty\u2019s trades.' },
-    ],
+    ...SUMMARY_TABLE,
   },
   {
     id: 'monthly',
@@ -157,16 +192,7 @@ export const DEMOS: Demo[] = [
     present: true,
     dataName: 'monthly-activity.json',
     dataKind: 'one row per month of 2026',
-    dataDescription: 'One row per month of 2026, already aggregated from the execution feed.',
-    columns: [
-      { name: 'notional_usd', description: 'Sum of traded notional in that month. Additive.' },
-      {
-        name: 'avg_settlement_lag_days',
-        description:
-          'Average settlement lag in days. NOT additive: averaging these six numbers is not the half-year average.',
-      },
-      { name: 'failed_settlements', description: 'How many settlements failed in that month.' },
-    ],
+    ...MONTHLY_TABLE,
   },
   {
     id: 'gapped',
@@ -178,11 +204,6 @@ export const DEMOS: Demo[] = [
     present: true,
     dataName: 'cancellations-by-month.json',
     dataKind: 'one row per month that had a cancellation',
-    dataDescription: 'One row per month that had at least one cancellation. Months with none are absent, not zero.',
-    columns: [
-      { name: 'month', description: 'The month. Note that these are not consecutive.' },
-      { name: 'cancellations', description: 'How many trades were cancelled in that month. Additive.' },
-      { name: 'notional_usd', description: 'Sum of the cancelled notional in that month. Additive.' },
-    ],
+    ...CANCELLATIONS_TABLE,
   },
 ];

@@ -4,7 +4,11 @@
  * These run without a network and without credentials: the provider `fetch` is
  * stubbed, which is also the reason `forwardToProvider` takes it as an argument.
  *
- * Run: node --test server/proxy.test.mjs   (Node 22+)
+ * Run: node --test test/proxy.test.mjs   (Node 22+)
+ *
+ * It lives in `test/` rather than beside the proxy so that `scripts/verify-tests.mjs` picks it
+ * up: it used to sit in `server/` and be run by nothing, which meant it passed forever while
+ * proving nothing to anyone.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -14,7 +18,7 @@ import {
   fromProviderResponse,
   toProviderMessages,
   toProviderTools,
-} from './proxy.mjs';
+} from '../server/proxy.mjs';
 
 test('messages are translated into the provider dialect', () => {
   const translated = toProviderMessages([

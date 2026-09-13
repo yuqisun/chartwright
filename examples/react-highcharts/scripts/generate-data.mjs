@@ -38,6 +38,7 @@ const OUT = join(DATA_DIR, 'post-trade.json');
 const COUNTERPARTY_OUT = join(DATA_DIR, 'counterparty-summary.json');
 const MONTHLY_OUT = join(DATA_DIR, 'monthly-activity.json');
 const CANCELLATIONS_OUT = join(DATA_DIR, 'cancellations-by-month.json');
+const TRADE_BAND_OUT = join(DATA_DIR, 'trade-size-band.json');
 
 const ROW_COUNT = 800;
 const SEED = 20260910;
@@ -289,6 +290,42 @@ const cancellationsByMonth = [...groupBy(rows.filter((r) => r.status === 'Cancel
   }))
   .sort((a, b) => a.month.localeCompare(b.month));
 
+/**
+ * A low/high pair per month, which is the shape a range chart needs.
+ *
+ * This is the only dataset here with two measures for one category, and that is the point:
+ * `arearange`, `areasplinerange`, `columnrange`, `errorbar` and `dumbbell` all draw a band
+ * between a low and a high, so without a table shaped like this the example could not exercise
+ * five of its declared types at all.
+ *
+ * The middle half of trade sizes, not the minimum and the maximum. Min/max is the obvious
+ * query and was the first thing tried, but trade sizes are heavy-tailed: the band ran from a
+ * few thousand dollars to fifty million in every month, so it filled the plot from the axis
+ * floor to the ceiling and looked the same in all six. Quartiles give a band whose edges both
+ * move, which is what makes the chart readable:
+ *
+ *   2026-01  1.1M - 8.3M      2026-04  1.7M - 7.0M
+ *   2026-02  1.4M - 9.2M      2026-05  1.7M - 9.3M
+ *   2026-03  0.9M - 8.6M      2026-06  1.0M - 7.9M
+ *
+ * A visual instrument that cannot be read is not a visual instrument.
+ *
+ * A quartile is not additive either: the average of six monthly 75th percentiles is not the
+ * half-year 75th percentile.
+ */
+const tradeSizeBand = [...groupBy(rows, (r) => r.trade_date.slice(0, 7))]
+  .map(([month, group]) => {
+    const sizes = group.map((r) => r.notional_usd).sort((a, b) => a - b);
+    const quartile = (p) => round(sizes[Math.floor(p * (sizes.length - 1))], 2);
+    return {
+      month,
+      notional_low_usd: quartile(0.25),
+      notional_high_usd: quartile(0.75),
+      trades: group.length,
+    };
+  })
+  .sort((a, b) => a.month.localeCompare(b.month));
+
 const writeJson = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
 
 mkdirSync(DATA_DIR, { recursive: true });
@@ -296,12 +333,14 @@ writeJson(OUT, rows);
 writeJson(COUNTERPARTY_OUT, counterpartySummary);
 writeJson(MONTHLY_OUT, monthlyActivity);
 writeJson(CANCELLATIONS_OUT, cancellationsByMonth);
+writeJson(TRADE_BAND_OUT, tradeSizeBand);
 
 console.log(`wrote ${rows.length} rows to ${OUT}`);
 console.log(`  settled=${count(rows, (r) => r.status === 'Settled')} failed=${count(rows, (r) => r.status === 'Failed')}`);
 console.log(`wrote ${counterpartySummary.length} rows to ${COUNTERPARTY_OUT}`);
 console.log(`wrote ${monthlyActivity.length} rows to ${MONTHLY_OUT}`);
 console.log(`wrote ${cancellationsByMonth.length} rows to ${CANCELLATIONS_OUT}`);
+console.log(`wrote ${tradeSizeBand.length} rows to ${TRADE_BAND_OUT}`);
 
 // The gap is the point of that last one, so report it rather than leaving it to be
 // noticed: every month between the first and the last, and which of them are absent.
@@ -352,3 +391,13 @@ report(
   1,
 );
 report('avg_settlement_lag_days', mean(monthlyActivity.map((r) => r.avg_settlement_lag_days), 4), mean(rows.map((r) => r.settlement_lag_days), 4), 2);
+// The band is a fourth kind of damage: a low and a high are not two amounts to add up, they
+// are the edges of a spread. The average of six monthly 75th percentiles is not the half-year
+// 75th percentile, and unlike the ratio above there is no denominator to reason about — the
+// number is simply not the thing it claims to be.
+report(
+  'notional_high_usd',
+  mean(tradeSizeBand.map((r) => r.notional_high_usd), 4),
+  [...rows.map((r) => r.notional_usd)].sort((a, b) => a - b)[Math.floor(0.75 * (rows.length - 1))],
+  2,
+);

@@ -10,7 +10,7 @@
     "dev:web": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:proxy": "node --test server/proxy.test.mjs",
+    "test:proxy": "node --test test/proxy.test.mjs",
     "gen:data": "node scripts/generate-data.mjs"
   },
   "dependencies": {
