@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compileToHighcharts } from '../src/compile/index.ts';
-import type { Row } from '../src/types.ts';
+import { runAgentLoop } from '../src/loop.ts';
+import { createToolHandlers, TOOL_DEFS } from '../src/tools.ts';
+import type { ChatMessage, LlmClient, LlmCompleteRequest, LlmCompleteResult, Row } from '../src/types.ts';
 
 test('arearange compiles with correct data format', () => {
   const rows: Row[] = [
@@ -83,4 +85,76 @@ test('range type handles null values', () => {
   assert.equal(series[0].data[0]?.[0], 0);
   assert.equal(series[0].data[1], null);
   assert.equal(series[0].data[2]?.[0], 2);
+});
+
+// --- Integration: range types through the agent loop (Critical bug regression) ---
+
+function scriptedLlm(replies: LlmCompleteResult[]): LlmClient {
+  let index = 0;
+  return {
+    async complete(_req: LlmCompleteRequest): Promise<LlmCompleteResult> {
+      const reply = replies[Math.min(index, replies.length - 1)];
+      index += 1;
+      return reply ?? { content: '' };
+    },
+  };
+}
+
+test('arearange can be submitted through the agent loop', async () => {
+  const rows: Row[] = [
+    { month: 'Jan', low: 10, high: 25 },
+    { month: 'Feb', low: 12, high: 28 },
+  ];
+  const handlers = createToolHandlers({ rows });
+  const result = await runAgentLoop({
+    llm: scriptedLlm([
+      {
+        toolCalls: [{
+          id: 'c1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'arearange' },
+            encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+          },
+        }],
+      },
+    ]),
+    messages: [{ role: 'user', content: 'show temperature ranges' }] as ChatMessage[],
+    tools: TOOL_DEFS,
+    runTool: (name: string, args: unknown) => {
+      const handler = handlers[name];
+      if (!handler) throw new Error(`unknown tool '${name}'`);
+      return handler(args);
+    },
+  });
+
+  assert.ok(result.spec, 'the agent loop accepted the range spec');
+  assert.equal(result.spec.chart.type, 'arearange');
+  assert.equal((result.spec.encodings as Record<string, unknown>).low !== undefined, true);
+  assert.equal((result.spec.encodings as Record<string, unknown>).high !== undefined, true);
+});
+
+// --- Emphasis on range types ---
+
+test('emphasis on arearange styles the correct datum', () => {
+  const rows: Row[] = [
+    { month: 'Jan', low: 10, high: 25 },
+    { month: 'Feb', low: 12, high: 50 },
+    { month: 'Mar', low: 15, high: 30 },
+  ];
+  const { options } = compileToHighcharts(
+    {
+      chart: { type: 'arearange' },
+      encodings: { x: { field: 'month' }, low: { field: 'low' }, high: { field: 'high' } },
+      emphasis: [{ when: { op: 'top_k', field: 'high', k: 1 }, style: { tone: 'highlight' } }],
+    },
+    rows,
+  );
+  const data = (options.series as Array<{ data: unknown[] }>)[0].data;
+  // Feb (index 1) has the highest high value (50). It should be styled as an object.
+  assert.equal(typeof data[1], 'object', 'Feb (highest high) is styled');
+  assert.ok(!Array.isArray(data[1]), 'styled point is an object, not an array');
+  // Jan and Mar should remain as arrays.
+  assert.ok(Array.isArray(data[0]), 'Jan is unstyled array');
+  assert.ok(Array.isArray(data[2]), 'Mar is unstyled array');
 });

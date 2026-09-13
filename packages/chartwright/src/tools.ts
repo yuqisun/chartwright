@@ -374,7 +374,11 @@ const SUBMIT_PROPERTIES = {
   },
   encodings: {
     type: 'object',
-    required: ['x', 'y'],
+    // Only x is universally required. Whether y, low+high, or other channels are needed
+    // depends on the chart type — the per-type declaration's `required` list is the
+    // authority, and validateSpec checks it. Requiring y here would block range types
+    // that use low+high instead.
+    required: ['x'],
     properties: {
       // `additionalProperties: false` on the inner objects too: a column reference is
       // one field, and a model that invents another one should be told rather than

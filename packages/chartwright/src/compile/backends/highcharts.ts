@@ -234,11 +234,16 @@ function categoricalOptions(
         ...(isY2 ? { yAxis: 1, type: model.type2 ?? 'line' } : {}),
         // Range data: each stored value is a [low, high] pair. Emit as
         // [categoryIndex, low, high] which is what Highcharts range types expect.
+        // Emphasis converts to object form before styling (arrays cannot be spread).
         // Normal categorical data: single values with optional emphasis styling.
         data: isRange
           ? series.values.map((value, index) => {
               if (value === null) return null;
-              const pair = value as unknown as [number, number];
+              const pair = value as [number, number];
+              const style = emphasis.styles.get(keyForCategory(model, index, series.name));
+              if (style) {
+                return withTone({ x: index, low: pair[0], high: pair[1] }, style, theme);
+              }
               return [index, pair[0], pair[1]];
             })
           : series.values.map((value, index) => {

@@ -27,7 +27,9 @@ export function isSupportedChartType(type: string): type is SupportedChartType {
   return isChartType(type);
 }
 
-export type SeriesValues = { name: string; values: (number | null)[] };
+/** A single value or a [low, high] pair for range types. */
+export type SeriesValue = number | [number, number] | null;
+export type SeriesValues = { name: string; values: SeriesValue[] };
 export type Slice = { key: string; name: string; value: number };
 
 type Base = {
@@ -351,11 +353,12 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
         valueMap.set(String(row[x.field]), pair);
       }
       // Store [low, high] pairs. The backend detects range types via lowField/highField
-      // and emits [categoryIndex, low, high] format.
+      // and emits [categoryIndex, low, high] format. SeriesValue accepts both single
+      // numbers and [low, high] pairs, so no cast is needed.
       const values = categories.map((cat) => {
         const pair = valueMap.get(cat);
         return pair !== undefined ? pair : null;
-      }) as unknown as (number | null)[];
+      });
       seriesValues.push({ name, values });
     }
 

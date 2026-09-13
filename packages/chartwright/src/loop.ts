@@ -289,7 +289,10 @@ function validateSpec(raw: unknown, steps: TransformStep[], capabilities?: reado
   // `errors` being empty already means every required channel is a non-empty string; the
   // explicit check is what lets the compiler see that when the spec is assembled below.
   if (errors.length > 0) return { errors };
-  if (typeof provided.x !== 'string' || typeof provided.y !== 'string') return { errors };
+  // The per-type declaration decides which channels are required (y for most types,
+  // low+high for range types). The loop above already validated them and pushed errors.
+  // Here we only need x to be present for the assembly below to type-check.
+  if (typeof provided.x !== 'string') return { errors };
 
   const encodings: ChartSpec['encodings'] = {};
   // Assembled from the channels that were actually given, one field each. A key the schema
