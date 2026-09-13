@@ -14,7 +14,7 @@ around them.
 | | Why |
 |---|---|
 | Rows in memory | chartwright compiles *your* data in *your* process; it never fetches anything |
-| A chart library to render with | Today the compiler emits Highcharts options (bar / line / spline / area / areaspline / pie / scatter / bubble / heatmap, plus stacking, polar, donut holes, sparklines and dual-axis combo) |
+| A chart library to render with | Today the compiler emits Highcharts options for 14 chart types: bar, line, spline, area, areaspline, pie, heatmap, scatter, bubble, columnrange, arearange, areasplinerange, errorbar, dumbbell — plus stacking, polar, donut holes, sparklines, dual-axis combo and range bands |
 | An LLM that supports **tool calling** | The agent loop uses `tools` / `tool_calls` (function calling). Any OpenAI-compatible endpoint works — if it does not implement tool calling, the loop cannot run |
 | Somewhere safe for the API key | **Not the browser.** A page holding a provider key leaks it to anyone with DevTools, and most providers disallow browser calls outright. Use your own backend endpoint (a ~60-line proxy; see step 4) |
 
@@ -375,92 +375,148 @@ const again = compileToHighcharts(result.spec, rows);
 
 That is what makes golden tests, diffs and audit possible.
 
-## 8. Supported today
+## 8. Supported chart types
 
-`chart.type` accepts **`bar`**, **`line`**, **`spline`**, **`area`**, **`areaspline`**,
-**`pie`** and **`heatmap`**. Anything else is rejected with a clear error — and because the
-rejected spec goes back to the model inside the loop, it usually retries with a supported
-type rather than failing. A wrong chart is never produced silently.
+The compiler supports **14 chart types** across four model kinds. Every type is
+declared in `packages/chartwright/src/compile/chart-types.ts` — that table is the
+single source of truth for the schema enum, the prompt list, the validator, and
+this documentation. A type not in the table is refused with a clear error, and
+the refusal goes back to the model inside the loop so it usually retries with a
+supported type.
 
-Five chart-level modifiers change how one of those is drawn rather than what it is:
+### By kind
+
+| Kind | Types | What it means |
+|------|-------|---------------|
+| **Categorical** (10) | `bar`, `line`, `spline`, `area`, `areaspline`, `columnrange`, `arearange`, `areasplinerange`, `errorbar`, `dumbbell` | Band x axis + measure(s). Range types use `low`/`high` instead of `y`. |
+| **Part-to-whole** (1) | `pie` | Slices sized by value. `chart.hole` makes it a donut. |
+| **Matrix** (1) | `heatmap` | Two category axes + measure as colour. Needs `highcharts/modules/heatmap` + `coloraxis`. |
+| **Point-cloud** (2) | `scatter`, `bubble` | Two numeric axes, no categories. Bubble adds `size` channel. Need `highcharts/highcharts-more`. |
+
+### Chart-level modifiers
 
 | Modifier | What it does | Honoured by |
-|---|---|---|
-| `chart.stacking: 'normal' \| 'percent'` | stack the series; `percent` rescales each category to 100 | bar, line, spline, area, areaspline |
-| `chart.polar: true` | wrap the axes around a circle — a radar with a line, a rose with bars | the same five |
-| `chart.hole: 0..1` | the hole that makes a pie a donut | pie |
-| `chart.compact: true` | drop title, axes and legend, keeping the marks: a sparkline | any type |
-| `axes.y.range: { min?, max? }` | a fixed scale, when it is a fact about the measure rather than about these rows | any banded type |
+|----------|-------------|-------------|
+| `chart.stacking: 'normal' \| 'percent'` | Stack the series; `percent` rescales each category to 100 | bar, line, spline, area, areaspline |
+| `chart.polar: true` | Wrap the axes around a circle — radar with line, rose with bars | bar, line, spline, area, areaspline |
+| `chart.hole: 0..1` | The hole that makes a pie a donut | pie |
+| `chart.compact: true` | Drop title, axes and legend — a sparkline | any type |
+| `chart.type2: string` | How `encodings.y2` is drawn (default `'line'`) | categorical types |
+| `axes.x.kind / axes.y.kind` | Override inferred axis type: `'band' \| 'linear' \| 'log'` | any type |
+| `axes.y.range: { min?, max? }` | Fixed scale when it is a fact about the measure | any type |
+| `axes.y2.range: { min?, max? }` | Fixed scale for the secondary axis | dual-axis combo |
 
-A modifier a type cannot mean is **refused, not ignored**: `stacking` on a pie comes back
-as an error naming what the type does honour, because a stacked pie would draw an unstacked
-one and say nothing. The set is declared per type in `packages/chartwright/src/compile/chart-types.ts`,
-which is also where the list above comes from — every other list in the library and these
-docs is derived from it.
+A modifier a type cannot mean is **refused, not ignored**: `stacking` on a pie
+comes back as an error naming what the type does honour.
 
-### The one type that needs a module
+### Encoding channels
 
-`heatmap` is the exception to "there is nothing to load": Highcharts keeps it in a module, so a
-page that imports only `highcharts` cannot draw one — and the failure happens at render time in
-**your** process, not in ours.
+| Channel | Purpose | Used by |
+|---------|---------|---------|
+| `x` | Category or measure for the horizontal axis | all types |
+| `y` | Primary measure | categorical, part-to-whole, matrix, point-cloud |
+| `y2` | Secondary measure on a right axis (dual-axis combo) | categorical |
+| `low` / `high` | Lower and upper bounds for range types | columnrange, arearange, areasplinerange, errorbar, dumbbell |
+| `size` | Third numeric dimension | bubble |
+| `series` | Split data into multiple series | categorical, point-cloud, matrix |
 
-**Under a bundler, import the ESM builds — both ends of the pair:**
+### Modules your bundle needs
 
-```ts
-import Highcharts from 'highcharts/esm/highcharts.js';
-import 'highcharts/esm/modules/heatmap.js';   // brings coloraxis in with it
-import 'highcharts/esm/modules/coloraxis.js'; // explicit, and harmless: ESM dedupes it
-```
+chartwright has **zero runtime dependencies** — it does not install or bundle
+Highcharts. You render the options it produces with your own Highcharts instance.
+Some chart types need Highcharts modules loaded alongside the core:
 
-**Why, because the obvious version is a trap.** Highcharts 12 ships two builds and its
-`package.json` has no `exports` or `module` field to steer a bundler to the right one, so both
-`highcharts` and `highcharts/modules/heatmap` resolve to the **UMD** files. Under Vite that cost us
-two bugs in a row, neither of them at build time:
+| Module | ESM import | Required by |
+|--------|-----------|-------------|
+| Core | `import Highcharts from 'highcharts/esm/highcharts.js'` | all types |
+| highcharts-more | `import 'highcharts/esm/highcharts-more.js'` | scatter, bubble, columnrange, arearange, areasplinerange, errorbar, dumbbell |
+| heatmap | `import 'highcharts/esm/modules/heatmap.js'` | heatmap |
+| coloraxis | `import 'highcharts/esm/modules/coloraxis.js'` | heatmap |
+| dumbbell | `import 'highcharts/esm/modules/dumbbell.js'` | dumbbell (also needs highcharts-more) |
 
-1. importing only `highcharts` and asking for a heatmap throws Highcharts error 17
-   (`missingModuleFor=heatmap`) *at render time* — inside a React effect, which unmounted the whole
-   showcase page rather than one card;
-2. importing `highcharts/modules/heatmap` on top of that did **not** fix it. The import threw
-   `Cannot read properties of undefined (reading 'Axis')` before any chart existed, because the
-   pre-bundled module and the app's core were two different Highcharts objects and the module
-   registered on the wrong one.
+**Under a bundler, always use the ESM builds.** Highcharts 12's `package.json`
+has no `exports` field, so `import 'highcharts/modules/heatmap'` resolves to the
+UMD file which creates a second Highcharts instance and throws at render time.
+The ESM imports share one instance — verified in a browser.
 
-The ESM pair is what works, because `highcharts/esm/modules/heatmap.js` imports the ESM core, so
-both ends are one instance — verified in a browser: the example draws 22 of 22 charts, heatmap
-included. If you inline the UMD scripts as `<script>` tags instead of bundling, none of this
-applies: classic scripts share one global, which is how this repository's own render matrix loads
-them.
-
-Rather than take our word for which modules, ask the library — the answer is generated from the
-same declaration the compiler uses, and a test checks that every path it names exists in the
-installed package:
+Rather than memorise which modules, ask the library:
 
 ```ts
 import { listChartTypes } from 'chartwright';
-listChartTypes();   // [{ name: 'heatmap', kind: 'matrix', requires: ['x','series','y'],
-                    //    honours: ['compact'], modules: [...] }, ...]
+listChartTypes();
+// → [{ name: 'arearange', kind: 'categorical', requires: ['x','low','high'],
+//     honours: ['compact'], modules: ['highcharts/highcharts-more'], colorRoles: [...] }, ...]
 ```
 
-A heatmap's three channels are the ones a bar chart already uses, read differently: `x` is the
-column, `series` the row, and `y` is drawn as colour instead of height. That is why it needed no
-new channel — only a type that says what the channels mean. One consequence is worth knowing:
-on a heatmap the colour *is* the value, so `emphasis` highlights with a border rather than a fill.
+### Known expressiveness boundaries
 
-Known expressiveness boundaries (they return a warning rather than a lie):
+These return a warning rather than a lie:
 
 - emphasis has **semantic tones only** (`highlight` / `muted`) — you cannot ask
   for a specific colour yet;
-- emphasis can select the **top/bottom k (contiguous)**, value thresholds and
-  named categories — not arbitrary ranks like "the 1st and 3rd";
-- sorting is the plan's job: "the largest 5" **must** sort before limiting, and a
-  plan that does not is refused;
-- **a date column is a category.** There is no `datetime` axis: the x axis is spaced
-  evenly whatever the dates say. For a monthly series with every month present that
-  changes nothing; for one with a gap it draws the gap as though it were not there. That
-  is a decision rather than an omission, and `docs/roadmap.md` item 21 carries the cost
-  and what would justify revisiting it.
+- emphasis can select the **top/bottom k**, value thresholds and named categories
+  — not arbitrary ranks like "the 1st and 3rd";
+- sorting is the plan's job: "the largest 5" **must** sort before limiting;
+- **a date column is a category.** There is no `datetime` axis yet: the x axis is
+  spaced evenly whatever the dates say. For a monthly series with every month
+  present that changes nothing; for one with a gap it draws the gap as though it
+  were not there. That is a decision, not an omission.
 
-## 9. What the model sees
+## 9. What is not yet supported (and when it arrives)
+
+The commitment is **Rung 3: ~36 types by end of P2**. Rungs 4 and 5 are not
+refused — they are *triggered* by real demand evidence rather than by a date.
+
+### Coming in P2 (committed)
+
+| Family | Types | What's needed | Status |
+|--------|-------|---------------|--------|
+| **C** two/five-value points | `waterfall`, `bullet`, `boxplot` | `target` channel; percentile aggregation for ask-mode boxplot | planned |
+| **F** two numeric axes | `packedbubble` | `size` channel wiring | planned |
+| **H** part-to-whole extended | `funnel`, `pyramid`, `gauge`, `solidgauge` | `axes.y.range` (already supported) | planned |
+| **A** band + one measure | `lollipop`, `dotplot`, `polygon`, `cylinder`, `columnpyramid` | declaration + mapper | planned |
+| **B** stack/offset | `streamgraph` | `chart.stacking` (already supported) | planned |
+
+### Rung 4 — triggered by demand
+
+| Family | Types | Trigger |
+|--------|-------|---------|
+| **J** hierarchy | `treemap`, `sunburst`, `treegraph` | Consumer asks for hierarchical data visualization |
+| **K** links / flow | `sankey`, `dependencywheel`, `networkgraph`, `arcdiagram`, `organization`, `flowmap` | Consumer asks for flow/relationship charts |
+| **E** computed from raw | `histogram`, `bellcurve`, `pareto` | Consumer asks for statistical distributions |
+| **O** special channels | `wordcloud`, `vector`, `windbarb` | Consumer asks for these specific types |
+
+### Rung 5 — triggered + licence-gated
+
+| Family | Types | Blocker |
+|--------|-------|---------|
+| **I** OHLC / financial | `candlestick`, `ohlc`, `hlc`, `heikinashi`, `hollowcandlestick`, `renko`, `pointandfigure`, `flags` | Highcharts Stock licence |
+| **D** time + interval | `xrange`, `gantt`, `timeline` | Highcharts Gantt licence + time axis |
+
+### Refused (will not be implemented)
+
+| Family | Types | Reason |
+|--------|-------|--------|
+| **L** geo / maps | `map`, `mapbubble`, `mappoint`, `mapline`, `tiledwebmap`, `geoheatmap` | Requires a second data source (GeoJSON); out of scope |
+| **V** set theory | `venn` | Set semantics do not fit the channel model |
+| **O** (partial) | `item`, `pictorial` | Require icon resources; out of scope |
+
+### Queryable at runtime
+
+Your app can check what it actually got at integration time:
+
+```ts
+import { listChartTypes } from 'chartwright';
+const types = listChartTypes();
+console.log(`${types.length} types available`);
+types.forEach(t => console.log(`  ${t.name} (${t.kind}) — modules: ${t.modules.join(', ') || 'none'}`));
+```
+
+A gap found on day one is a scoping decision; the same gap found in production
+is a broken promise. This is why the list is generated from the declaration, not
+hand-written.
+
+## 10. What the model sees
 
 The model never receives your table. It receives:
 
@@ -498,7 +554,7 @@ which has no off switch today. If you need the preview to be zero, that is a dec
 to make deliberately rather than by setting a profiling option; both it and the
 reasoning are recorded in `docs/roadmap.md`.
 
-## 10. Budgets are yours to set
+## 11. Budgets are yours to set
 
 Out of the box the library imposes **no limits** — it is a library, not a policy
 engine. If you want guard rails:
@@ -512,7 +568,7 @@ but keeps going. A model that talks without ever calling `submit_spec` is stoppe
 after one nudge and reported as `AgentGaveUpError` (its own words are on
 `.explanation`), so `ask()` always terminates.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 | Symptom | Cause |
 |---|---|
@@ -526,7 +582,7 @@ after one nudge and reported as `AgentGaveUpError` (its own words are on
 | `"limit: N" follows an aggregate with no "sort" in between` | "Top N" without an ordering; the model is told to sort first |
 | `sort field 'X' is not in the table` | A typo'd column the model invented |
 
-## 12. API surface at a glance
+## 13. API surface at a glance
 
 ```ts
 // The agent layer
