@@ -51,7 +51,8 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --experimental-strip-types --test test/*.test.ts",
-    "prepublishOnly": "npm run build"
+    "//prepare": "Runs on `npm install`, on `npm publish` and on `npm pack`. That single hook is what makes the source vendorable: a consumer who points a file: or git: dependency at this package gets dist/ built for them, instead of a package whose entry point does not exist yet. It replaces the old prepublishOnly, which covered publishing only.",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

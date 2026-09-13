@@ -39,8 +39,9 @@ licence, your bundle. Some chart types need a Highcharts module as well — `lis
 reports which, per type (see §7).
 
 **Vendoring the source instead.** If you want to read or patch the compiler, or your policy
-is to build dependencies from source, copy `packages/chartwright` in and point at it — but
-build it first, because the entry point is `dist/`, not `src/`:
+is to build dependencies from source, copy `packages/chartwright` out of the repository and
+point at it. Its `prepare` script builds `dist/` during your `npm install`, so this is one
+step:
 
 ```jsonc
 // your-app/package.json
@@ -52,8 +53,15 @@ build it first, because the entry point is `dist/`, not `src/`:
 ```
 
 ```bash
-npm install --prefix ../my-deps/chartwright && npm run build --prefix ../my-deps/chartwright
+npm install
 ```
+
+**What does not work: `npm install github:<user>/chartwright`.** That fetches the
+*repository root*, which is the monorepo — `chartwright-monorepo`, private, with no library
+entry point. npm has no way to name a package in a subdirectory of a git dependency, so
+point a git or `file:` dependency at `packages/chartwright` itself, not at the repository.
+A downloaded source archive is the same story: it has no `dist/` (build output is not
+committed), and the `prepare` hook is what builds it during install.
 
 ## 2. Nothing to configure
 
