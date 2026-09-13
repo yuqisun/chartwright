@@ -186,7 +186,9 @@ export const CHART_TYPES = {
     modifiers: ['compact'],
     allowsDuplicateCategories: false,
     colorRoles: ['series.categorical'],
-    modules: ['highcharts/highcharts-more'],
+    // Dumbbell extends arearange (from highcharts-more) with a connector line between
+    // the low and high markers. Both modules must load, in this order.
+    modules: ['highcharts/highcharts-more', 'highcharts/modules/dumbbell'],
   },
 } as const satisfies Record<string, ChartTypeSpec>;
 
