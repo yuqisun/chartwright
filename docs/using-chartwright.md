@@ -4,10 +4,17 @@ This is the consumer-facing guide: what you need, how to wire it up, and what yo
 get back. `examples/react-highcharts` is the same instructions with working code
 around them.
 
-> **Status: 0.0.0, source-only.** The package is not on npm yet, so you consume it
-> by pointing at the source (below). That changes to `npm install chartwright`
-> once it is published, and the two config tweaks in step 3 disappear with it —
-> that is the only part of this document that will need revising.
+> **Status: 0.1.0-alpha — pre-release.** Install it explicitly by tag, because `latest`
+> is deliberately not pointed at a pre-release:
+>
+> ```bash
+> npm install chartwright@alpha highcharts
+> ```
+>
+> While the major version is 0, a minor bump may contain a breaking change; the promise is
+> spelled out under "Versioning" in the package README, and every release is listed in its
+> CHANGELOG. Vendoring the source (step 1's alternative) remains supported for anyone who
+> wants to read or patch the compiler.
 
 ## What you need
 
@@ -16,30 +23,24 @@ around them.
 | Rows in memory | chartwright compiles *your* data in *your* process; it never fetches anything |
 | A chart library to render with | Today the compiler emits Highcharts options for 14 chart types: bar, line, spline, area, areaspline, pie, heatmap, scatter, bubble, columnrange, arearange, areasplinerange, errorbar, dumbbell — plus stacking, polar, donut holes, sparklines, dual-axis combo and range bands |
 | An LLM that supports **tool calling** | The agent loop uses `tools` / `tool_calls` (function calling). Any OpenAI-compatible endpoint works — if it does not implement tool calling, the loop cannot run |
-| Somewhere safe for the API key | **Not the browser.** A page holding a provider key leaks it to anyone with DevTools, and most providers disallow browser calls outright. Use your own backend endpoint (a ~60-line proxy; see step 4) |
+| Somewhere safe for the API key | **Not the browser.** A page holding a provider key leaks it to anyone with DevTools, and most providers disallow browser calls outright. Use your own backend endpoint (a ~60-line proxy; see step 3) |
 
 You do **not** need: a database, a server for chartwright itself, a build step
 for the library, or any runtime dependency — the package has none.
 
-## 1. Get the source
+## 1. Install
 
 ```bash
-git clone https://github.com/yuqisun/chartwright.git
-# or download the repository zip
+npm install chartwright@alpha highcharts
 ```
 
-You only need `packages/chartwright`. Copy it next to your project (or keep the
-clone and reference it in place):
+chartwright itself has **no runtime dependencies**. Highcharts is yours: your version, your
+licence, your bundle. Some chart types need a Highcharts module as well — `listChartTypes()`
+reports which, per type (see §7).
 
-```
-your-app/
-  package.json
-  src/
-my-deps/
-  chartwright/          # copied from packages/chartwright
-```
-
-## 2. Add the dependency
+**Vendoring the source instead.** If you want to read or patch the compiler, or your policy
+is to build dependencies from source, copy `packages/chartwright` in and point at it — but
+build it first, because the entry point is `dist/`, not `src/`:
 
 ```jsonc
 // your-app/package.json
@@ -51,41 +52,26 @@ my-deps/
 ```
 
 ```bash
-npm install
+npm install --prefix ../my-deps/chartwright && npm run build --prefix ../my-deps/chartwright
 ```
 
-There is nothing else to install: the package declares **no dependencies**.
+## 2. Nothing to configure
 
-## 3. Two config tweaks
+A normal install works in a normal project — bundler or plain node, TypeScript or
+JavaScript. There is no `optimizeDeps` tweak and no `allowImportingTsExtensions` flag.
 
-While the package is consumed as TypeScript source, two settings are required in
-your app. Both exist because the library's internal imports carry `.ts`
-extensions (so its own tests can run without a build step).
+The published package ships a build (`dist/`, ESM + type declarations), so a normal install
+works in a normal project — bundler or plain node, TypeScript or JavaScript. There is no
+`optimizeDeps` tweak and no `allowImportingTsExtensions`.
 
-```ts
-// vite.config.ts
-export default defineConfig({
-  plugins: [react()],
-  optimizeDeps: { exclude: ['chartwright'] },   // let Vite transform its TS source
-});
-```
+That was not always true, and the difference is worth knowing if you are reading an older
+guide: the entry point used to be TypeScript source, which node refuses to load from
+`node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so consumers needed a
+bundler plus two flags. The library's own source still uses extension-ful imports
+internally — that is what lets its tests run with no build step — but `dist/` has those
+rewritten to `.js`, which is what you import.
 
-```jsonc
-// tsconfig.json
-{
-  "compilerOptions": {
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,   // the library imports './x.ts'
-    "noEmit": true                        // implied by the flag above
-  }
-}
-```
-
-Missing the first gives a dependency pre-bundling error; missing the second gives
-`TS5097: An import path can only end with a '.ts' extension when
-'allowImportingTsExtensions' is enabled`.
-
-## 4. Give it an LLM, without giving it your key
+## 3. Give it an LLM, without giving it your key
 
 The library asks for a **function**, not a provider SDK, so you decide where the
 model call happens. The safe arrangement is a small endpoint of your own:
@@ -114,7 +100,7 @@ In a **Node-only** app (a CLI, a job, a backend) you can skip the proxy and call
 the provider directly from your `complete()` implementation. The interface is the
 same; only the transport differs.
 
-## 5. Wire it up
+## 4. Wire it up
 
 The whole integration is three steps:
 
@@ -265,7 +251,7 @@ to grow. `sessionId` is an opaque correlation id.
 **a non-streaming client still shows progress** — it never leaves the user
 staring at nothing. `signal` (an `AbortSignal`) cancels a run in flight.
 
-## 6. Two modes: chart a question, or chart a result
+## 5. Two modes: chart a question, or chart a result
 
 `ask()` does one of two jobs, and one boolean picks which.
 
@@ -351,7 +337,7 @@ rather than invented.
 This text goes to the provider with the request: it is the one part of the prompt that
 is yours. See "What the model sees" below.
 
-## 7. What you get back
+## 6. What you get back
 
 | Field | What it is | What it is for |
 |---|---|---|
@@ -375,7 +361,7 @@ const again = compileToHighcharts(result.spec, rows);
 
 That is what makes golden tests, diffs and audit possible.
 
-## 8. Supported chart types
+## 7. Supported chart types
 
 The compiler supports **14 chart types** across four model kinds. Every type is
 declared in `packages/chartwright/src/compile/chart-types.ts` — that table is the
@@ -462,7 +448,7 @@ These return a warning rather than a lie:
   present that changes nothing; for one with a gap it draws the gap as though it
   were not there. That is a decision, not an omission.
 
-## 9. What is not yet supported (and when it arrives)
+## 8. What is not yet supported (and when it arrives)
 
 The commitment is **Rung 3: ~36 types by end of P2**. Rungs 4 and 5 are not
 refused — they are *triggered* by real demand evidence rather than by a date.
@@ -516,7 +502,7 @@ A gap found on day one is a scoping decision; the same gap found in production
 is a broken promise. This is why the list is generated from the declaration, not
 hand-written.
 
-## 10. What the model sees
+## 9. What the model sees
 
 The model never receives your table. It receives:
 
@@ -554,7 +540,7 @@ which has no off switch today. If you need the preview to be zero, that is a dec
 to make deliberately rather than by setting a profiling option; both it and the
 reasoning are recorded in `docs/roadmap.md`.
 
-## 11. Budgets are yours to set
+## 10. Budgets are yours to set
 
 Out of the box the library imposes **no limits** — it is a library, not a policy
 engine. If you want guard rails:
@@ -568,7 +554,7 @@ but keeps going. A model that talks without ever calling `submit_spec` is stoppe
 after one nudge and reported as `AgentGaveUpError` (its own words are on
 `.explanation`), so `ask()` always terminates.
 
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 | Symptom | Cause |
 |---|---|
@@ -582,7 +568,7 @@ after one nudge and reported as `AgentGaveUpError` (its own words are on
 | `"limit: N" follows an aggregate with no "sort" in between` | "Top N" without an ordering; the model is told to sort first |
 | `sort field 'X' is not in the table` | A typo'd column the model invented |
 
-## 13. API surface at a glance
+## 12. API surface at a glance
 
 ```ts
 // The agent layer
@@ -598,6 +584,9 @@ materialize(spec, rows)               // → the table the plan produces
 applyTransform(rows, steps)           // the engine, step by step
 findCategoryCollision(rows, encodings) // two rows competing for one category, as data
 isSupportedChartType(type) / SUPPORTED_CHART_TYPES
+listChartTypes()                      // the support matrix as data: kind, channels,
+                                      // modifiers, modules, colour roles, per type
+resolveAvailableTypes(names) / resolveCapabilities(source)  // the capability handshake
 
 // The local tools (usable without the agent, if you want your own orchestration)
 describeTable(rows, options?, declared?)  // profile: aggregates only

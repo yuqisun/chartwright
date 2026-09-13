@@ -11,7 +11,16 @@
  */
 export { applyTransform, binDate } from './transform.ts';
 export { buildToolDefs, createToolHandlers, describeTable, inferColumns, previewRows, runQuery, TOOL_DEFS } from './tools.ts';
-export { compileToHighcharts, findCategoryCollision, isSupportedChartType, materialize, SUPPORTED_CHART_TYPES } from './compile/index.ts';
+export {
+  compileToHighcharts,
+  findCategoryCollision,
+  isSupportedChartType,
+  listChartTypes,
+  materialize,
+  resolveAvailableTypes,
+  resolveCapabilities,
+  SUPPORTED_CHART_TYPES,
+} from './compile/index.ts';
 export { defaultTheme, resolveTheme } from './compile/index.ts';
 export { deriveAxisLayout, LAYOUT } from './compile/index.ts';
 export { AgentGaveUpError, runAgentLoop } from './loop.ts';
@@ -19,6 +28,7 @@ export { applyColumnDescriptions, buildSystemPrompt, buildUserPrompt } from './p
 export { createChartwright } from './ask.ts';
 
 export type { CategoryCollision, ChartModel, ChartOptions, CompiledChart, SupportedChartType } from './compile/index.ts';
+export type { CapabilityResolution, ChannelName, ChartKind, ChartType, ChartTypeSpec, Modifier } from './compile/index.ts';
 export type { ColorRole, CompileOptions, Theme, ThemeInput, ThemeRoles } from './compile/index.ts';
 export type { AxisLayout, LayoutInput } from './compile/index.ts';
 export type { PromptColumn, PromptDataset } from './prompt.ts';

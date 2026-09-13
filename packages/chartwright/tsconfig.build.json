@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Emit real JS + types. The source keeps `.ts` in its internal imports so the tests can run
+    // it directly with node's type stripping; `rewriteRelativeImportExtensions` is what turns
+    // those into `.js` in the output, so a plain node process can resolve them.
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "rewriteRelativeImportExtensions": true,
+    "moduleResolution": "bundler"
+  },
+  "include": ["src"]
+}

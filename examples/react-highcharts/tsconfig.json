@@ -4,11 +4,10 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    // chartwright is consumed as linked TypeScript source in this monorepo, and
-    // its internal imports carry .ts extensions (so Node can run the tests with
-    // type stripping). The compiler options of the including project apply to
-    // everything it pulls in, hence this flag here. It disappears once the
-    // library publishes a build and its exports point at dist.
+    // This app's own imports carry explicit extensions (`./components/ChartView.tsx`), which is
+    // the same style the library uses internally. It is a choice about this app, no longer a
+    // requirement chartwright imposes: the library ships a build and its `exports` point at
+    // `dist/`, so a consumer with ordinary extensionless imports needs none of this.
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "strict": true,

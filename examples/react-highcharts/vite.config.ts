@@ -19,8 +19,4 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8787', changeOrigin: true },
     },
   },
-  // chartwright is a linked workspace package whose entry is TypeScript source.
-  // Excluding it from dependency pre-bundling lets Vite transform it directly,
-  // so the example runs with no build step for the library itself.
-  optimizeDeps: { exclude: ['chartwright'] },
 });

@@ -27,16 +27,49 @@ A **deterministic compiler** does the rest: it executes the spec's declarative t
 
 ```bash
 npm install
+npm run verify        # the whole gate: build, typecheck, all tests, showcase check, pack:check
 npm test --workspace chartwright          # unit tests (node:test, no test framework dependency)
-npm run typecheck --workspace chartwright
 npm run dev                               # the example app: http://localhost:5173
+npm run render                            # draw every corpus case in a real browser
 ```
 
-Node 22.6+ is required for the test script, which runs TypeScript directly via type stripping. The library keeps to erasable TypeScript syntax so it can be executed without a build step.
+Node 22.6+ is required. Two things are worth knowing about how this repository runs
+TypeScript:
+
+- **Tests run the source directly**, via node's type stripping — no build, no test framework.
+  The library keeps to erasable TypeScript syntax so that stays possible.
+- **Consumers get a build.** `npm run build:lib` emits `dist/` (ESM + `.d.ts`), and the
+  package's `exports` point there, because node refuses to strip types for files under
+  `node_modules`. The source keeps `.ts` extensions in its internal imports and
+  `rewriteRelativeImportExtensions` turns them into `.js` on the way out.
+- The example app depends on that build, so root `dev`/`build`/`verify` run `build:lib` first.
 
 ## Status
 
-Early. **Highcharts is the first target backend**; other libraries are planned behind the same spec.
+**0.1.0-alpha.** Published and installable; the boundary is known and queryable, and the API
+may still change. 14 of a committed ~36 chart types are implemented — what exists, what is
+planned and what is deliberately refused are all listed in
+[`docs/using-chartwright.md`](docs/using-chartwright.md).
+
+```bash
+npm install chartwright@alpha highcharts
+```
+
+Highcharts is the first target backend. The spec is library-agnostic by design; a second
+backend is what would prove it.
+
+## Releasing
+
+```bash
+npm run verify                                     # includes pack:check
+npm publish --tag alpha --workspace chartwright    # alpha until the type set reaches the commitment
+git tag v0.1.0-alpha.0
+```
+
+`pack:check` is the gate that matters most here: it packs the tarball, installs it into a
+scratch project, and imports it with **plain node** — no flags, no bundler, no build step.
+Every other check in this repository imports from source, so that one is the only check that
+sees what a consumer sees.
 
 ## Prior art
 

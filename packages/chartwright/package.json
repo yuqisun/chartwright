@@ -1,19 +1,53 @@
 {
   "name": "chartwright",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0-alpha.0",
   "description": "Natural-language charts in your own process: an agentic loop inspects your data locally, a deterministic compiler emits chart-library options.",
   "type": "module",
   "license": "MIT",
+  "keywords": [
+    "charts",
+    "highcharts",
+    "llm",
+    "agent",
+    "natural-language",
+    "visualization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuqisun/chartwright.git",
+    "directory": "packages/chartwright"
+  },
+  "homepage": "https://github.com/yuqisun/chartwright#readme",
+  "bugs": {
+    "url": "https://github.com/yuqisun/chartwright/issues"
+  },
   "engines": {
     "node": ">=22.6"
   },
+  "//": "The published artifact is dist/, never src/: node refuses to strip types for files under node_modules (ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING), so a src-only entry point is unimportable by a plain node process. `npm run build` produces dist/ with the source's .ts import specifiers rewritten to .js.",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --test test/*.test.ts"
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
