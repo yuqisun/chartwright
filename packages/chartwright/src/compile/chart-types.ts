@@ -24,7 +24,7 @@ import type { CapabilitySource } from '../types.ts';
 import type { ColorRole } from './theme.ts';
 
 /** A channel a spec can carry. Every one is a `{ field }` reference into the one table. */
-export type ChannelName = 'x' | 'y' | 'y2' | 'series' | 'size';
+export type ChannelName = 'x' | 'y' | 'y2' | 'series' | 'size' | 'low' | 'high';
 
 /**
  * Every channel, as a runtime list.
@@ -32,7 +32,7 @@ export type ChannelName = 'x' | 'y' | 'y2' | 'series' | 'size';
  * Keyed by the union so that adding a `ChannelName` without adding it here is a
  * compile error rather than a channel the validator silently never looks at.
  */
-const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, y2: true, series: true, size: true };
+const CHANNEL_SET: Record<ChannelName, true> = { x: true, y: true, y2: true, series: true, size: true, low: true, high: true };
 export const CHANNEL_NAMES = Object.keys(CHANNEL_SET) as readonly ChannelName[];
 
 /** What a channel *means* for one type — the same `y` is a height for a bar and a colour for a heatmap. */
@@ -140,6 +140,7 @@ export const CHART_TYPES = {
     required: ['x', 'y', 'size'],
     modifiers: ['compact'],
     allowsDuplicateCategories: true,
+    modules: ['highcharts/highcharts-more'],
     colorRoles: ['series.categorical'],
   },
 } as const satisfies Record<string, ChartTypeSpec>;

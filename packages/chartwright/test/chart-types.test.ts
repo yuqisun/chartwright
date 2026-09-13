@@ -276,6 +276,9 @@ const SCHEMA_SAMPLES = {
     // offered, and the loop accepts a spec without compiling it (only `ask()` adds that check).
     y2: { field: 'commission_bps' },
     series: { field: 'currency' },
+    size: { field: 'revenue' },
+    low: { field: 'low_value' },
+    high: { field: 'high_value' },
   },
   emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
   axes: { x: { kind: 'linear' }, y: { min: 0, max: 100 }, y2: { min: 0, max: 50 } },
@@ -449,10 +452,10 @@ test('listChartTypes reports the declaration, not a second copy of it', () => {
   assert.deepEqual(heatmap?.modules, ['highcharts/modules/heatmap', 'highcharts/modules/coloraxis']);
   assert.equal(heatmap?.kind, 'matrix');
 
-  // The other five are core-only, which is what makes them cheap for a consumer to adopt: nothing
-  // to load. If one of them ever needs a module, this assertion is where that becomes visible.
+  // Core-only types are cheap for a consumer to adopt: nothing to load. When a type gains a
+  // module, this assertion is where that becomes visible.
   assert.deepEqual(
     listed.filter((entry) => entry.modules.length > 0).map((entry) => entry.name),
-    ['heatmap'],
+    ['heatmap', 'bubble'],
   );
 });

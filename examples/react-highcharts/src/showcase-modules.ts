@@ -10,6 +10,7 @@
  * throws 'Cannot read properties of undefined (reading Axis)' at import time. The core import in
  * ChartView matches, or the two would be different instances and a heatmap would fail with error 17.
  */
+import 'highcharts/esm/highcharts-more.js';
 import 'highcharts/esm/modules/heatmap.js';
 import 'highcharts/esm/modules/coloraxis.js';
 

@@ -184,6 +184,10 @@ export type ChartSpec = {
     series?: Encoding;
     /** Optional size channel for bubble charts — maps a measure to mark size. */
     size?: Encoding;
+    /** Low value for range types (columnrange, arearange, errorbar, dumbbell). */
+    low?: Encoding;
+    /** High value for range types. */
+    high?: Encoding;
   };
   /**
    * Axis overrides. Omitted, every axis is inferred: a category channel wants a band axis and a
