@@ -205,8 +205,34 @@ every mark and every label is still drawn, and the warning says what would help
 When two measures have different units — notional in billions and commission in
 basis points — putting both on one axis flattens the smaller one. The spec can
 name a second measure with `encodings.y2`, and the compiler draws it on a second
-(right) axis with its own title. Series are named after their measure field so
-emphasis on one cannot style the other.
+(right) axis with its own title. Series are named after their measure field
+(`notional_usd`, `avg_commission_bps`), which is what makes the legend readable.
+
+**Emphasis has to say which measure it means, and the answer depends on the rule.** With
+two measures every row is two data points, one per series, so a rule that names one
+measure's *values* stays inside that measure:
+
+| Rule | Reaches |
+|---|---|
+| `top_k` — including `rest: true` | only the measure it names. `top_k` on `avg_commission_bps` does not style the `notional_usd` bar in that category, and `rest` fades exactly what `top_k` selected, so it too stays in one series |
+| `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `between` | every measure, because these name a **row** rather than a measure — "counterparty is Globex" is true of Globex whichever series you read |
+
+That asymmetry is deliberate, and it is the reason the series are named after their
+fields at all: a ranking is a claim about one measure's values, so it must not reach
+across into a series it never ranked. The practical cost is one extra rule:
+
+```ts
+// "highlight the largest of each, fade the rest" on a dual-axis chart is two pairs.
+emphasis: [
+  { when: { op: 'top_k', k: 1, field: 'notional_usd' }, style: { tone: 'highlight' } },
+  { when: { op: 'top_k', k: 1, field: 'notional_usd', rest: true }, style: { tone: 'muted' } },
+  { when: { op: 'top_k', k: 1, field: 'avg_commission_bps' }, style: { tone: 'highlight' } },
+  { when: { op: 'top_k', k: 1, field: 'avg_commission_bps', rest: true }, style: { tone: 'muted' } },
+]
+```
+
+Naming the series after their fields also protects the `top_k` half: without it the two
+measures would share a datum key and a ranking on one would silently restyle the other.
 
 **The risk:** independently scaled axes can be made to show any correlation. The
 compiler will never volunteer a dual-axis chart; it draws one only when the spec
@@ -490,7 +516,9 @@ These return a warning rather than a lie:
   so the pair partitions the rows exactly. A larger `k` is not the complement and
   never was: `top_k` counts from the top, so on twelve rows `k: 11` fades the top
   eleven — including the bar the first rule just highlighted — and leaves the last
-  bar at the default colour, where it reads as the selected one;
+  bar at the default colour, where it reads as the selected one. On a dual-axis
+  chart `rest` complements **one** series, the measure it names; see "Two measures
+  on one chart" above for the two-rule form that covers both;
 - sorting is the plan's job: "the largest 5" **must** sort before limiting;
 - **a date column is a category.** There is no `datetime` axis yet: the x axis is
   spaced evenly whatever the dates say. For a monthly series with every month

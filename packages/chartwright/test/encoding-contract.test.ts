@@ -244,6 +244,13 @@ test('both prompts state the channel contract, and that orientation does not mov
     /which column is the x axis and which is the measure/,
     'the free-choice wording that contradicted the hard rule',
   );
+
+  // The scope of `rest` is stated in the prompt as well as the guide, because "the rest" reads
+  // like the whole chart and is in fact one series. Behaviour is pinned in `combo.test.ts`.
+  for (const mode of ['ask', 'present'] as const) {
+    assert.match(buildSystemPrompt(mode), /`rest` fades one series/, `${mode}: rest's scope is stated`);
+    assert.match(buildSystemPrompt(mode), /names a row rather than a measure/, `${mode}: and the contrast`);
+  }
 });
 
 test('every channel role the model reads is derived from the declaration', () => {
@@ -291,6 +298,13 @@ test('every channel role the model reads is derived from the declaration', () =>
     assert.match(channels.y?.description ?? '', /measure column, always/, `${mode}: y is a measure channel`);
     // The one channel where labels are correct, said out loud so the rule above is not over-read.
     assert.match(channels.series?.description ?? '', /not a measure/, `${mode}: series is a label channel`);
+
+    // And `rest`'s scope is in the schema too, where the model writes the rule.
+    const rest = (submit?.parameters as {
+      properties: { emphasis: { items: { properties: { when: { properties: Record<string, { description?: string }> } } } } };
+    }).properties.emphasis.items.properties.when.properties.rest;
+    assert.match(rest?.description ?? '', /fades ONE series/, `${mode}: rest's scope is in the schema`);
+    assert.match(rest?.description ?? '', /y2/, `${mode}: and it names the channel a second rule is needed for`);
   }
 });
 

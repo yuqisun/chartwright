@@ -7,6 +7,19 @@ spelled out under [Versioning](#versioning) in the README.
 
 ## [Unreleased]
 
+### Changed
+
+- **The emphasis scope on a dual-axis chart is documented, and it was documented wrongly.**
+  The consumer guide said "series are named after their measure field *so emphasis on one cannot
+  style the other*" — which is the opposite of what the compiler does for a predicate: `eq` and
+  the thresholds name a **row**, so they style both measures, while `top_k` (and therefore `rest`)
+  names a measure's **values** and stays inside that series. That asymmetry is deliberate and is
+  the reason §3.4 rule 1 names the series after their fields at all, but the guide stated only the
+  `top_k` half as if it were the whole rule. The scope is now stated in one table, in the prompt,
+  in the `rest` schema description, and in `EmphasisWhen`; three tests in `test/combo.test.ts`
+  pin the behaviour, which was previously half-covered (C2 asserted the predicate half, nothing
+  asserted `rest`'s).
+
 ### Added
 
 - **`emphasis` can mark the complement of a ranked set.** `{ op: 'top_k', k, field, rest: true }`
@@ -64,16 +77,15 @@ spelled out under [Versioning](#versioning) in the README.
   out empty — most often because every value ties, so a `k` of 1 swallows the table — used to
   report "matched no rows", which sends the reader looking for a wrong field name instead of at
   their `k`.
-
-### Changed
-
 - **The channel roles are now derived from the type declarations everywhere the model reads
   them.** The submit tool's description said only that "`encodings.x` is the category column,
   `encodings.y` the measure"; `y2`, `size`, `low` and `high` are measures too, and a type's own
   `channels` map is where that was already declared. The description now carries a generated
   role list (`x = category, y = measure, …`) and every channel property describes itself from
   the same declaration, so the text a model reads and the rule the compiler enforces are one
-  fact rather than two that can drift.
+  fact rather than two that can drift. A channel the panel does not offer is left undescribed:
+  a range-only capability list declares no `y`, and interpolating that empty role produced
+  "The  column, always."
 - The `present`-mode prompt offered "which column is the x axis and which is the measure" as a
   free choice, directly above a hard rule fixing `x` as the category. It now offers the
   *measure* as the choice and states that `x` is fixed.

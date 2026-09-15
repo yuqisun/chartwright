@@ -487,7 +487,8 @@ const SUBMIT_PROPERTIES = {
                 'top_k only. Mark the rows the ranked set EXCLUDES, so `{ op: "top_k", k: 1, field, rest: true }` ' +
                 'is "every row except the largest" — the complement of the same ranking, ties included. This is ' +
                 'the way to say "fade the rest". A larger k is not that: it fades the top k, including the row ' +
-                'another rule just highlighted.',
+                'another rule just highlighted. It fades ONE series, the measure it names; on a chart with ' +
+                '`y2` the second series needs a `rest` rule of its own.',
             },
             value: {},
             values: { type: 'array' },

@@ -235,6 +235,12 @@ export type EmphasisWhen =
        *
        * The complement is taken over the same ranking as the rule it mirrors, ties at the k-th
        * value included (§ ties), so the pair always partitions the rows the ranking can see.
+       *
+       * It is scoped to the measure it names, like every other `top_k` — a rank is a claim about
+       * one measure's values, and §3.4 rule 1 exists so it cannot reach into a series it never
+       * ranked. On a dual-axis combo, fading both series takes one `rest` rule per measure; the
+       * consumer guide has the shape. A predicate is the other half: `eq` and the thresholds name
+       * a *row*, so they reach every measure.
        */
       rest?: boolean;
     }

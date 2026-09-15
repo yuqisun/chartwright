@@ -100,6 +100,90 @@ test('without y2, there is one axis and no type2', () => {
   assert.equal(series[0].type, undefined);
 });
 
+// --- the emphasis scope, which is asymmetric on purpose ---
+//
+// A dual-axis chart gives every row *two* datum keys — one per measure (§3.4 rule 1) — so every
+// rule has to say which of them it means. The answer differs by kind, and it is rule 1 that
+// decides the first half: series are named after their measure field precisely so that `top_k` on
+// the secondary measure cannot style the primary bar in that category. A rank is a statement about
+// one measure's values, so it stays inside that measure.
+//
+// A predicate is a statement about the *row* — `eq: 'Globex'` is true of Globex whatever column you
+// read — so it styles both, and that is C2 above. Where the two halves meet is `rest`: it reads
+// like "everything else on the chart" and is scoped to its own measure like any other `top_k`.
+// Documented in `docs/using-chartwright.md`; pinned here, because a scope that is only written down
+// is a scope the next change is free to alter.
+
+/** Reads `[series name, per-category tone]` out of the compiled combo options. */
+function comboStyles(spec: ChartSpec, input: Row[]): Record<string, string[]> {
+  const { options } = compileToHighcharts(spec, input);
+  return Object.fromEntries(
+    (options.series as Array<{ name: string; data: unknown[] }>).map((series) => [
+      series.name,
+      series.data.map((datum) => {
+        if (typeof datum !== 'object' || datum === null) return 'plain';
+        const color = (datum as { color?: string }).color;
+        return color === '#e8590c' ? 'highlight' : color === '#c9ced6' ? 'muted' : 'styled';
+      }),
+    ]),
+  );
+}
+
+test('A1: rest complements the measure it names, and leaves the other series alone', () => {
+  const styles = comboStyles(
+    {
+      ...comboSpec,
+      emphasis: [
+        { when: { op: 'top_k', k: 1, field: 'notional_usd' }, style: { tone: 'highlight' } },
+        { when: { op: 'top_k', k: 1, field: 'notional_usd', rest: true }, style: { tone: 'muted' } },
+      ],
+    },
+    rows,
+  );
+
+  // Acme has the largest notional; its own series cell is highlighted and the other two faded.
+  assert.deepEqual(styles.notional_usd, ['highlight', 'muted', 'muted']);
+  // The commission series is untouched by both rules — that is rule 1 doing its job, not an
+  // oversight: neither rule ranked commission, so neither may claim to know its "rest".
+  assert.deepEqual(styles.avg_commission_bps, ['plain', 'plain', 'plain']);
+});
+
+test('A2: covering both series takes two rest rules, one per measure', () => {
+  // The documented way to fade a dual-axis chart: say it once per measure. Two rules rather than
+  // one is the cost of keeping the rank inside its own measure, and it is deliberate.
+  const styles = comboStyles(
+    {
+      ...comboSpec,
+      emphasis: [
+        { when: { op: 'top_k', k: 1, field: 'notional_usd' }, style: { tone: 'highlight' } },
+        { when: { op: 'top_k', k: 1, field: 'notional_usd', rest: true }, style: { tone: 'muted' } },
+        { when: { op: 'top_k', k: 1, field: 'avg_commission_bps' }, style: { tone: 'highlight' } },
+        { when: { op: 'top_k', k: 1, field: 'avg_commission_bps', rest: true }, style: { tone: 'muted' } },
+      ],
+    },
+    rows,
+  );
+
+  // Each measure keeps its own ranking: notional peaks at Acme, commission at Globex.
+  assert.deepEqual(styles.notional_usd, ['highlight', 'muted', 'muted']);
+  assert.deepEqual(styles.avg_commission_bps, ['muted', 'highlight', 'muted']);
+});
+
+test('A3: the asymmetric half, restated — a predicate still styles both series', () => {
+  // The contrast that makes A1 readable. `eq: 'Globex'` names a row, not a measure, so it reaches
+  // both; this is C2's claim asserted through the same reader, so the two halves of the rule sit
+  // in one place.
+  const styles = comboStyles(
+    {
+      ...comboSpec,
+      emphasis: [{ when: { op: 'eq', field: 'counterparty', value: 'Globex' }, style: { tone: 'muted' } }],
+    },
+    rows,
+  );
+  assert.deepEqual(styles.notional_usd, ['plain', 'muted', 'plain']);
+  assert.deepEqual(styles.avg_commission_bps, ['plain', 'muted', 'plain']);
+});
+
 // --- combo + series encoding (C1, I1) ---
 
 const comboSeriesRows: Row[] = [
