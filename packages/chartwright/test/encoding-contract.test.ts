@@ -294,6 +294,155 @@ test('every channel role the model reads is derived from the declaration', () =>
   }
 });
 
+test('the role text follows the capability panel, and a channel the panel lacks is left undescribed', () => {
+  // The derivation has to hold for a narrowed panel, because that is what `capabilities` is for.
+  // A range-only list declares no `y` at all — it takes `low` and `high` — so `channelRoleOf('y')`
+  // is the empty string there, and interpolating it produced the sentence "The  column, always."
+  // Telling a model to fill `y` when none of its types has one is worse than saying nothing.
+  const encodingsOf = (capabilities: string[]) => {
+    const submit = buildToolDefs('present', capabilities).find((tool) => tool.name === 'submit_spec');
+    return {
+      description: submit?.description ?? '',
+      properties: (submit?.parameters as {
+        properties: { encodings: { properties: Record<string, { description?: string }> } };
+      }).properties.encodings.properties,
+    };
+  };
+
+  const rangeOnly = encodingsOf(['columnrange', 'arearange', 'errorbar']);
+  assert.equal(rangeOnly.properties.y?.description, undefined, 'y is not described to a range-only panel');
+  assert.doesNotMatch(rangeOnly.description, /The {2}/, 'and no sentence is left with a hole in it');
+  assert.match(rangeOnly.description, /low = measure/, 'the channels it does have are named');
+  assert.match(rangeOnly.properties.low?.description ?? '', /numbers only/);
+
+  // A point cloud is the panel where `x` is not a category, and the wording has to say so.
+  const cloudOnly = encodingsOf(['scatter']);
+  assert.match(cloudOnly.properties.x?.description ?? '', /measure column/, 'x is a measure on a cloud');
+  assert.match(cloudOnly.properties.x?.description ?? '', /linear axis/, 'and the axis wording says why');
+  assert.doesNotMatch(cloudOnly.properties.x?.description ?? '', /read as a category/, 'and does not claim otherwise');
+
+  // A panel of one categorical type keeps the plain category wording.
+  const barOnly = encodingsOf(['bar']);
+  assert.match(barOnly.properties.x?.description ?? '', /category column/);
+  assert.match(barOnly.properties.y?.description ?? '', /measure column, always/);
+});
+
+test('a Date instance on a measure channel is refused, not read as epoch milliseconds', () => {
+  // The one case `Number.isFinite` cannot see: `Number(date)` is a finite number, so a date column
+  // on `y` compiled to a chart of `1767225600000` against an epoch axis, silently. A date-like
+  // *string* was already caught (`Number('2026-01-01')` is NaN); the object walked through.
+  const dated: Row[] = [
+    { region: 'A', when: new Date('2026-01-01') },
+    { region: 'B', when: new Date('2026-02-01') },
+  ];
+  assert.throws(
+    () =>
+      compileToHighcharts(
+        spec({ chart: { type: 'bar' }, encodings: { x: { field: 'region' }, y: { field: 'when' } } }),
+        dated,
+      ),
+    /'when' \(encodings\.y\) is a Date.*put it in encodings\.x/s,
+  );
+
+  // A date-like string is refused too, by the text rule rather than the Date rule.
+  assert.throws(
+    () =>
+      compileToHighcharts(
+        spec({
+          chart: { type: 'bar' },
+          encodings: { x: { field: 'region' }, y: { field: 'when' } },
+        }),
+        [
+          { region: 'A', when: '2026-01-01' },
+          { region: 'B', when: '2026-02-01' },
+        ],
+      ),
+    /'when' \(encodings\.y\) is not a numeric measure/,
+  );
+
+  // And a date as the *category* is still fine — that is where the refusal sends it. The label is
+  // the Date's own `String()`, which is locale- and zone-dependent, so this asserts the shape
+  // (two categories, in row order) and not the text.
+  const dated2: Row[] = [
+    { month: new Date('2026-01-01'), revenue: 10 },
+    { month: new Date('2026-02-01'), revenue: 20 },
+  ];
+  const { options } = compileToHighcharts(
+    spec({ chart: { type: 'line' }, encodings: { x: { field: 'month' }, y: { field: 'revenue' } } }),
+    dated2,
+  );
+  const categories = (options.xAxis as { categories: string[] }).categories;
+  assert.equal(categories.length, 2, 'one category per row');
+  assert.equal(categories[0], String(dated2[0]?.month), 'a Date on x is read as a category, not a measure');
+  assert.deepEqual((options.series as Array<{ data: unknown[] }>)[0]?.data, [10, 20]);
+});
+
+test('a point cloud refuses a gap, because a missing coordinate is a dropped mark', () => {
+  // A gap in a category is a hole the reader can see. A gap in a *position* is not: Highcharts
+  // skips the datum, so a scatter silently loses a point and a null `z` on a bubble drops every
+  // mark in the series — measured before this, `0 of 3` marks drawn with `warnings: []`.
+  const gap: Row[] = [
+    { x: 1, y: 10 },
+    { x: 2, y: null },
+    { x: 3, y: 30 },
+  ];
+  assert.throws(
+    () =>
+      compileToHighcharts(
+        spec({ chart: { type: 'scatter' }, encodings: { x: { field: 'x' }, y: { field: 'y' } } }),
+        gap,
+      ),
+    /encodings\.y names 'y', which is empty for a row of this table/,
+  );
+
+  // The channel that is empty is the one named, not whichever came first.
+  assert.throws(
+    () =>
+      compileToHighcharts(
+        spec({
+          chart: { type: 'bubble' },
+          encodings: { x: { field: 'x' }, y: { field: 'y' }, size: { field: 'z' } },
+        }),
+        [
+          { x: 1, y: 10, z: 5 },
+          { x: 2, y: 20, z: null },
+        ],
+      ),
+    /encodings\.size names 'z'/,
+  );
+
+  // A complete cloud still compiles, so the rule is about the gap and not about the type.
+  const { options } = compileToHighcharts(
+    spec({ chart: { type: 'scatter' }, encodings: { x: { field: 'x' }, y: { field: 'y' } } }),
+    [
+      { x: 1, y: 10 },
+      { x: 2, y: 20 },
+    ],
+  );
+  assert.deepEqual((options.series as Array<{ data: unknown[] }>)[0]?.data, [
+    [1, 10],
+    [2, 20],
+  ]);
+});
+
+test('a categorical gap is still a gap — the point-cloud rule does not leak into it', () => {
+  // The contrast that keeps the new refusal narrow: in a row of bars a missing value is visible
+  // as a hole, which is exactly what "null and zero must not draw the same" is for.
+  const { options, warnings } = compileToHighcharts(
+    spec({
+      chart: { type: 'line' },
+      encodings: { x: { field: 'month' }, y: { field: 'revenue' } },
+    }),
+    [
+      { month: 'Jan', revenue: 10 },
+      { month: 'Feb', revenue: null },
+      { month: 'Mar', revenue: 30 },
+    ],
+  );
+  assert.deepEqual((options.series as Array<{ data: unknown[] }>)[0]?.data, [10, null, 30]);
+  assert.deepEqual(warnings, []);
+});
+
 test('the neighbouring refusals are unmoved: an unknown measure column is still named', () => {
   // The other shape that reaches the same silent nulls — a measure naming a column the plan
   // never produced. It is already refused, and a column check that ran after the new value

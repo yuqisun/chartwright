@@ -564,6 +564,13 @@ function submitProperties(available: readonly string[]) {
   // two axes are both linear. One `x` description has to be true for every type on offer, so the
   // axis wording follows the roles rather than being asserted: `chart-types.ts` decides it.
   const xIsLinear = available.some((type) => declaredChannels(type).x === 'measure');
+  // A capability list of range types alone — `columnrange`, `arearange`, `errorbar`, `dumbbell` —
+  // declares no `y` at all; it takes `low` and `high` instead. Describing `y` as "the measure
+  // column, always" there would tell the model to fill a channel none of its types has, so the
+  // blank role is the signal to leave the property description alone. Measured, not assumed:
+  // `channelRoleOf('y', ['columnrange'])` is the empty string, and interpolating it produced
+  // "The  column, always."
+  const yIsMeaningful = yRole !== '';
 
   // The four channels the old hard-coded sentence never named, whose own descriptions the
   // declaration's roles are appended to. As tuples rather than an object so the appended text
@@ -604,9 +611,13 @@ function submitProperties(available: readonly string[]) {
         },
         y: {
           ...SUBMIT_PROPERTIES.encodings.properties.y,
-          description:
-            `The ${yRole} column, always. A text column here is refused and named back to you rather than drawn as ` +
-            'an empty chart — put labels in `x` instead. Turning the bars sideways does not swap the two.',
+          ...(yIsMeaningful
+            ? {
+                description:
+                  `The ${yRole} column, always. A text column here is refused and named back to you rather than ` +
+                  'drawn as an empty chart — put labels in `x` instead. Turning the bars sideways does not swap the two.',
+              }
+            : {}),
         },
         ...Object.fromEntries(
           roleNotes.map(([channel, note]) => {

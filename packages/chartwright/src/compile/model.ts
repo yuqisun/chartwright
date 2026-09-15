@@ -161,6 +161,11 @@ function quoted(value: unknown): string {
  * `NaN`, `NaN` serialises to `null`, and Highcharts then drew axes, a title and *no marks at
  * all* — a wrong chart wearing a right chart's clothes, with `warnings: []` to confirm it.
  *
+ * A `Date` is refused by the same reasoning, and it is the one case `Number.isFinite` cannot see:
+ * `Number(date)` is the epoch in milliseconds, so a date column on a measure channel compiled to
+ * a chart of `1767225600000` against an epoch axis, silently. A date-like *string* was already
+ * caught, because `Number('2026-01-01')` is `NaN`; the object walked through the same gap.
+ *
  * `Number()` is still how a value is read, so a measure that arrives as a numeric string — JSON
  * from a database, a `count` rendered as text — keeps working. `partial` says whether some
  * *other* row of the same column was readable, which is what tells a column-that-is-not-a-measure
@@ -175,6 +180,14 @@ function readMeasureValue(
 ): number | null {
   const raw = row[field];
   if (isBlankValue(raw)) return null;
+
+  if (raw instanceof Date) {
+    throw new Error(
+      `encoding field '${field}' (encodings.${channel}) is a Date, which has no numeric value to draw: got ` +
+        `${quoted(raw.toISOString())}. A date is a category — put it in encodings.x, where a date column is read ` +
+        'as categories.',
+    );
+  }
 
   const value = Number(raw);
   if (Number.isFinite(value)) return value;
@@ -417,10 +430,28 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     // Points are emitted in table order. The positional index is the datum key
     // for point-cloud types (§2.1): two points can share an x value, so the
     // category-value key would conflate them.
-    const points = dataset.map((row) => ({
-      values: pcChannelFields.map(({ channel, field }) => readMeasureValue(row, field, channel, false)),
-      ...(seriesField ? { seriesName: String(row[seriesField]) } : {}),
-    }));
+    const points = dataset.map((row) => {
+      const values = pcChannelFields.map(({ channel, field }) => readMeasureValue(row, field, channel, false));
+      // A gap is a missing coordinate here, not a missing length — and a point cloud has no way
+      // to draw one. Highcharts skips the datum, so on a scatter the reader silently loses a
+      // point, and a null `z` on a bubble drops **every** mark in the series: measured, `0 of 3`
+      // marks drawn, with `warnings: []`. That is the same silence as the pie's empty slice and
+      // is refused the same way. A categorical series still shows a gap, because there the reader
+      // sees a hole in a row rather than a point that was never there.
+      const missing = values.indexOf(null);
+      if (missing !== -1) {
+        const { channel, field } = pcChannelFields[missing] as { channel: ChannelName; field: string };
+        throw new Error(
+          `encodings.${channel} names '${field}', which is empty for a row of this table. A ${type} draws one mark ` +
+            'per row and needs every coordinate: fill the gap, filter those rows out in run_query, or chart a type ' +
+            'that can show a gap.',
+        );
+      }
+      return {
+        values,
+        ...(seriesField ? { seriesName: String(row[seriesField]) } : {}),
+      };
+    });
     return {
       model: { ...base, kind: 'point-cloud' as const, points, valueFields: pcValueFields },
       warnings: [],

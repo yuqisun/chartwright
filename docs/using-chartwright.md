@@ -422,9 +422,20 @@ swap them produces a spec that validates and then draws axes, a title and no mar
 
 Every channel the declaration calls a **measure** must hold numbers; `x`, `series` and the
 matrix's second category do not have to. A measure value that is blank — `null`, `undefined`,
-or an empty string — is a **gap**: Highcharts draws no mark there, and a null and a real `0` are
-different pictures. A measure value that is neither blank nor a number is **refused** rather
-than drawn as a hole, and the refusal names the column and the channel it was written under.
+or an empty string — is a **gap**, and a null and a real `0` are different pictures. A value
+that is neither blank nor a number is **refused** rather than drawn as a hole, and the refusal
+names the column and the channel it was written under. Two consequences worth stating, because
+both are decided rather than incidental:
+
+- **A gap is a hole in a categorical chart and a refusal in a point cloud.** In a row of bars
+  or along a line, a missing value is visible as a gap, which is what it is. A point cloud has
+  no gap to show — its marks are positioned, and Highcharts simply skips a datum whose
+  coordinate is missing, so a scatter loses a point and a bubble with a null `size` draws
+  nothing at all. A `scatter` or `bubble` whose `x`, `y` or `size` is empty is refused by name.
+  A pie with a gap is refused too: a slice is a share of a whole.
+- **A `Date` object on a measure channel is refused.** `Number(date)` is the epoch in
+  milliseconds, so a date column on `y` used to compile to a chart of `1767225600000` against
+  an epoch axis, silently. A date is a category: put it in `x`.
 
 A numeric column on `x` is still read as categories on a band axis, so a numeric category is
 legal; a channel that *is* a measure, on the other hand, cannot take a label.

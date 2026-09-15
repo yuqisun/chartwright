@@ -159,10 +159,20 @@ export function resolveEmphasis(
     // clamps to the top of it, which is the user's emphasis delivered. `rest` is the one shape of
     // it that can legitimately come out empty, and an empty complement is emphasis that did not
     // arrive — the same lie the warning exists to prevent.
+    //
+    // It is also the one empty case where "matched no rows" is the wrong sentence: the rule
+    // matched every row it could and the *set* came out empty, which happens when the top k covers
+    // the table — most often because every value ties, so a k of 1 swallows all of them. Saying
+    // which set was empty is what tells the user whether to change k or accept that the data has
+    // no "rest" to fade.
     const canBeEmpty = rule.when.op !== 'top_k' || rule.when.rest === true;
     if (matched === 0 && canBeEmpty) {
-      const what = rule.when.op === 'top_k' ? `top_k k=${rule.when.k}` : rule.when.op;
-      warnings.push(`emphasis rule ${what} on '${rule.when.field}' matched no rows`);
+      warnings.push(
+        rule.when.op === 'top_k'
+          ? `emphasis rule top_k k=${rule.when.k} has an empty complement on '${rule.when.field}': the ranked set ` +
+              'covers every row it can see (check for tied values), so there is no "rest" to style'
+          : `emphasis rule ${rule.when.op} on '${rule.when.field}' matched no rows`,
+      );
     }
   }
 

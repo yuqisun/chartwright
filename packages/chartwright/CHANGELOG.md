@@ -51,6 +51,19 @@ spelled out under [Versioning](#versioning) in the README.
 - A pie asked for over a table with a gap in its measure is refused by name: a slice is a
   share of a whole, and a missing one cannot be drawn without silently answering a
   different question.
+- **A gap is a refusal in a point cloud, not a gap.** A blank `x`, `y` or `size` on a `scatter`
+  or `bubble` is refused by name. Highcharts skips a datum whose coordinate is missing, so a
+  scatter silently lost the point and a null `size` on a bubble dropped *every* mark in the
+  series — measured at `0 of 3` drawn, with `warnings: []`. A categorical chart keeps the gap,
+  where the reader sees a hole in a row rather than a point that was never there.
+- **A `Date` object on a measure channel is refused.** `Number(date)` is the epoch in
+  milliseconds and passes `Number.isFinite`, so a date column on `y` compiled to a chart of
+  `1767225600000` against an epoch axis, silently. A date-like *string* was already caught;
+  the object walked through the same gap. A date belongs in `x`, where it is a category.
+- The empty-complement warning says what is empty. `top_k … rest: true` whose complement comes
+  out empty — most often because every value ties, so a `k` of 1 swallows the table — used to
+  report "matched no rows", which sends the reader looking for a wrong field name instead of at
+  their `k`.
 
 ### Changed
 

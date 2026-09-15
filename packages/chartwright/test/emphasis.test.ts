@@ -366,6 +366,29 @@ test('rest that fades nothing warns rather than passing quietly', () => {
     twelve,
   );
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0] as string, /matched no rows/);
+  // The sentence has to say *which* set was empty. "matched no rows" is the wrong claim here —
+  // the rule matched every row it could and the complement came out empty — and it sends the
+  // reader looking for a wrong field name instead of at their k.
+  assert.match(warnings[0] as string, /empty complement/);
+  assert.match(warnings[0] as string, /tied values/);
   assert.equal(coloured(options).some((p) => p.color), false);
+});
+
+test('the empty complement a total tie produces is explained, not just reported', () => {
+  // Every value equal: `top_k` with k=1 swallows the table because ties at the k-th value are all
+  // included, so the complement is empty. Nothing is wrong with the spec and nothing can be
+  // styled, which is exactly the case a bare "matched no rows" would mis-describe.
+  const allEqual: Row[] = ['A', 'B', 'C', 'D'].map((region) => ({ region, revenue: 500 }));
+  const { options, warnings } = compileToHighcharts(
+    spec({ type: 'bar' }, [
+      { when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } },
+      { when: { op: 'top_k', k: 1, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+    ]),
+    allEqual,
+  );
+
+  // The highlight still works — the tie is included, which is the documented `top_k` behaviour.
+  assert.equal(coloured(options).filter((p) => p.color === '#e8590c').length, 4);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0] as string, /empty complement/);
 });
