@@ -19,7 +19,7 @@ cardinality rule).
 
 | Our text | Reality |
 |---|---|
-| `docs/roadmap.md` item 22 lists `getCategoryOrder` among the functions flint owns | **No such function exists** (repo-wide grep: zero matches). The category-order knowledge lives in `field-semantics.ts:801` `resolveCanonicalOrder`, `field-semantics.ts:1045` `resolveSortDirection`, `semantic-types.ts:1014` `inferOrdinalSortOrder`. The other five names item 22 lists do exist |
+| `docs/roadmap.md` item 23 lists `getCategoryOrder` among the functions flint owns | **No such function exists** (repo-wide grep: zero matches). The category-order knowledge lives in `field-semantics.ts:801` `resolveCanonicalOrder`, `field-semantics.ts:1045` `resolveSortDirection`, `semantic-types.ts:1014` `inferOrdinalSortOrder`. The other five names item 23 lists do exist |
 | This note's first draft said `compute-layout.ts` is 1,755 lines and `axis-detection.ts` is 75 | They are **1,940** and **90**. The first counts came from a tool that skips blank lines — the same species of rot that `docs/roadmap.md` warns about in its own size table |
 | The same draft said `theme/ground.ts` is 2,008 lines and that flint ships 11 theme presets | `ground.ts` is **2,146**, and there are **10** presets (`theme/presets/icons.ts` is an icon, not a preset). Same tool, same cause |
 | — and flint's own comments are not always true either: `theme/types.ts:110-116` says the Economist "strokes zero in its signature red", while `presets/economist.ts:38` actually sets `"zero": "#121317"` | Which is the point of this section: read the code, not the document about the code |
@@ -320,7 +320,7 @@ and **identifier is inferred from a column-name whitelist** `['id', 'index', 'id
 1. **The thresholds as prompt rules and acceptance criteria.** "Near one row per
    category and ≤ 8 categories → pie", "≥ 2 measures and no group → scatter",
    "time + measure → line or area" are exactly the selection guidance our system prompt
-   lacks (roadmap item 9 wants them grounded, and flint's numbers are a grounded
+   lacks (roadmap item 10 wants them grounded, and flint's numbers are a grounded
    starting point rather than a guess).
 2. **`supportedTypes` post-filtering** (`:346-349`; the backend wrappers pass their own
    renderable set in, `vegalite/recommendation.ts:247,267`). This is *independent
@@ -385,7 +385,7 @@ facets (`column row`), kpi (`metric value goal`).
 | `metric`, `value`, `goal` | Out of scope: KPI cards are dashboard tiles, not charts. `goal` ≈ our `target` (bullet) |
 | encoding `type: nominal \| ordinal \| quantitative \| temporal` per channel | **Align our names.** Our `axes.*.kind` (band/linear/time/log) is about the *scale*; theirs is the standard Vega-Lite vocabulary for the *encoding*, and aligning costs nothing while making a future translation layer cheap |
 | `y: ['sales', 'profit']` array form → the assembler unpivots into a synthetic key/value pair (`static-series.ts`, `STATIC_SERIES_KEY_COLUMN`) | Note only. This is a wide-table convenience; our §3.4 handles the two-measure case with `y` + `y2`, and an array form matters only at three or more measures |
-| `ChartAssemblyInput` requires `semantic_types` per field, but `inferVisCategory` fills in when absent | **Validation of our roadmap item 18**: "optional, declared-first, inferred otherwise" is the position we kept as a possible opt-in, and there is now an implementation at scale that chose it |
+| `ChartAssemblyInput` requires `semantic_types` per field, but `inferVisCategory` fills in when absent | **Validation of our roadmap item 19**: "optional, declared-first, inferred otherwise" is the position we kept as a possible opt-in, and there is now an implementation at scale that chose it |
 
 ## 5. Licensing and attribution — the precise line
 
@@ -419,9 +419,9 @@ kind of *value* copy this section is about — the notice requirement comes with
 | §5.8 / P1 labelled set | Seed requests from `real-world-tests.ts` descriptions; write the rest ourselves (flint has no NL corpus); define acceptance sets by score proximity |
 | §5.2 capability | Cited as independent corroboration: flint also filters candidates by `supportedTypes` |
 | §8 out of scope | Add: facets (`column`/`row`), KPI cards (`metric`/`value`/`goal`), and the visual channels (`opacity`, `shape`, `strokeDash`, `angle`, `radius`, `detail`, `order`) |
-| Roadmap item 21 (date axis) | **Evidence is mixed and that is the finding.** flint puts a real `Date`/`DateTime`/`Timestamp` on a temporal encoding, `Year` on `temporal|ordinal` resolved by distinct ≤ 6 → ordinal, and **`Month`/`Quarter`/`Week`/`Day`/`Hour` on `ordinal` only** (`type-registry.ts:83-98`) — so a month column is deliberately *not* a time axis there, and `axis-detection.ts:27` even forces `temporal → ordinal` when an axis must be banded. That supports reopening item 21 for true timestamps, and **opposes** "every date column becomes a time axis". Recommend deciding by granularity |
-| Roadmap item 22 | Two corrections: `getCategoryOrder` does not exist; the real names are in §0 |
-| Roadmap item 8 (layout) | Now has a concrete reference implementation to reimplement from, with real constants instead of judgement calls |
+| Roadmap item 22 (date axis) | **Evidence is mixed and that is the finding.** flint puts a real `Date`/`DateTime`/`Timestamp` on a temporal encoding, `Year` on `temporal|ordinal` resolved by distinct ≤ 6 → ordinal, and **`Month`/`Quarter`/`Week`/`Day`/`Hour` on `ordinal` only** (`type-registry.ts:83-98`) — so a month column is deliberately *not* a time axis there, and `axis-detection.ts:27` even forces `temporal → ordinal` when an axis must be banded. That supports reopening item 22 for true timestamps, and **opposes** "every date column becomes a time axis". Recommend deciding by granularity |
+| Roadmap item 23 | Two corrections: `getCategoryOrder` does not exist; the real names are in §0 |
+| Roadmap item 9 (layout) | Now has a concrete reference implementation to reimplement from, with real constants instead of judgement calls |
 
 ## 7. What we did not read
 

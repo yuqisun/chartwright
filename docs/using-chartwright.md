@@ -405,6 +405,12 @@ comes back as an error naming what the type does honour.
 
 ### Encoding channels
 
+`x` is the category and `y` is the measure, in every chart and whichever way the bars point:
+`chart.orientation` is the only thing that says horizontal, and it does not move the channels.
+A horizontal bar chart of `notional_usd` by `counterparty` is always `x: counterparty`,
+`y: notional_usd` — which is worth stating because a model reading "horizontal" as a reason to
+swap them produces a spec that validates and then draws axes, a title and no marks.
+
 | Channel | Purpose | Used by |
 |---------|---------|---------|
 | `x` | Category or measure for the horizontal axis | all types |
@@ -413,6 +419,15 @@ comes back as an error naming what the type does honour.
 | `low` / `high` | Lower and upper bounds for range types | columnrange, arearange, areasplinerange, errorbar, dumbbell |
 | `size` | Third numeric dimension | bubble |
 | `series` | Split data into multiple series | categorical, point-cloud, matrix |
+
+Every channel the declaration calls a **measure** must hold numbers; `x`, `series` and the
+matrix's second category do not have to. A measure value that is blank — `null`, `undefined`,
+or an empty string — is a **gap**: Highcharts draws no mark there, and a null and a real `0` are
+different pictures. A measure value that is neither blank nor a number is **refused** rather
+than drawn as a hole, and the refusal names the column and the channel it was written under.
+
+A numeric column on `x` is still read as categories on a band axis, so a numeric category is
+legal; a channel that *is* a measure, on the other hand, cannot take a label.
 
 ### Modules your bundle needs
 
@@ -531,6 +546,13 @@ That is the entire channel. Row values leave your process **only** through those
 three, and each is bounded: the sample values by `sampleValues`, the query preview by
 `previewRowCount`, and `preview_rows` by its own ceiling of twenty rows.
 
+What it is *told* about the spec — also derived from the declaration, never hand-written —
+is decisive for one class of mistake. The submit tool's description carries the channel
+roles (`x = category, y = measure, y2 = measure, …`), and each channel property says what it
+is for, because a model that reads `chart.orientation: 'horizontal'` as a reason to swap the
+data channels writes a spec that validates and draws nothing. The wording, the schema and the
+compiler all read `CHART_TYPES`, so a role is stated once and enforced by the same fact.
+
 Know what a *count* bound means for a small table: present mode exists for results that
 are already aggregated, so a table of twenty rows or fewer can be previewed whole. The
 ceiling stops the model pulling a large table; it does not stop it seeing a small one.
@@ -575,6 +597,8 @@ after one nudge and reported as `AgentGaveUpError` (its own words are on
 | `the table has more than one row for category 'X'` | The plan charted unaggregated rows; the model is told to add an `aggregate` step |
 | `"limit: N" follows an aggregate with no "sort" in between` | "Top N" without an ordering; the model is told to sort first |
 | `sort field 'X' is not in the table` | A typo'd column the model invented |
+| `encoding field 'X' (encodings.y) is not a numeric measure` | A text column on a measure channel — usually the x/y channels reversed for a horizontal bar. The model is told, names the channel, and swaps them; if it persists, the model is ignoring the contract |
+| `the measure 'X' is empty for category 'Y'` | A pie was asked for over a table with a gap in its measure. A slice is a share of a whole, so there is no honest way to draw a missing one |
 
 ## 12. API surface at a glance
 

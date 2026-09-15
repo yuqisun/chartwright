@@ -7,7 +7,39 @@ spelled out under [Versioning](#versioning) in the README.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **A measure channel must hold numbers, and now says so.** A text column on `encodings.y`
+  (or `y2`, `size`, `low`, `high`, or a point cloud's `x`) used to reach `Number()`, become
+  `NaN`, serialise to `null`, and draw a chart with axes, a title and **no marks** — with
+  `warnings: []`. It is now refused with the column and the channel named, so the model
+  repairs it in the same run. The case that produced this: a real provider read
+  `chart.orientation: 'horizontal'` as an instruction to swap the data channels and
+  submitted `x: notional_usd, y: counterparty`, which is schema-valid and semantically
+  empty. The prompt and the submit schema now state that the channels do not move with the
+  orientation, and one place enforces it.
+- **A blank measure is a gap again, not a zero.** `Number(null)` is `0`, so every missing
+  measure was drawn as a real data point claiming the value zero — a null and a `0` were
+  the same picture, which the `nulls-and-zeros` corpus case exists to forbid. `null`,
+  `undefined` and `''` now leave a gap, in categorical series, range bounds and point
+  clouds alike. A measure value that is neither blank nor a number is refused rather than
+  drawn as an unasked-for hole.
+- A pie asked for over a table with a gap in its measure is refused by name: a slice is a
+  share of a whole, and a missing one cannot be drawn without silently answering a
+  different question.
+
+### Changed
+
+- **The channel roles are now derived from the type declarations everywhere the model reads
+  them.** The submit tool's description said only that "`encodings.x` is the category column,
+  `encodings.y` the measure"; `y2`, `size`, `low` and `high` are measures too, and a type's own
+  `channels` map is where that was already declared. The description now carries a generated
+  role list (`x = category, y = measure, …`) and every channel property describes itself from
+  the same declaration, so the text a model reads and the rule the compiler enforces are one
+  fact rather than two that can drift.
+- The `present`-mode prompt offered "which column is the x axis and which is the measure" as a
+  free choice, directly above a hard rule fixing `x` as the category. It now offers the
+  *measure* as the choice and states that `x` is fixed.
 
 ## [0.1.0-alpha.0] - 2026-09-13
 

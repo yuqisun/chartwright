@@ -220,7 +220,7 @@ they are docs the task did not mention and both would have gone stale:
 - it is a new way for row *values* to leave the process, so
   `docs/using-chartwright.md`'s "What the model sees" section had to say so, along with the fact that
   `profile: { sampleValues: 0 }` does **not** switch it off. That gap is recorded as
-  item 20 in `docs/roadmap.md` rather than decided here.
+  item 21 in `docs/roadmap.md` rather than decided here.
 
 **Later revision (after review).** Two decisions changed what this task left behind,
 and both were mine to get wrong:
@@ -386,7 +386,7 @@ column throws. Same class as the temporal-sort silence already listed there.
 `sort` on a temporal chart is silently overwritten by the compiler's time-sort. Checking
 that claim later: the branch exists but never runs, because nothing in the library sets
 `x.value_type`, and a value sort on a monthly series comes out in value order. The branch
-has since been deleted, and the whole situation is roadmap item 21 — which is also where
+has since been deleted, and the whole situation is roadmap item 22 — which is also where
 the cost of that deletion lives: a date column is a category, so a gap in a series is drawn
 as though it were not there, and the example has a demo for it.
 
@@ -462,7 +462,7 @@ and that `result.dataset` is the input rows in the input order.
 descriptions with a realistic example.
 
 **Step 3.** `docs/roadmap.md` — the two *decisions* that came out of this design are
-already recorded there (item 18, optional column semantics; the refused-by-design row
+already recorded there (item 19, optional column semantics; the refused-by-design row
 for presentation advice), and the temporal-sort silence is under P0 item 3. What is
 left is the part that only becomes true once this mode exists:
 

@@ -81,15 +81,25 @@ express and the chart is drawn anyway. Four cases, with four different fixes:
   sort. The branch is unreachable: it tests `x.value_type === 'temporal'`, and nothing in
   the library ever sets `value_type`. Measured on a monthly series, a value sort comes out
   in **value order**, categories and all — the request is honoured, not dropped. The real
-  situation is item 21, and the lesson is the one this section exists for: a rule read off
+  situation is item 22, and the lesson is the one this section exists for: a rule read off
   the code is not a rule that runs.
 - **…and two more of that shape**, found while making submissions fail early rather
-  than after the model had gone. A `y` encoding over a text column draws
+  than after the model had gone. A `y` encoding over a text column drew
   `[null, null, null]` — a blank chart with `warnings: []`. A `filter` over a column
   the plan never produced matches nothing and yields an empty table, silently, while
   `sort` on a missing column throws (the change log has that fix). The inconsistency
   is the tell: the same class of mistake is loud in one operator and mute in another.
   A chart with no data and a chart with the wrong data both deserve a sound.
+
+  **Half of that is fixed, and the fix is the shape the rest should take.** The
+  channel-role contract is now enforced where the measure values are read
+  (`compile/model.ts`): every channel the type declaration calls a *measure* must hold
+  numbers, a blank is a gap rather than a zero, and text is refused with the column and
+  the channel named — so it reaches the model as a repairable submission, which is how
+  the reversal a real provider produced for "horizontal bar by counterparty" now ends
+  with the chart the user asked for instead of an empty one. A `filter` over a column
+  that does not exist still fails silently, and it is the same shape of gap: the
+  operator that can detect it does not.
 
 ### 4. Visual behaviour is asserted nowhere
 
@@ -116,11 +126,54 @@ worse rather than better: they were the natural place to prove the shipped
 pre-aggregated table charts as it ships, and that is exactly what a package-local test
 cannot do without its own copy of the data.
 
+### 6. A model that never repairs reports the budget, not the reason
+
+The submission path itself is sound, and worth stating because it is the thing this item
+is **not** about: every refusal the compiler makes reaches the model as a tool result
+(`{ accepted: false, errors: [...] }`, `src/loop.ts`), and the model repairs it in the same
+run. Measured on a real defect: a text column on `encodings.y` — the encoding a provider
+reverses when it reads "horizontal" as a channel swap — was refused, handed back with the
+column and the channel named, and the next submission produced `data: [100, 80]` instead of
+twelve nulls.
+
+What is wrong is the **classification of the failure when the model does not repair**.
+`runAgentLoop` ends such a run with:
+
+```
+Error: agent loop stopped: maxRounds (6) exceeded
+```
+
+That message is true and misleading at the same time. It describes a runaway — the guard a
+budget exists for — when the run in question submitted a spec every single round and was
+refused every single round. Two consequences, both real:
+
+- **the rejection reason never reaches the caller.** `AgentGaveUpError` carries
+  `.explanation` and `.messages` for exactly this; it is only thrown when the model answers
+  with text instead of a tool call, so the failure that most needs an explanation is the one
+  that has none;
+- **the caller is told to fix the wrong thing.** `maxRounds exceeded` reads as "raise the
+  budget", and raising it changes nothing: the model cannot produce a valid spec, so the run
+  will fail identically with a larger number. The actionable facts are the last refusal and
+  the fact that it repeated.
+
+`budget.maxToolCalls` has the same shape: `maxToolCalls: 5` against a model that keeps being
+refused reports `agent loop stopped: maxToolCalls (5) exceeded`, with no reason attached.
+
+**Fix:** when the loop is stopped by a budget *and* the last `submit_spec` was rejected,
+throw `AgentGaveUpError` whose explanation is the last rejection (keeping `.messages`), and
+bounded by the number of consecutive identical refusals rather than by the round budget.
+A genuine runaway — a model cycling tool calls that are not submissions — keeps reporting
+`maxRounds`. Test with a client that submits one invalid spec forever: the run must end with
+the rejection in `.explanation` and must not need a larger budget to fail correctly.
+
+Related, and already filed: item 15 asks for typed error codes, which is what a consumer
+needs to branch on this without matching message text.
+
 ---
 
 ## P1 — next features
 
-### 6. More chart types
+### 7. More chart types
 
 Today: `bar`, `line`, `spline`, `area`, `areaspline`, `pie`, `heatmap` — plus five chart-level
 modifiers (`stacking`, `polar`, `hole`, `compact`, a fixed y range) that change how one of
@@ -146,22 +199,22 @@ collision rule), then the rest of the "module-dependent" family (waterfall, boxp
 funnel, streamgraph, lollipop) — see the deferred flint decision below. `radar` and `rose`
 needed no module at all, only `chart.polar`, which is implemented.
 
-### 7. Colour and theming
+### 8. Colour and theming
 
 The library contains exactly two hard-coded hex values. Every other colour is a
 Highcharts default, so an app cannot match its brand. This is also the first
 thing an integrating product will complain about.
 
-**Needed:** a palette/theme layer, and the decision in item 22 about where the
+**Needed:** a palette/theme layer, and the decision in item 23 about where the
 knowledge comes from.
 
-### 8. Layout and geometry
+### 9. Layout and geometry
 
 No canvas sizing, margins, label rotation or long-label handling. Charts with many
 categories will look cramped. flint solves this with `compute-layout`,
-`band-dodge` and axis-label measurement (see item 22).
+`band-dodge` and axis-label measurement (see item 23).
 
-### 9. Prompt tuning against real runs
+### 10. Prompt tuning against real runs
 
 The prompt has no few-shot examples — deliberately, so that examples are written
 from **observed** failures rather than guessed ones. The app runs now, so the
@@ -178,7 +231,7 @@ runs show it never previews, and so misses a grain problem it could have seen, t
 the evidence to add one line. Without a run to look at, adding it now would be guessing,
 which is what this item exists to avoid.
 
-### 10. Provider convenience for Node consumers
+### 11. Provider convenience for Node consumers
 
 Consumers implement `LlmClient` themselves (about 20 lines). That is the right
 default, but a Node consumer calling a provider directly should not have to
@@ -188,7 +241,7 @@ re-derive the request/response translation.
 a clear warning that it is **server-side only** — a browser must keep going
 through the consumer's own endpoint.
 
-### 11. Streaming
+### 12. Streaming
 
 `LlmClient.completeStream` is supported by the loop and **no implementation
 exists**: the example does not stream, and token deltas are never seen. Tool-level
@@ -196,7 +249,7 @@ progress events already work without it, so this is a refinement, not a gap.
 
 Also deferred: an `askStream()` async-iterable form of `ask()`.
 
-### 12. Amending an existing chart
+### 13. Amending an existing chart
 
 Follow-ups work (stateless transcript) but every turn produces a **new** spec. A
 user saying "make it a line chart" or "use green" gets a fresh decision rather
@@ -210,31 +263,31 @@ or whether re-deciding is acceptable.
 
 ## P2 — later
 
-### 13. Token budget
+### 14. Token budget
 
 `budget.maxRounds` and `budget.maxToolCalls` are enforced (see the change log).
 There is no token accounting: a pathological run inside the round limits
 can still be expensive.
 
-### 14. Typed error codes
+### 15. Typed error codes
 
 Consumers currently branch on `instanceof AgentGaveUpError` versus message text
 for provider and compiler failures. A small `code` field would make error handling
 robust.
 
-### 15. `library` option is inert
+### 16. `library` option is inert
 
 `ask({ library: 'highcharts' })` is accepted and ignored — there is one backend.
 Either honour it when a second backend lands, or remove it until then.
 
-### 16. Data source abstraction (DuckDB)
+### 17. Data source abstraction (DuckDB)
 
 Today every tool reads `rows: Row[]` in memory. Planned: read through a thin
 `DataSource` interface (`columns()`, `getRows()`, later `query(predicate, agg)`
 pushed down to DuckDB), so the tools do not change when the source does. Recorded
 now, not implemented.
 
-### 17. Test runner
+### 18. Test runner
 
 `npm test` uses `node --experimental-strip-types --test`, which needs Node ≥ 22.6
 and spawns a process per file. That is why this repository's own tests cannot run
@@ -242,7 +295,7 @@ inside a restricted sandbox. Vitest would be conventional but adds the package's
 first dev dependency; the zero-dependency property is worth keeping until there is
 a concrete reason not to.
 
-### 18. Optional column semantics
+### 19. Optional column semantics
 
 Deliberately **not** required: a decision made while designing present mode.
 
@@ -271,14 +324,14 @@ today, see `docs/using-chartwright.md` — is the intended low-effort substitute
 reaches the prompt and nothing else: not validated, not stored in the spec, not
 needed to replay a run.
 
-### 19. MCP delivery
+### 20. MCP delivery
 
 Not started. The shape was designed earlier for the ChartBrain project and still
 applies: a small tool surface (`list_chart_types`, `validate_spec`, `ask_chart`),
 reusable knowledge as resources, **no server-side rendering**, and structured
 validation results. chartwright's existing exports map onto that surface directly.
 
-### 20. An off switch for `preview_rows`
+### 21. An off switch for `preview_rows`
 
 Present mode sends the model the first rows of your table, verbatim, up to twenty. That
 is deliberate and bounded — no offset to page with, so asking again returns the same
@@ -308,7 +361,7 @@ Related, and deliberately *not* part of that switch: ChartBrain had sample **mas
 ("sensitive values can be masked or substituted", `docs/INTEGRATION.md`), which is a
 different and larger feature than on/off. Nothing here does that.
 
-### 21. A date column is a category, so a gap in a series is invisible
+### 22. A date column is a category, so a gap in a series is invisible
 
 **Decided and implemented** — see the change log. The compiler had a datetime-axis branch,
 nothing in the library ever set the field that selected it, so it never ran; wiring it would
@@ -331,9 +384,9 @@ order, which present mode promises it will not.
 
 ## Deferred with triggers
 
-### 22. Vendor flint's compilation pipeline — or extract its conventions?
+### 23. Vendor flint's compilation pipeline — or extract its conventions?
 
-flint (MIT, Microsoft) already encodes the knowledge that item 4 and item 8 are
+flint (MIT, Microsoft) already encodes the knowledge that item 4 and item 9 are
 missing, at scale:
 
 | | chartwright today | this project's flint fork | upstream flint |
@@ -365,7 +418,7 @@ types; theming/palette work starts; layout/geometry work starts.
 into the core, keeping the core dependency-free; and begin by reading flint and
 listing the specific modules to reuse rather than adopting the whole pipeline.
 
-### 23. Publishable build
+### 24. Publishable build
 
 `packages/chartwright/package.json` is `private: true`, `version: 0.0.0`, and
 `exports` points at `./src/index.ts`. Consumers therefore need two config tweaks
@@ -379,7 +432,7 @@ step 3 of `docs/using-chartwright.md` can be deleted.
 Also missing: a README **inside the package** (npm shows the repo root's, which
 describes the monorepo).
 
-### 24. Stability policy
+### 25. Stability policy
 
 At 0.0.0 nothing is frozen. Source consumers track a commit with no version
 anchor; at minimum, tag releases so they can pin. Worth writing down which parts
@@ -403,7 +456,7 @@ for a stated reason.
 | **Letting the model compute values** | "The largest" is computed by the compiler from the full table, so the answer survives the data changing and the model never touches values. |
 | **Row-level data tools the model picks the window for** | A model choosing *which* rows to read is the highest-risk privacy shape considered. `preview_rows` is the accepted exception, and what makes it acceptable is structural, not the row count: always the **first** rows, no offset parameter to page with, so calling it again returns the same rows and a run's total exposure is capped by the ceiling rather than by the number of calls. It exists only in present mode, over a table the caller handed over to be drawn. The ceiling bounds a count, not a proportion — a table of twenty rows or fewer can be read whole, and that is a stated trade rather than an oversight. Anything wider — a window the model gets to choose, or any access to the raw table — needs its own decision, per tool. |
 | **chartwright advising that a table would be better than a chart** | Presentation judgement, and the consumer's to make — the library does not know what the surrounding screen is for, and a library that second-guesses the request trains callers to ignore it. It may say a *spec* is unsupported or ambiguous; it may not say the data does not deserve a chart. |
-| **Mandatory structured column semantics** | See item 18: too much to require of a consumer, and every declaration it gets wrong becomes a confidently wrong chart. Optional and advisory if ever added. |
+| **Mandatory structured column semantics** | See item 19: too much to require of a consumer, and every declaration it gets wrong becomes a confidently wrong chart. Optional and advisory if ever added. |
 
 ---
 
@@ -430,7 +483,7 @@ Kept here because the reasoning matters more than the code.
 | A tool's arguments are not the caller's policy | Every tool now rejects arguments it does not declare. Tool arguments used to be spread over the profiling options, so a model could set `sampleValues` itself, over the top of a caller's `profile: { sampleValues: 0 }`. |
 | Tool definitions are handed out as copies | `buildToolDefs` deep-clones its templates. `SUBMIT_ASK` and `SUBMIT_PRESENT` shared a single `parameters` object, so a caller editing the definition it received was editing both modes. |
 | A submission is accepted only if a chart comes out of it | The loop takes an optional `validateSubmit`, and `ask()` supplies one that runs the compiler over the submission while the model is still there. Everything the compiler refuses — two rows on one category, an encoding over a column the plan never produced — used to surface *after* the loop ended: the caller got an exception and the model was never told. Now it is a rejected submission the model can repair, in either mode, with the compiler's own message. |
-| A date column is a category, and the datetime branch is gone | The compiler had a temporal branch — a `datetime` axis, `[ms, value]` pairs, points sorted by time — selected by `encodings.x.value_type`, and **nothing in the library ever set that field**; only two tests did. So it never ran, and every chart including a monthly series already took the categorical path. Deleted rather than wired: wiring changes the axis of every date chart, and sorts points by time, which is in direct tension with present mode's "the order you pass is the order shown". `ValueType` and `Encoding.value_type` went with it. The cost — a gap in a series is drawn as though it were not there — is item 21, with the example's "Present gapped dates" demo as its reproduction. |
+| A date column is a category, and the datetime branch is gone | The compiler had a temporal branch — a `datetime` axis, `[ms, value]` pairs, points sorted by time — selected by `encodings.x.value_type`, and **nothing in the library ever set that field**; only two tests did. So it never ran, and every chart including a monthly series already took the categorical path. Deleted rather than wired: wiring changes the axis of every date chart, and sorts points by time, which is in direct tension with present mode's "the order you pass is the order shown". `ValueType` and `Encoding.value_type` went with it. The cost — a gap in a series is drawn as though it were not there — is item 22, with the example's "Present gapped dates" demo as its reproduction. |
 | An encoding declares one field, and the spec is built from it | `encodings.x`, `.y` and `.series` gained `additionalProperties: false`, and `validateSpec` now assembles each encoding as `{ field }` rather than copying the submission through. A key the schema does not declare — an invented `value_type`, say — used to reach the compiler and change the axis for that one caller. |
 | The refusal that names the reason | A run with no data-changing tool answers a `run_query` call with why the rows are final, instead of a tool list. Derived from the tool list rather than a mode flag — the list *is* the mode — and it names only the tools actually present. |
 | One declaration for the chart types | The supported set was written out in eleven places; it is now declared once (`compile/chart-types.ts`) and the schema enum, both refusal sentences, the prompt's list, the validator's required channels, the model's shape choice and the backend dispatch are all derived from it. `SUPPORTED_CHART_TYPES` is derived rather than deleted, so the public API keeps working. Acceptance was byte-identical options for the types that already existed, frozen in `test/fixtures/options-golden.json` before the change and still compared on every run. |

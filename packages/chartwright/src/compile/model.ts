@@ -10,7 +10,7 @@
 import { validateChartPlan } from '../plans.ts';
 import { applyTransform } from '../transform.ts';
 import { CHART_TYPES, CHART_TYPE_NAMES, isChartType } from './chart-types.ts';
-import type { ChartType } from './chart-types.ts';
+import type { ChannelName, ChannelRole, ChartType } from './chart-types.ts';
 import type { ChartSpec, Row } from '../types.ts';
 
 /**
@@ -93,8 +93,13 @@ export type MatrixModel = Base & {
 
 export type PointCloudModel = Base & {
   kind: 'point-cloud';
-  /** Each point is [x, y] or [x, y, size] in table order. */
-  points: Array<{ values: number[]; seriesName?: string }>;
+  /**
+   * Each point is [x, y] or [x, y, size] in table order.
+   *
+   * A `null` is a gap in a measure — the same rule as everywhere else, and what the backend
+   * leaves Highcharts to draw as a missing point rather than a point at zero.
+   */
+  points: Array<{ values: Array<number | null>; seriesName?: string }>;
   /** The field names in order: [xField, yField, sizeField?]. */
   valueFields: string[];
 };
@@ -128,6 +133,60 @@ export function datumKey(category: string, seriesName?: string): string {
 /** The default key of a row in the materialised table. */
 export function rowDatumKey(row: Row, xField: string, seriesField?: string): string {
   return datumKey(String(row[xField]), seriesField === undefined ? undefined : String(row[seriesField]));
+}
+
+/**
+ * A blank measure value: absent, null, or an empty string. A gap, never a zero.
+ *
+ * Deliberately not `Number`-based: `Number(null)` is `0`, which turned every missing measure
+ * into a real data point claiming the value zero. That is the whole reason this is written out.
+ */
+function isBlankValue(value: unknown): boolean {
+  return value === null || value === undefined || value === '';
+}
+
+/** Trims a value to something short enough to quote inside an error message. */
+function quoted(value: unknown): string {
+  const text = String(value);
+  return JSON.stringify(text.length > 40 ? `${text.slice(0, 37)}...` : text);
+}
+
+/**
+ * Reads one measure cell, and refuses what cannot be read.
+ *
+ * The rule is deliberately narrow. A blank is a gap, because "no data for this category" is a
+ * real thing a chart should show as a gap (`nulls-and-zeros` in the corpus exists to pin that a
+ * null and a zero must not draw the same). Text that is not a number is **refused**, because
+ * the alternative is what this function replaced: `Number('Northgate Capital Markets')` is
+ * `NaN`, `NaN` serialises to `null`, and Highcharts then drew axes, a title and *no marks at
+ * all* — a wrong chart wearing a right chart's clothes, with `warnings: []` to confirm it.
+ *
+ * `Number()` is still how a value is read, so a measure that arrives as a numeric string — JSON
+ * from a database, a `count` rendered as text — keeps working. `partial` says whether some
+ * *other* row of the same column was readable, which is what tells a column-that-is-not-a-measure
+ * apart from one unreadable sentinel in an otherwise numeric column. The second is refused
+ * rather than drawn as a hole, because a hole nobody asked for is invented data.
+ */
+function readMeasureValue(
+  row: Row,
+  field: string,
+  channel: ChannelName,
+  partial: boolean,
+): number | null {
+  const raw = row[field];
+  if (isBlankValue(raw)) return null;
+
+  const value = Number(raw);
+  if (Number.isFinite(value)) return value;
+
+  const why = partial
+    ? 'is not numeric'
+    : 'is not a numeric measure — a number, or a string holding one';
+  throw new Error(
+    `encoding field '${field}' (encodings.${channel}) ${why}: got ${quoted(raw)}. ` +
+      `encodings.${channel} is a measure channel and needs numbers; a column of labels belongs in ` +
+      'a category channel such as encodings.x, which chart.orientation does not move.',
+  );
 }
 
 /** Executes the spec's plan over the full rows. Replayable without any model. */
@@ -256,13 +315,48 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   const sizeField = spec.encodings.size?.field;
   const lowField = low?.field;
   const highField = high?.field;
+  // Which channel each field came from, so a refusal can name the channel the model wrote
+  // rather than the field alone — the repair for a reversed encoding is a channel swap.
+  const channelOf: Array<{ channel: ChannelName; field: string }> = (
+    [
+      ['x', x.field],
+      ['y', y?.field],
+      ['y2', y2Field],
+      ['series', seriesField],
+      ['size', sizeField],
+      ['low', lowField],
+      ['high', highField],
+    ] as Array<[ChannelName, string | undefined]>
+  )
+    .filter((entry): entry is [ChannelName, string] => typeof entry[1] === 'string')
+    .map(([channel, field]) => ({ channel, field }));
   if (dataset.length > 0) {
     const columns = Object.keys(dataset[0] as Row);
-    for (const field of [x.field, y?.field, y2Field, seriesField, sizeField, lowField, highField].filter((f): f is string => typeof f === 'string')) {
+    for (const { field } of channelOf) {
       if (!columns.includes(field)) {
         throw new Error(`encoding field '${field}' is not in the produced table (available: ${columns.join(', ')})`);
       }
     }
+  }
+
+  // The channel-role contract, checked here rather than trusted: a channel the declaration
+  // calls a measure must hold numbers. Prose in the prompt asks for this; only the compiler
+  // can refuse it. A point cloud is the one kind whose *category* channel is also a measure —
+  // both its axes are linear — so its `x` is checked too, while `series` stays a label channel
+  // there as everywhere else. Reading the roles is what keeps that from being a guess.
+  const roles: Partial<Record<ChannelName, ChannelRole>> = CHART_TYPES[type].channels;
+  const measureChannels = channelOf.filter(({ channel }) =>
+    kind === 'point-cloud' ? channel !== 'series' : roles[channel] === 'measure',
+  );
+  for (const { channel, field } of measureChannels) {
+    // `partial` is what separates "this column is not a measure at all" from "one unreadable
+    // sentinel sits in an otherwise numeric column". Both are refused; the messages differ,
+    // because the repairs differ.
+    const nonBlank = dataset.map((row) => row[field]).filter((value) => !isBlankValue(value));
+    const readable = nonBlank.filter((value) => Number.isFinite(Number(value))).length;
+    const partial = readable > 0 && readable < nonBlank.length;
+    // Reading each row is what refuses an unreadable value, so the loop *is* the check.
+    for (const row of dataset) readMeasureValue(row, field, channel, partial);
   }
 
   const base = {
@@ -289,27 +383,46 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
       model: {
         ...base,
         kind: 'part-to-whole',
-        slices: dataset.map((row) => ({
-          key: datumKey(String(row[x.field])),
-          name: String(row[x.field]),
-          value: Number(row[y!.field]),
-        })),
+        slices: dataset.map((row) => {
+          const value = readMeasureValue(row, y!.field, 'y', false);
+          // A slice is a share of a whole, so a gap cannot be one: a pie has no way to show a
+          // missing part, and dropping the slice would quietly answer a different question.
+          // Refused rather than drawn, in the same spirit as the collision rule above.
+          if (value === null) {
+            throw new Error(
+              `the measure '${y!.field}' is empty for category '${String(row[x.field])}'. A pie needs a value for ` +
+                'every slice: fill the gap, filter that row out, or chart a type that can show a gap.',
+            );
+          }
+          return {
+            key: datumKey(String(row[x.field])),
+            name: String(row[x.field]),
+            value,
+          };
+        }),
       },
       warnings: [],
     };
   }
 
   if (kind === 'point-cloud') {
-    const pcValueFields = [y!.field, ...(sizeField ? [sizeField] : [])];
+    // Each measure channel with the name the model wrote it under, so a refusal quotes the
+    // channel it can go and change rather than the field alone.
+    const pcChannelFields: Array<{ channel: ChannelName; field: string }> = [
+      { channel: 'x', field: x.field },
+      { channel: 'y', field: y!.field },
+      ...(sizeField ? [{ channel: 'size' as const, field: sizeField }] : []),
+    ];
+    const pcValueFields = pcChannelFields.map((entry) => entry.field);
     // Points are emitted in table order. The positional index is the datum key
     // for point-cloud types (§2.1): two points can share an x value, so the
     // category-value key would conflate them.
     const points = dataset.map((row) => ({
-      values: [Number(row[x.field]), ...pcValueFields.map((f) => Number(row[f]))],
+      values: pcChannelFields.map(({ channel, field }) => readMeasureValue(row, field, channel, false)),
       ...(seriesField ? { seriesName: String(row[seriesField]) } : {}),
     }));
     return {
-      model: { ...base, kind: 'point-cloud' as const, points, valueFields: [x.field, ...pcValueFields] },
+      model: { ...base, kind: 'point-cloud' as const, points, valueFields: pcValueFields },
       warnings: [],
     };
   }
@@ -346,10 +459,12 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     for (const [name, groupRows] of groups) {
       const valueMap = new Map<string, [number, number] | null>();
       for (const row of groupRows) {
-        const lowVal = row[lowField!];
-        const highVal = row[highField!];
-        // A null in either bound means the range is unknown — store null rather than [0, 0].
-        const pair: [number, number] | null = lowVal === null || highVal === null ? null : [Number(lowVal), Number(highVal)];
+        // A blank in either bound means the range is unknown — store null rather than [0, 0].
+        // Reading through the helper keeps that true now that a blank is a gap again.
+        const lowValue = readMeasureValue(row, lowField!, 'low', false);
+        const highValue = readMeasureValue(row, highField!, 'high', false);
+        const pair: [number, number] | null =
+          lowValue === null || highValue === null ? null : [lowValue, highValue];
         valueMap.set(String(row[x.field]), pair);
       }
       // Store [low, high] pairs. The backend detects range types via lowField/highField
@@ -395,12 +510,12 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
   // group, giving 2N series named "{measure}: {group}" so datum keys stay unique.
   const seriesValues: SeriesValues[] = [];
   let y2SeriesFrom: number | undefined;
-  const measures: Array<{ field: string; label: string }> = y2Field
+  const measures: Array<{ field: string; label: string; channel: ChannelName }> = y2Field
     ? [
-        { field: y!.field, label: seriesField ? y!.field : y!.field },
-        { field: y2Field, label: seriesField ? y2Field : y2Field },
+        { field: y!.field, label: seriesField ? y!.field : y!.field, channel: 'y' },
+        { field: y2Field, label: seriesField ? y2Field : y2Field, channel: 'y2' },
       ]
-    : [{ field: y!.field, label: seriesField ?? y!.field }];
+    : [{ field: y!.field, label: seriesField ?? y!.field, channel: 'y' }];
 
   for (let mi = 0; mi < measures.length; mi += 1) {
     const measure = measures[mi];
@@ -418,12 +533,20 @@ export function buildChartModel(spec: ChartSpec, rows: Row[]): BuildResult {
     }
 
     for (const [groupName, groupRows] of groups) {
-      const values = new Map<string, number>();
+      // `number | null` rather than `number`: a blank measure is a gap, and folding it into the
+      // map as anything else is what made a null and a zero draw identically.
+      const values = new Map<string, number | null>();
       for (const row of groupRows) {
-        values.set(String(row[x.field]), Number(row[measure.field]));
+        values.set(String(row[x.field]), readMeasureValue(row, measure.field, measure.channel, false));
       }
       const name = y2Field && seriesField ? `${measure.label}: ${groupName}` : groupName;
-      seriesValues.push({ name, values: categories.map((category) => values.get(category) ?? null) });
+      seriesValues.push({
+        name,
+        values: categories.map((category) => {
+          const value = values.get(category);
+          return value === undefined ? null : value;
+        }),
+      });
     }
   }
 

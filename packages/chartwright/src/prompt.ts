@@ -20,6 +20,13 @@ const SHARED_RULES = [
   "  stays in the caller's process and is bound into the chart by the compiler: ask for the preview you need, do not",
   '  ask for the table wholesale, and do not reproduce it in your reply.',
   '- Never emit chart-library options, code, SQL, or file paths.',
+  // The rule a real run broke. `orientation` is the only thing that says which way the bars
+  // point, and reading it as an instruction to swap the data channels produced a spec that
+  // validated and then drew nothing: bars measure numbers, so a text column on `y` is a chart
+  // with no marks. Said in terms of the channels, because that is what the model writes.
+  '- The channels keep one meaning whatever the orientation: `encodings.x` is ALWAYS the category column (a date or a',
+  '  number is still read as a category) and `encodings.y` is ALWAYS the numeric measure. Turning the bars sideways',
+  '  does not swap them.',
   '- For `bar`, set `chart.orientation` to "horizontal" when category labels are long or there are many categories',
   '  (a top-N by name, for instance); otherwise leave it vertical.',
   '- If the user asks to highlight, emphasise, mark or grey out specific items (the largest, the worst, the top 3),',
@@ -64,9 +71,9 @@ const PRESENT_INTRO = [
   'column: every figure you need is already there, and several of them are averages, ratios, distinct counts or',
   'maxima, which is exactly why they are not yours to redo.',
   '',
-  'What you decide: the chart type, which column is the x axis and which is the measure, the orientation, the',
-  'title, and any emphasis. If the request is about the biggest, the worst or the top three, that is emphasis —',
-  'express it as a condition and let the compiler find the rows.',
+  'What you decide: the chart type, which numeric column of the table is the measure (x is the category column —',
+  'that is fixed, not a choice), the orientation, the title, and any emphasis. If the request is about the biggest,',
+  'the worst or the top three, that is emphasis — express it as a condition and let the compiler find the rows.',
 ];
 
 export function buildSystemPrompt(mode: ToolMode = 'ask'): string {

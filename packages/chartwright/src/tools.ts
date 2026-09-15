@@ -17,8 +17,22 @@
  */
 import { applyTransform, binDate } from './transform.ts';
 import { validateChartPlan } from './plans.ts';
-import { CHART_TYPE_NAMES, resolveAvailableTypes } from './compile/index.ts';
+import { CHART_TYPE_NAMES, CHANNEL_NAMES, CHART_TYPES, resolveAvailableTypes } from './compile/index.ts';
+import type { ChannelName, ChannelRole } from './compile/index.ts';
 import type { Column, ColumnType, Row, ToolDef, ToolMode, TransformStep } from './types.ts';
+
+/**
+ * The declared channel roles, as a plain map.
+ *
+ * `CHART_TYPES` is a union of literal object types, one member per chart kind, so reading
+ * `CHART_TYPES[someName].channels[someChannel]` with both sides dynamic does not type-check —
+ * the compiler cannot prove the property exists on every member of the union. Widening once,
+ * here, is the whole reason this exists.
+ */
+function declaredChannels(type: string | undefined): Partial<Record<ChannelName, ChannelRole>> {
+  const declaration = type === undefined ? undefined : CHART_TYPES[type as keyof typeof CHART_TYPES];
+  return (declaration?.channels ?? {}) as Partial<Record<ChannelName, ChannelRole>>;
+}
 
 const DATE_LIKE = /^\d{4}-\d{2}(-\d{2})?([T ].*)?$/;
 
@@ -383,6 +397,11 @@ const SUBMIT_PROPERTIES = {
       // `additionalProperties: false` on the inner objects too: a column reference is
       // one field, and a model that invents another one should be told rather than
       // quietly given something different from every other caller.
+      //
+      // A channel's `description` is deliberately *not* written here: `submitProperties` derives
+      // each one from the per-type declaration's channel roles, so the text the model reads and
+      // the rule the compiler enforces are the same fact stated once. A copy here would be a
+      // second place to keep in step, and the copy nobody reads is the one that drifts.
       x: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
       y: { type: 'object', required: ['field'], properties: { field: { type: 'string' } }, additionalProperties: false },
       y2: {
@@ -485,12 +504,70 @@ const SUBMIT_PROPERTIES = {
 };
 
 /**
+ * What each channel *is*, derived from the per-type declaration.
+ *
+ * The channel roles were prose before this — a sentence in the submit tool's description
+ * naming `x` and `y` — and prose is what a reversed encoding walks straight past. It matters
+ * most for the four channels that sentence never mentioned: `y2`, `size`, `low` and `high` are
+ * measures too, and a type's own `channels` map is where that is already declared. Deriving the
+ * sentence is also the rule this repository already holds to for every other per-type fact
+ * (`compile/chart-types.ts`), so this cannot drift from what the compiler enforces.
+ */
+function channelRolesLine(types: readonly string[]): string {
+  const roles = new Map<string, Set<ChannelRole>>();
+  for (const type of types) {
+    const channels = declaredChannels(type);
+    for (const channel of CHANNEL_NAMES) {
+      const role = channels[channel];
+      if (role === undefined) continue;
+      const bucket = roles.get(channel) ?? new Set<ChannelRole>();
+      bucket.add(role);
+      roles.set(channel, bucket);
+    }
+  }
+
+  return CHANNEL_NAMES.filter((channel) => roles.has(channel))
+    .map((channel) => `${channel} = ${[...(roles.get(channel) as Set<ChannelRole>)].join(' or ')}`)
+    .join(', ');
+}
+
+/** The same thing for one channel, for its own property description. */
+function channelRoleOf(channel: ChannelName, types: readonly string[]): string {
+  const seen = new Set<ChannelRole>();
+  for (const type of types) {
+    const role = declaredChannels(type)[channel];
+    if (role !== undefined) seen.add(role);
+  }
+  return [...seen].join(' or ');
+}
+
+/**
  * The submit schema for a given set of available types.
  *
  * Built by cloning the template rather than keeping a second copy of sixty lines whose
  * only difference is one enum: two copies of a schema is two things to keep in step.
  */
 function submitProperties(available: readonly string[]) {
+  const xRole = channelRoleOf('x', available);
+  const yRole = channelRoleOf('y', available);
+  // Whether this panel offers a type whose category channel is a measure — a point cloud, whose
+  // two axes are both linear. One `x` description has to be true for every type on offer, so the
+  // axis wording follows the roles rather than being asserted: `chart-types.ts` decides it.
+  const xIsLinear = available.some((type) => declaredChannels(type).x === 'measure');
+
+  // The four channels the old hard-coded sentence never named, whose own descriptions the
+  // declaration's roles are appended to. As tuples rather than an object so the appended text
+  // is a `string` and not `string | undefined`. `x` and `y` are written out in full below
+  // instead, because they are the pair a reversed encoding gets wrong and their wording *is*
+  // the repair.
+  const roleNotes: Array<[ChannelName, string]> = [
+    ['y2', 'A measure on the right axis — numbers only, exactly as on `y`.'],
+    ['size', 'A measure read as mark size — numbers only, exactly as on `y`.'],
+    ['low', 'The lower bound of a range — a measure, so numbers only, exactly as on `y`.'],
+    ['high', 'The upper bound of a range — a measure, so numbers only, exactly as on `y`.'],
+    ['series', 'Splits the data into series. Labels are fine here: this one is not a measure.'],
+  ];
+
   return {
     ...SUBMIT_PROPERTIES,
     chart: {
@@ -499,6 +576,35 @@ function submitProperties(available: readonly string[]) {
         ...SUBMIT_PROPERTIES.chart.properties,
         type: { type: 'string', enum: [...available] },
         type2: { ...SUBMIT_PROPERTIES.chart.properties.type2, enum: [...available] },
+      },
+    },
+    encodings: {
+      ...SUBMIT_PROPERTIES.encodings,
+      properties: {
+        ...SUBMIT_PROPERTIES.encodings.properties,
+        x: {
+          ...SUBMIT_PROPERTIES.encodings.properties.x,
+          description:
+            `The ${xRole} column, always — ` +
+            (xIsLinear
+              ? 'labels on a band axis for the categorical types, a number on a linear axis for the point ' +
+                'clouds. chart.orientation says which way the bars point and never moves the channels.'
+              : 'labels on a band axis. A date or a number here is still read as a category. ' +
+                'chart.orientation says which way the bars point and never moves the channels.'),
+        },
+        y: {
+          ...SUBMIT_PROPERTIES.encodings.properties.y,
+          description:
+            `The ${yRole} column, always. A text column here is refused and named back to you rather than drawn as ` +
+            'an empty chart — put labels in `x` instead. Turning the bars sideways does not swap the two.',
+        },
+        ...Object.fromEntries(
+          roleNotes.map(([channel, note]) => {
+            const base = SUBMIT_PROPERTIES.encodings.properties[channel];
+            const description = (base as { description?: string }).description ?? 'A channel.';
+            return [channel, { ...base, description: `${description} ${note}` }];
+          }),
+        ),
       },
     },
   };
@@ -515,18 +621,23 @@ function submitProperties(available: readonly string[]) {
  */
 function submitTemplate(mode: ToolMode, available: readonly string[]): ToolDef {
   const choices = available.join(' | ');
+  // Derived from the declarations, so a channel the sentence never used to name — `y2`, `size`,
+  // `low`, `high` — is still described by what it is. This is the line that says a measure takes
+  // numbers, which is the fact an empty "successful" chart was built on.
+  const channelRoles = channelRolesLine(available);
   const description =
     mode === 'present'
       ? 'Finish: submit the chart spec. Call this exactly ONCE. The table is already final, so chart it as it ' +
         'stands — the numbers and the order are the caller\'s. chart.type is a neutral name (' +
         `${choices}); encodings.x is the category column (a date column is treated as categories), encodings.y the measure ` +
         'column, and the optional encodings.series splits the data into series. Use encodings.y2 ONLY when two ' +
-        'measures of different units must share one chart.'
+        `measures of different units must share one chart. Channel roles: ${channelRoles}.`
       : 'Finish: submit the chart spec. Call this exactly ONCE, after run_query has produced the table you want ' +
         'to chart. Do NOT include a transform_plan — the steps from your last successful run_query are adopted ' +
         `automatically. chart.type is a neutral name (${choices}); encodings.x is the category column (a date ` +
         'column is treated as categories), encodings.y the measure column, and the optional encodings.series splits ' +
-        'the data into series. Use encodings.y2 ONLY when two measures of different units must share one chart.';
+        'the data into series. Use encodings.y2 ONLY when two measures of different units must share one chart. ' +
+        `Channel roles: ${channelRoles}.`;
 
   return {
     name: 'submit_spec',
