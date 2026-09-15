@@ -165,6 +165,40 @@ test('a malformed emphasis rule is rejected at submit time so the model can fix 
   assert.equal(outcome.spec.chart.type, 'bar', 'the repaired submission is accepted');
 });
 
+test('rest outside top_k is refused, not ignored', async () => {
+  // `rest` means "the complement of a ranked set", so on a threshold or an equality it would read
+  // as "fade everything except this" while fading exactly this — a silent reversal of the kind
+  // the field exists to remove. The refusal goes back to the model while it can still fix it.
+  const llm = scriptedLlm([
+    {
+      toolCalls: [
+        {
+          id: 'c1',
+          name: 'submit_spec',
+          args: {
+            chart: { type: 'bar' },
+            encodings: { x: { field: 'region' }, y: { field: 'revenue' } },
+            emphasis: [
+              { when: { op: 'gte', field: 'revenue', value: 0, rest: true }, style: { tone: 'muted' } },
+              { when: { op: 'top_k', k: 1, field: 'revenue', rest: 'yes' }, style: { tone: 'muted' } },
+            ],
+          },
+        },
+      ],
+    },
+    { toolCalls: [SUBMIT] },
+  ]);
+
+  const outcome = await runAgentLoop(loopOptions(llm));
+  const first = JSON.parse(outcome.messages.find((m) => m.role === 'tool')?.content ?? '{}') as { errors?: string[] };
+
+  assert.deepEqual(first.errors, [
+    "emphasis[0].when.rest is only meaningful for 'top_k', not for 'gte'",
+    'emphasis[1].when.rest must be a boolean',
+  ]);
+  assert.equal(outcome.spec.chart.type, 'bar', 'and the repaired submission is accepted');
+});
+
 test('valid emphasis survives into the compiled spec', async () => {
   const llm = scriptedLlm([
     { toolCalls: [RUN_QUERY] },

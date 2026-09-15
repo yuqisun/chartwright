@@ -25,6 +25,9 @@ function asNumber(value: unknown): number | null {
 
 function matches(when: EmphasisWhen, row: Row, key: string, topKeys: Set<string>): boolean {
   switch (when.op) {
+    // `top_k` never reaches here: its match is a set membership the loop below resolves, because
+    // `rest` inverts it. The case is kept so the switch stays exhaustive over `EmphasisWhen` —
+    // without it, adding an operator would compile and silently match nothing.
     case 'top_k':
       return topKeys.has(key);
     case 'eq':
@@ -114,6 +117,11 @@ export function resolveEmphasis(
     }
 
     const topKeys = rule.when.op === 'top_k' ? topKeysFor(rule.when, rows, keyOf) : new Set<string>();
+    // `rest` inverts the ranked set, so the two rules of "highlight the top, fade the rest"
+    // cannot disagree: they pass the same k and direction, and the complement is taken here
+    // rather than approximated by a second, larger `top_k` (see `EmphasisWhen`).
+    const complement = rule.when.op === 'top_k' && rule.when.rest === true;
+    const includes = (key: string) => (complement ? !topKeys.has(key) : topKeys.has(key));
     const style: ResolvedTone = { tone: rule.style.tone, label: rule.style.label === true };
 
     let matched = 0;
@@ -124,7 +132,7 @@ export function resolveEmphasis(
         // in a dual-axis combo (§3.4 rule 1). For point-cloud types, the row index is the
         // datum key (§2.1).
         const key = keyOf(row, rule.when.field, ri);
-        if (matches(rule.when, row, key, topKeys)) {
+        if (includes(key)) {
           styles.set(key, style);
           matched += 1;
         }
@@ -147,8 +155,14 @@ export function resolveEmphasis(
       }
     }
 
-    if (matched === 0 && rule.when.op !== 'top_k') {
-      warnings.push(`emphasis rule ${rule.when.op} on '${rule.when.field}' matched no rows`);
+    // `top_k` is exempt from the empty warning only when it *selects*: a k larger than the table
+    // clamps to the top of it, which is the user's emphasis delivered. `rest` is the one shape of
+    // it that can legitimately come out empty, and an empty complement is emphasis that did not
+    // arrive — the same lie the warning exists to prevent.
+    const canBeEmpty = rule.when.op !== 'top_k' || rule.when.rest === true;
+    if (matched === 0 && canBeEmpty) {
+      const what = rule.when.op === 'top_k' ? `top_k k=${rule.when.k}` : rule.when.op;
+      warnings.push(`emphasis rule ${what} on '${rule.when.field}' matched no rows`);
     }
   }
 

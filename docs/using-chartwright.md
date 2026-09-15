@@ -464,7 +464,22 @@ These return a warning rather than a lie:
 - emphasis has **semantic tones only** (`highlight` / `muted`) — you cannot ask
   for a specific colour yet;
 - emphasis can select the **top/bottom k**, value thresholds and named categories
-  — not arbitrary ranks like "the 1st and 3rd";
+  — not arbitrary ranks like "the 1st and 3rd". "Highlight the top one and fade
+  the rest" is two rules over **one** ranking, not a bigger `k`: the second repeats
+  the first's condition with `rest: true`, which marks the complement.
+
+  ```ts
+  emphasis: [
+    { when: { op: 'top_k', k: 1, field: 'notional_usd' }, style: { tone: 'highlight' } },
+    { when: { op: 'top_k', k: 1, field: 'notional_usd', rest: true }, style: { tone: 'muted' } },
+  ]
+  ```
+
+  `rest` follows the same threshold *and the same ties* as the rule it complements,
+  so the pair partitions the rows exactly. A larger `k` is not the complement and
+  never was: `top_k` counts from the top, so on twelve rows `k: 11` fades the top
+  eleven — including the bar the first rule just highlighted — and leaves the last
+  bar at the default colour, where it reads as the selected one;
 - sorting is the plan's job: "the largest 5" **must** sort before limiting;
 - **a date column is a category.** There is no `datetime` axis yet: the x axis is
   spaced evenly whatever the dates say. For a monthly series with every month

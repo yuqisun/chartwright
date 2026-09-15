@@ -466,7 +466,9 @@ const SUBMIT_PROPERTIES = {
     description:
       'Optional. Condition-based emphasis, applied in order (later rules win). Declare the CONDITION, ' +
       'never a data value you looked up: for "highlight the largest" use top_k with k=1 and the measure ' +
-      'field, and the compiler finds it in the full data.',
+      'field, and the compiler finds it in the full data. To fade EVERYTHING ELSE, add a second rule with ' +
+      'the SAME k and field and `rest: true` — do not use a larger k, which fades the top k and leaves the ' +
+      'last bar looking selected.',
     items: {
       type: 'object',
       required: ['when', 'style'],
@@ -479,6 +481,14 @@ const SUBMIT_PROPERTIES = {
             field: { type: 'string' },
             k: { type: 'integer', minimum: 1 },
             direction: { type: 'string', enum: ['max', 'min'] },
+            rest: {
+              type: 'boolean',
+              description:
+                'top_k only. Mark the rows the ranked set EXCLUDES, so `{ op: "top_k", k: 1, field, rest: true }` ' +
+                'is "every row except the largest" — the complement of the same ranking, ties included. This is ' +
+                'the way to say "fade the rest". A larger k is not that: it fades the top k, including the row ' +
+                'another rule just highlighted.',
+            },
             value: {},
             values: { type: 'array' },
           },

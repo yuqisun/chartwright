@@ -142,6 +142,15 @@ function validateEmphasis(raw: unknown): { rules: EmphasisRule[]; errors: string
       if (when.op === 'top_k' && (typeof when.k !== 'number' || !Number.isInteger(when.k) || when.k < 1)) {
         errors.push(`${where}.when.k must be an integer >= 1`);
       }
+      // `rest` inverts a ranked set, so it means something only for `top_k`. Refused rather than
+      // ignored for any other operator: a submission that reads as "fade everything except this"
+      // and then fades exactly this is the kind of silent reversal this field exists to remove.
+      if (when.rest !== undefined && when.op !== 'top_k') {
+        errors.push(`${where}.when.rest is only meaningful for 'top_k', not for '${String(when.op)}'`);
+      }
+      if (when.rest !== undefined && typeof when.rest !== 'boolean') {
+        errors.push(`${where}.when.rest must be a boolean`);
+      }
       if (['gt', 'gte', 'lt', 'lte'].includes(String(when.op)) && typeof when.value !== 'number') {
         errors.push(`${where}.when.value must be a number for '${String(when.op)}'`);
       }

@@ -198,3 +198,174 @@ test('emphasis on a line chart colours the matching point, and only it', () => {
   assert.equal(data[0], 10, 'the unstyled point stays a plain number');
   assert.deepEqual(data[1], { y: 99, color: '#e8590c' });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The complement of a ranked set: "highlight the top one, fade the rest".
+//
+// There was no way to say "the rest". The one construction that worked was an
+// always-true threshold — `gte(field, 0)` — which is only ever true because the
+// measure happens to be non-negative, and a value threshold over a real bound is a
+// number the model must not look up. So the model reached for the nearest thing the
+// schema offered: a *larger* `top_k`, read as a complement. On a twelve-row table
+// `top_k(11)` muted ranks 1-11 — including the winner that the first rule had just
+// highlighted — and left rank 12 as the only default-coloured bar on the chart, which
+// reads as the selected one. `warnings: []`, because nothing was wrong with either
+// rule on its own.
+//
+// `rest` says the second half of that pair explicitly: the complement of the ranked
+// set, computed from one ranking so it cannot disagree with the first rule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const twelve: Row[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((region, index) => ({
+  region,
+  revenue: (12 - index) * 1000,
+}));
+
+test('rest marks everything the ranked set did not: the top one, and the rest faded', () => {
+  const { options, warnings } = compileToHighcharts(
+    spec({ type: 'bar', orientation: 'horizontal' }, [
+      { when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight', label: true } },
+      { when: { op: 'top_k', k: 1, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+    ]),
+    twelve,
+  );
+
+  assert.deepEqual(warnings, [], 'the pair is unambiguous, so there is nothing to warn about');
+  const points = coloured(options);
+  const byTone = (tone: string) => points.filter((p) => p.color === tone).map((p) => p.category);
+
+  assert.deepEqual(byTone('#e8590c'), ['A'], 'the largest is the one highlighted');
+  assert.equal(byTone('#c9ced6').length, 11, 'and every other bar is faded');
+  assert.equal(points.filter((p) => p.color === undefined).length, 0, 'nothing is left at the default colour');
+
+  // The failure this fixes was visual: the last bar kept the default colour and so looked
+  // like the chosen one. Assert the property directly, not just the counts.
+  assert.equal(points[points.length - 1]?.color, '#c9ced6', 'the last bar is faded like the rest');
+});
+
+test('rest is the exact complement however the top set is bounded', () => {
+  // Two pairs, one k apart, so `rest` cannot be right by accident of a table size.
+  const pairs: Array<[number, number]> = [
+    [1, 11],
+    [3, 9],
+  ];
+  for (const [k, expected] of pairs) {
+    const { options } = compileToHighcharts(
+      spec({ type: 'bar' }, [
+        { when: { op: 'top_k', k, field: 'revenue' }, style: { tone: 'highlight' } },
+        { when: { op: 'top_k', k, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+      ]),
+      twelve,
+    );
+    const points = coloured(options);
+    assert.equal(points.filter((p) => p.color === '#e8590c').length, k, `top ${k} highlighted`);
+    assert.equal(points.filter((p) => p.color === '#c9ced6').length, expected, `and ${expected} faded`);
+  }
+});
+
+test('rest includes the ties that top_k includes, so the pair still covers every bar', () => {
+  // `top_k` deliberately includes ties at the k-th value. The complement has to be the
+  // complement of *that* set, or the tied rows fall outside both rules and keep the
+  // default colour — the same "last one looks selected" bug, at a smaller k.
+  //
+  // The tie is placed at the k-th value on purpose. k=1 over A=5000, B=4000, C=4000, D=1000
+  // selects only A, because the threshold is 5000 and nothing ties with it; k=2 makes the
+  // threshold 4000 and pulls both B and C in. Both readings are `top_k` behaving as documented
+  // (`ties at the k-th value are all included`), and the complement has to follow it exactly —
+  // which is what a second, larger `top_k` could not do.
+  const tied: Row[] = [
+    { region: 'A', revenue: 5000 },
+    { region: 'B', revenue: 4000 },
+    { region: 'C', revenue: 4000 },
+    { region: 'D', revenue: 1000 },
+  ];
+  const { options } = compileToHighcharts(
+    spec({ type: 'bar' }, [
+      { when: { op: 'top_k', k: 2, field: 'revenue' }, style: { tone: 'highlight' } },
+      { when: { op: 'top_k', k: 2, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+    ]),
+    tied,
+  );
+
+  // The threshold is 4000, so B and C are both "top 2" and D is the entire complement.
+  assert.deepEqual(
+    coloured(options).map((p) => [p.category, p.color]),
+    [
+      ['A', '#e8590c'],
+      ['B', '#e8590c'],
+      ['C', '#e8590c'],
+      ['D', '#c9ced6'],
+    ],
+  );
+
+  // And at k=1 nothing ties with the threshold, so the complement is the other three.
+  const { options: atOne } = compileToHighcharts(
+    spec({ type: 'bar' }, [
+      { when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } },
+      { when: { op: 'top_k', k: 1, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+    ]),
+    tied,
+  );
+  assert.deepEqual(
+    coloured(atOne).map((p) => [p.category, p.color]),
+    [
+      ['A', '#e8590c'],
+      ['B', '#c9ced6'],
+      ['C', '#c9ced6'],
+      ['D', '#c9ced6'],
+    ],
+    'k=1 selects only the strict maximum, and the complement is exactly the rest',
+  );
+});
+
+test('rest honours direction "min", so the faded set is the top of the other end', () => {
+  const { options } = compileToHighcharts(
+    spec({ type: 'bar' }, [
+      { when: { op: 'top_k', k: 1, field: 'revenue', direction: 'min' }, style: { tone: 'highlight' } },
+      { when: { op: 'top_k', k: 1, field: 'revenue', direction: 'min', rest: true }, style: { tone: 'muted' } },
+    ]),
+    twelve,
+  );
+  const points = coloured(options);
+  assert.deepEqual(points.filter((p) => p.color === '#e8590c').map((p) => p.category), ['L']);
+  assert.equal(points.filter((p) => p.color === '#c9ced6').length, 11);
+});
+
+test('rest on a field that is not a numeric column warns, like the rule it complements', () => {
+  const { options, warnings } = compileToHighcharts(
+    spec({ type: 'bar' }, [
+      { when: { op: 'top_k', k: 1, field: 'nope', rest: true }, style: { tone: 'muted' } },
+    ]),
+    rows,
+  );
+  // The message has to say which rule it was: "top_k k=1" names the condition, so a spec with
+  // two top_k rules cannot leave the model guessing which one it is being told about.
+  assert.match(warnings[0] as string, /references 'nope'/);
+  assert.equal(warnings.length, 1);
+  assert.equal(coloured(options).some((p) => p.color), false);
+});
+
+test('a plain top_k larger than the table still does not warn, because it selects', () => {
+  // Pins the exemption the empty-complement warning was carved out of. `top_k(12)` over twelve
+  // rows clamps to the whole table, which is the emphasis the user asked for; `rest` is the one
+  // shape of `top_k` whose empty result is emphasis that did not arrive.
+  const { options, warnings } = compileToHighcharts(
+    spec({ type: 'bar' }, [{ when: { op: 'top_k', k: 99, field: 'revenue' }, style: { tone: 'muted' } }]),
+    twelve,
+  );
+  assert.deepEqual(warnings, []);
+  assert.equal(coloured(options).filter((p) => p.color).length, 12, 'every row is faded, as asked');
+});
+
+test('rest that fades nothing warns rather than passing quietly', () => {
+  // `rest` with a k that already covers the table is an empty set. The user asked for
+  // emphasis and would get none, which is the case the existing "matched no rows" warning
+  // exists for — it must not be bypassed just because the rule carries `rest`.
+  const { options, warnings } = compileToHighcharts(
+    spec({ type: 'bar' }, [{ when: { op: 'top_k', k: 12, field: 'revenue', rest: true }, style: { tone: 'muted' } }]),
+    twelve,
+  );
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0] as string, /matched no rows/);
+  assert.equal(coloured(options).some((p) => p.color), false);
+});

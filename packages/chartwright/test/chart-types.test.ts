@@ -325,7 +325,12 @@ const SCHEMA_SAMPLES = {
     low: { field: 'low_value' },
     high: { field: 'high_value' },
   },
-  emphasis: [{ when: { op: 'top_k', field: 'revenue', k: 1 }, style: { tone: 'highlight' } }],
+  emphasis: [
+    { when: { op: 'top_k', k: 1, field: 'revenue' }, style: { tone: 'highlight' } },
+    // The complement half of the pair: every property the schema offers has to be exercised
+    // here, or a property the assembler drops goes on being dropped in silence.
+    { when: { op: 'top_k', k: 1, field: 'revenue', rest: true }, style: { tone: 'muted' } },
+  ],
   axes: { x: { kind: 'linear' }, y: { min: 0, max: 100 }, y2: { min: 0, max: 50 } },
 } as const;
 
@@ -397,7 +402,15 @@ test('every property the submit schema declares survives into the compiled spec'
     for (const [channel, value] of Object.entries(SCHEMA_SAMPLES.encodings)) {
       assert.deepEqual(spec.encodings[channel], value, `encodings.${channel} must survive the assembler`);
     }
-    assert.equal(spec.emphasis?.length, 1);
+    assert.equal(spec.emphasis?.length, 2, 'both emphasis rules survive');
+    // The rules are carried through whole rather than rebuilt, so `rest` has to come out the other
+    // side. Asserted by value and not just by count: `rest` is exactly the kind of field that
+    // would be dropped by an assembler that only knew the operators it was written against.
+    assert.deepEqual(
+      spec.emphasis,
+      SCHEMA_SAMPLES.emphasis,
+      'every emphasis property the model wrote survives into the spec',
+    );
     assert.deepEqual(spec.axes, SCHEMA_SAMPLES.axes);
   }
 });

@@ -32,7 +32,16 @@ const SHARED_RULES = [
   '- If the user asks to highlight, emphasise, mark or grey out specific items (the largest, the worst, the top 3),',
   '  express it with `emphasis` and DECLARE THE CONDITION — `{ "when": { "op": "top_k", "k": 1, "field": "<measure>" },',
   '  "style": { "tone": "highlight" } }`. The compiler finds the matching rows in the full data, so never look a value',
-  '  up and never hard-code a category you happened to see in a preview. Use tone "muted" to fade everything else.',
+  '  up and never hard-code a category you happened to see in a preview.',
+  // The shape a real run got wrong. "Fade the rest" has no expressible complement without
+  // looking a value up, so the model reached for a larger `top_k` — which fades the top k,
+  // including the row it had just highlighted. Named explicitly, with the wrong form too,
+  // because the wrong form is the plausible one.
+  '- To fade everything except the highlighted rows, repeat the same condition with `"rest": true` —',
+  '  `{ "when": { "op": "top_k", "k": 1, "field": "<measure>", "rest": true }, "style": { "tone": "muted" } }` is',
+  '  "every row except the largest". Never use a larger `k` to mean "the rest": `top_k` counts from the top, so on',
+  '  twelve rows `k: 11` fades the top eleven — including the one you just highlighted — and leaves the last bar at',
+  '  the default colour, looking like the one that was picked.',
   '- If the request genuinely cannot be answered with the available columns, say so in one short sentence and stop',
   '  without calling submit_spec. Do not guess or invent columns.',
 ];

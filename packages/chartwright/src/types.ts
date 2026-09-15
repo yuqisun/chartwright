@@ -214,7 +214,30 @@ export type ChartSpec = {
 
 /** Which rows an emphasis rule applies to. */
 export type EmphasisWhen =
-  | { op: 'top_k'; field: string; k: number; direction?: 'max' | 'min' }
+  | {
+      op: 'top_k';
+      field: string;
+      k: number;
+      direction?: 'max' | 'min';
+      /**
+       * Mark the rows the ranked set **excludes** — "and fade the rest", with no second
+       * guess about which rows those are.
+       *
+       * This exists because the complement of a ranked set was otherwise not expressible
+       * without looking a value up. The one construction that worked was an always-true
+       * threshold (`gte: 0`), which is a fact about a measure's sign rather than about the
+       * ranking, and a threshold at a real bound is a number the model must not go and fetch.
+       * So a model asked to fade the rest reached for the nearest thing the schema offered —
+       * a *larger* `top_k` — read as a complement. On a twelve-row table `top_k(11)` muted
+       * ranks 1-11, including the winner an earlier rule had just highlighted, and left rank 12
+       * as the only default-coloured bar: a picture of the opposite of what was asked, with no
+       * warning, because neither rule was wrong on its own.
+       *
+       * The complement is taken over the same ranking as the rule it mirrors, ties at the k-th
+       * value included (§ ties), so the pair always partitions the rows the ranking can see.
+       */
+      rest?: boolean;
+    }
   | { op: 'eq' | 'neq'; field: string; value: number | string }
   | { op: 'gt' | 'gte' | 'lt' | 'lte'; field: string; value: number }
   | { op: 'between'; field: string; values: [number, number] };

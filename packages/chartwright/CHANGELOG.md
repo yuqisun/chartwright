@@ -7,6 +7,30 @@ spelled out under [Versioning](#versioning) in the README.
 
 ## [Unreleased]
 
+### Added
+
+- **`emphasis` can mark the complement of a ranked set.** `{ op: 'top_k', k, field, rest: true }`
+  styles the rows the ranked set *excludes*, so "highlight the top one and fade the rest" is two
+  rules over one ranking:
+
+  ```ts
+  emphasis: [
+    { when: { op: 'top_k', k: 1, field: 'notional_usd' }, style: { tone: 'highlight' } },
+    { when: { op: 'top_k', k: 1, field: 'notional_usd', rest: true }, style: { tone: 'muted' } },
+  ]
+  ```
+
+  There was no way to express the complement before. The one construction that worked was an
+  always-true threshold (`gte: 0`) — a fact about a measure's sign, where a threshold at a real
+  bound is a value the model is forbidden to look up — so a model asked to fade the rest reached
+  for the nearest thing the schema offered, a *larger* `top_k`. `top_k` counts from the top: on a
+  twelve-row table `k: 11` faded ranks 1-11, including the winner an earlier rule had just
+  highlighted, and left rank 12 as the only default-coloured bar — a picture of the opposite of
+  what was asked, with `warnings: []`, because neither rule was wrong on its own. The complement
+  is taken over the same threshold and the same ties as the rule it mirrors, so the pair
+  partitions the rows exactly. `rest` outside `top_k` is refused rather than ignored, and an
+  empty complement warns.
+
 ### Fixed
 
 - **A measure channel must hold numbers, and now says so.** A text column on `encodings.y`
