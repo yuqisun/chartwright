@@ -250,6 +250,10 @@ test('both prompts state the channel contract, and that orientation does not mov
   for (const mode of ['ask', 'present'] as const) {
     assert.match(buildSystemPrompt(mode), /`rest` fades one series/, `${mode}: rest's scope is stated`);
     assert.match(buildSystemPrompt(mode), /names a row rather than a measure/, `${mode}: and the contrast`);
+    // The predicate half is wider than "both series": every series of a matching row, which is 2N
+    // with a `series` encoding, and the column it reads need not be charted.
+    assert.match(buildSystemPrompt(mode), /styles every series of the rows it matches/, `${mode}: not just two`);
+    assert.match(buildSystemPrompt(mode), /whichever column it reads/, `${mode}: and it reads any column`);
   }
 });
 

@@ -12,13 +12,15 @@ spelled out under [Versioning](#versioning) in the README.
 - **The emphasis scope on a dual-axis chart is documented, and it was documented wrongly.**
   The consumer guide said "series are named after their measure field *so emphasis on one cannot
   style the other*" — which is the opposite of what the compiler does for a predicate: `eq` and
-  the thresholds name a **row**, so they style both measures, while `top_k` (and therefore `rest`)
-  names a measure's **values** and stays inside that series. That asymmetry is deliberate and is
-  the reason §3.4 rule 1 names the series after their fields at all, but the guide stated only the
-  `top_k` half as if it were the whole rule. The scope is now stated in one table, in the prompt,
-  in the `rest` schema description, and in `EmphasisWhen`; three tests in `test/combo.test.ts`
-  pin the behaviour, which was previously half-covered (C2 asserted the predicate half, nothing
-  asserted `rest`'s).
+  the thresholds name a **row**, so they style every series of the rows they match, while `top_k`
+  (and therefore `rest`) names a measure's **values** and stays inside that series. The predicate
+  half is also wider than "both measures": with a `series` encoding a matching row styles all 2N
+  series, and the predicate reads whichever column it names whether or not that column is charted.
+  That asymmetry is deliberate and is the reason §3.4 rule 1 names the series after their fields
+  at all, but the guide stated only the `top_k` half as if it were the whole rule. The scope is
+  now stated in one table, in the prompt, in the `rest` schema description, and in
+  `EmphasisWhen`; four tests in `test/combo.test.ts` pin it, which was previously half-covered
+  (C2 asserted the two-measure predicate case, nothing asserted `rest`'s scope or the 2N case).
 
 ### Added
 

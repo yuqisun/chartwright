@@ -215,7 +215,7 @@ measure's *values* stays inside that measure:
 | Rule | Reaches |
 |---|---|
 | `top_k` — including `rest: true` | only the measure it names. `top_k` on `avg_commission_bps` does not style the `notional_usd` bar in that category, and `rest` fades exactly what `top_k` selected, so it too stays in one series |
-| `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `between` | every measure, because these name a **row** rather than a measure — "counterparty is Globex" is true of Globex whichever series you read |
+| `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `between` | **every series of every row it matches.** These name a *row* rather than a measure — "counterparty is Globex" is true of Globex whichever series you read — so they are not limited to two: with a `series` encoding each matching row styles all 2N series. The predicate also reads whatever column it names, charted or not, so `gt` on `avg_commission_bps` mutes a row's **notional bars** too |
 
 That asymmetry is deliberate, and it is the reason the series are named after their
 fields at all: a ranking is a claim about one measure's values, so it must not reach

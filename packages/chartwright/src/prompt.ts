@@ -44,9 +44,10 @@ const SHARED_RULES = [
   '  the default colour, looking like the one that was picked.',
   // The scope of the two kinds differs, and the guide had it backwards for a while. `rest` reads
   // like "everything else on the chart", which is why it needs saying before a model has to guess.
+  // Spelled out for both kinds: the contrast is what makes either one usable.
   '- `rest` fades one series: the measure it names, like every `top_k`. On a chart with `encodings.y2`, fade the',
   '  second series with a `rest` rule of its own, naming its field. A condition like `eq` or `gte` is different — it',
-  '  names a row rather than a measure, so it reaches both series.',
+  '  names a row rather than a measure, so it styles every series of the rows it matches, whichever column it reads.',
   '- If the request genuinely cannot be answered with the available columns, say so in one short sentence and stop',
   '  without calling submit_spec. Do not guess or invent columns.',
 ];

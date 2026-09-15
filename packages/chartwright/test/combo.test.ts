@@ -184,6 +184,39 @@ test('A3: the asymmetric half, restated — a predicate still styles both series
   assert.deepEqual(styles.avg_commission_bps, ['plain', 'muted', 'plain']);
 });
 
+test('A4: a predicate reaches all 2N series, and reads a column nobody charts', () => {
+  // "Every measure" is the two-measure case of a wider rule, and the guide said only that much.
+  // With a `series` encoding a matching row styles *every* series — all four here, not the two
+  // measures — and the predicate itself reads whichever column it names, including one that is
+  // not on the chart at all. Both are measured: `gt` on commission mutes notional bars too.
+  const styles = comboStyles(
+    {
+      ...comboSeriesSpec,
+      emphasis: [{ when: { op: 'eq', field: 'counterparty', value: 'Globex' }, style: { tone: 'muted' } }],
+    },
+    comboSeriesRows,
+  );
+  const globex = ['plain', 'muted']; // Acme, Globex — one row per currency per counterparty
+  assert.deepEqual(styles['notional_usd: USD'], globex);
+  assert.deepEqual(styles['notional_usd: EUR'], globex);
+  assert.deepEqual(styles['avg_commission_bps: USD'], globex);
+  assert.deepEqual(styles['avg_commission_bps: EUR'], globex);
+
+  // The uncharted-column case, on the plain combo: rows with commission above 4 are muted in
+  // *both* series, so a reader sees the notional bar greyed out for a reason its own values do
+  // not show. That is the documented rule, and it is surprising enough to be worth pinning.
+  const byCommission = comboStyles(
+    {
+      ...comboSpec,
+      emphasis: [{ when: { op: 'gt', field: 'avg_commission_bps', value: 4 }, style: { tone: 'muted' } }],
+    },
+    rows,
+  );
+  // Rows are Acme (commission 3), Globex (7), Initech (5): the two above the threshold fade.
+  assert.deepEqual(byCommission.notional_usd, ['plain', 'muted', 'muted']);
+  assert.deepEqual(byCommission.avg_commission_bps, ['plain', 'muted', 'muted']);
+});
+
 // --- combo + series encoding (C1, I1) ---
 
 const comboSeriesRows: Row[] = [

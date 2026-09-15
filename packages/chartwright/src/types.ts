@@ -240,7 +240,8 @@ export type EmphasisWhen =
        * one measure's values, and §3.4 rule 1 exists so it cannot reach into a series it never
        * ranked. On a dual-axis combo, fading both series takes one `rest` rule per measure; the
        * consumer guide has the shape. A predicate is the other half: `eq` and the thresholds name
-       * a *row*, so they reach every measure.
+       * a *row*, so they style every series of the rows they match — and they read whatever column
+       * they name, charted or not.
        */
       rest?: boolean;
     }
