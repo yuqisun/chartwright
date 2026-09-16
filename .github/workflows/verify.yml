@@ -9,6 +9,12 @@
 ## a real browser and asserts Highcharts did not throw and that the rendered chart holds
 ## the series and point counts the corpus expects. The screenshots are uploaded for a
 ## human, deliberately not compared pixel by pixel (§5.4).
+##
+## The action majors are the ones whose runtime is `node24`, because the runner now forces
+## them there and warns on every run otherwise. Read from each action's own `action.yml`
+## rather than from habit: `checkout@v5` and `setup-node@v6` both say `using: node24`, and
+## `upload-artifact` needs **v6** — its v5 still declares `node20`, so bumping it by one
+## major looks like the fix and is not.
 name: verify
 
 on:
@@ -21,8 +27,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '22.16'
           cache: npm
@@ -37,8 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: '22.16'
           cache: npm
@@ -50,7 +56,7 @@ jobs:
       - run: npm run render
       - name: Keep the screenshots for review
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: render-matrix
           path: render-out/
