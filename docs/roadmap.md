@@ -113,6 +113,18 @@ pixels, so this class of mistake is invisible to them.
 **Needed:** either a documented manual check per convention, or a rendering-level
 regression (headless browser + screenshot) once the chart types stabilise.
 
+**Partly answered since this was written** — `scripts/render-matrix.ts` now draws every
+corpus case in CI and asserts it produced marks. Its first real find was not a chart bug but
+one in the check itself, and the shape is worth keeping: the counter looked only inside
+`.highcharts-series`, while a `scatter` draws its markers in a **sibling** `highcharts-markers`
+group that the renderer creates from `plotGroup('markerGroup', 'markers', …)`. So a correctly
+drawn scatter reported "rendered no marks at all". A false failure is the specific risk this
+item's own text warns about — "a flaky gate gets switched off" — and it survived because the
+case could not run outside CI: the assertion was written against the one type whose marks are
+somewhere else, and nothing on the machine could have caught it. The remaining gap is
+unchanged, though: the assertions are still data-level (counts, not pixels), so a chart drawn
+at the wrong *size*, with overlapping marks, or with the wrong colour is still unasserted.
+
 ### 5. The package-level end-to-end test depends on the example
 
 `test/e2e.test.ts` reads two files out of the example —

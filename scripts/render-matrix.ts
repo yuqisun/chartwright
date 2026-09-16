@@ -169,13 +169,22 @@ async function main(): Promise<number> {
         const chart = window.Highcharts.chart(container, chartOptions);
         const series = chart.series ?? [];
         // "Something was actually drawn" has to be an assertion, not an eyeball: nobody looks
-        // at the screenshots in CI either. Counting the marks inside the series groups is the
-        // cheapest honest version of it — a chart that threw silently, or a series with no
-        // renderable data, leaves this at zero while still producing a valid SVG skeleton.
-        const marks = Array.from(container.querySelectorAll('.highcharts-series')).reduce(
-          (total, group) => total + group.querySelectorAll('path, rect, circle, text').length,
-          0,
-        );
+        // at the screenshots in CI either. Counting the marks is the cheapest honest version of
+        // it — a chart that threw silently, or a series with no renderable data, leaves this at
+        // zero while still producing a valid SVG skeleton.
+        //
+        // Both groups, because a series does not always draw inside its own. Highcharts' own
+        // tracker configuration says which do: a `scatter` declares
+        // `trackerGroups: ['group', 'markerGroup', 'dataLabelsGroup']`, and the series render
+        // creates that group with `plotGroup('markerGroup', 'markers', …)` — which classes it
+        // `highcharts-markers`, a **sibling** of the series group. So counting only
+        // `.highcharts-series` reported zero marks for a scatter that was drawn correctly: a
+        // false failure on the one case whose markers live in the tooltip tracker's group.
+        // Types that keep no separate marker group (a bubble, a column) are unaffected — their
+        // marks are already in the series group, and a group that does not exist adds nothing.
+        const marks = Array.from(
+          container.querySelectorAll('.highcharts-series, .highcharts-markers'),
+        ).reduce((total, group) => total + group.querySelectorAll('path, rect, circle, text').length, 0);
         return {
           series: series.length,
           points: series.reduce((total: number, one: { data?: unknown[] }) => total + (one.data?.length ?? 0), 0),
