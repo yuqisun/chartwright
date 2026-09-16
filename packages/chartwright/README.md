@@ -106,7 +106,7 @@ minor bump may contain a breaking change.** Concretely, until `1.0.0`:
 | A breaking change to an exported signature, or a removed export | minor (`0.2.0`) |
 | A new chart type, channel, modifier or option | minor (`0.2.0`) |
 | A bug fix, or a change to emitted options that no reasonable consumer depends on | patch (`0.1.1`) |
-| Pre-release iterations of the above | `-alpha.N`, published under the `alpha` dist-tag |
+| Pre-release iterations of the above | `-alpha.N`, published under the `alpha` dist-tag — see below for what `latest` does |
 
 What will **not** change without a major bump, because consumers build on them:
 
@@ -116,8 +116,30 @@ What will **not** change without a major bump, because consumers build on them:
   spec an auditable artifact;
 - the guarantee that all new fields are optional, so an existing spec keeps compiling.
 
-Alpha releases are published with `npm publish --tag alpha`, so `npm install chartwright`
-never resolves to one until `latest` is pointed at a stable version.
+Alpha releases are published with `npm publish --tag alpha`. That flag stops the release
+from being *made* the `latest` version; it does not remove a `latest` that already exists.
+Nothing can: npm's registry **refuses to delete `latest`** (`400` from
+`npm dist-tag rm <pkg> latest` on npmjs, `403 … Can't remove the "latest" tag` from a
+mirror), so the tag is permanent once a package has been published, and the choice is only
+ever *which version it names*:
+
+```bash
+npm dist-tag add chartwright@<version> latest --registry=https://registry.npmjs.org
+```
+
+Until a stable `1.0.0`-line release exists, `latest` therefore names a pre-release:
+
+```bash
+npm install chartwright            # what latest names — a pre-release, today
+npm install chartwright@alpha      # the alpha line, explicitly
+npm install chartwright@0.1.0-alpha.1   # one exact version, the only reproducible choice
+```
+
+Pin a version, or a tag, if you want an install that cannot move under you. `latest` is
+kept pointed at the newest release rather than at an older one, because the alternative is
+an install that silently resolves to something with known defects. Point it elsewhere with
+the command above — note the explicit `--registry`, which is required on a machine whose
+npmrc sets a mirror: publishing honours `publishConfig`, and `dist-tag` does not.
 
 Every release is listed in [`CHANGELOG.md`](./CHANGELOG.md).
 

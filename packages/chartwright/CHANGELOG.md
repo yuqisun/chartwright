@@ -7,7 +7,19 @@ spelled out under [Versioning](#versioning) in the README.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- The README's promise about `latest` was wrong, and the first release is what proved it.
+  It said alpha releases "are published with `npm publish --tag alpha`, so
+  `npm install chartwright` never resolves to one". The flag does stop a release from being
+  *made* `latest`; it cannot remove a `latest` that already exists, and nothing can — npm's
+  registry refuses to delete the tag (`400` on npmjs, and a mirror answers
+  `403 Can't remove the "latest" tag`). `0.1.0-alpha.0` was published without the flag, so
+  `latest` has named a pre-release since the first release, and the only available choice is
+  which version it names. The section now says that, gives the `npm dist-tag add` command,
+  and tells a consumer to pin a version or the `alpha` tag if they want an install that
+  cannot move. It also records that `dist-tag` needs an explicit `--registry` on a machine
+  whose npmrc points at a mirror, where `publish` does not — that cost a confusing round.
 
 ## [0.1.0-alpha.1] - 2026-09-16
 
