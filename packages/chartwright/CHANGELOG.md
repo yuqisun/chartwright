@@ -7,6 +7,25 @@ spelled out under [Versioning](#versioning) in the README.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0-alpha.1] - 2026-09-16
+
+Four defects found by pointing the library at a real provider and then reading the result back,
+plus the vocabulary one of them needed to be expressible at all. The thread through every one:
+a spec that validated, compiled, and then drew something **other than what was asked**, with
+`warnings: []` to say it was fine.
+
+Two of them were one class of bug — a chart with no marks and a chart with the wrong marks
+looking identical to a chart that worked:
+
+- an encoding on the wrong channel drew nothing at all, and a blank measure drew a real `0`;
+- a `Date` on a measure channel drew epoch milliseconds, silently.
+
+The other two were the emphasis vocabulary being unable to say what was wanted, and the guide
+describing the rule backwards. Each has a test now, and the two that a model can produce are
+also refusals it can repair while it is still running.
+
 ### Changed
 
 - **The emphasis scope on a dual-axis chart is documented, and it was documented wrongly.**
@@ -187,5 +206,6 @@ Carried deliberately, and recorded rather than discovered:
 - **Highcharts is the only backend.** The spec is library-agnostic by design; a second
   backend is what would demonstrate it.
 
-[Unreleased]: https://github.com/yuqisun/chartwright/compare/v0.1.0-alpha.0...HEAD
+[Unreleased]: https://github.com/yuqisun/chartwright/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/yuqisun/chartwright/compare/v0.1.0-alpha.0...v0.1.0-alpha.1
 [0.1.0-alpha.0]: https://github.com/yuqisun/chartwright/releases/tag/v0.1.0-alpha.0

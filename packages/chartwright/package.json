@@ -1,6 +1,6 @@
 {
   "name": "chartwright",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Natural-language charts in your own process: an agentic loop inspects your data locally, a deterministic compiler emits chart-library options.",
   "type": "module",
   "license": "MIT",
